@@ -12,6 +12,10 @@ function slugId(input = "") {
   return input.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+function normalizeName(input = "") {
+  return input.trim().toLowerCase().replace(/[^a-z0-9\s]+/g, "").replace(/\s+/g, " ");
+}
+
 function getInitials(name = "") {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
@@ -89,6 +93,7 @@ export default function Participants() {
     platoonId: "",
     photoURL: "",
   });
+  const [leaderOriginalId, setLeaderOriginalId] = useState("");
 
   const [simpleForm, setSimpleForm] = useState({
     id: "",
@@ -155,8 +160,27 @@ export default function Participants() {
 
   // ---- Leaders (agents)
   const leaderIdPreview = useMemo(
-    () => leaderForm.id || slugId(leaderForm.name),
+    () => slugId(leaderForm.id || leaderForm.name),
     [leaderForm.id, leaderForm.name]
+  );
+  const leaderNameNormalized = useMemo(
+    () => normalizeName(leaderForm.name),
+    [leaderForm.name]
+  );
+  const isEditingLeader = !!leaderOriginalId;
+
+  const leaderIdConflict = useMemo(
+    () => !!leaderIdPreview && agents.some(a => a.id === leaderIdPreview && a.id !== leaderOriginalId),
+    [agents, leaderIdPreview, leaderOriginalId]
+  );
+
+  const leaderNameConflict = useMemo(
+    () => !!leaderNameNormalized && agents.some(a => {
+      if (normalizeName(a.name) !== leaderNameNormalized) return false;
+      if (isEditingLeader && leaderIdPreview === leaderOriginalId && a.id === leaderOriginalId) return false;
+      return a.id !== leaderIdPreview;
+    }),
+    [agents, isEditingLeader, leaderIdPreview, leaderNameNormalized, leaderOriginalId]
   );
 
   function handleLeaderModeChange(mode) {
@@ -181,6 +205,7 @@ export default function Participants() {
 
   function clearLeader() {
     setLeaderForm({ id: "", name: "", depotId: "", companyId: "", platoonId: "", photoURL: "" });
+    setLeaderOriginalId("");
     setLeaderPhotoFile(null);
     setLeaderFileKey(k => k + 1);
     setLeaderPhotoMode("upload");
@@ -207,7 +232,12 @@ export default function Participants() {
       return err(message);
     }
 
-    const id = leaderForm.id || slugId(name);
+    const id = leaderIdPreview;
+    if (!id) return err("Agent ID is required. Change the name or add a unique suffix.");
+    if (leaderIdConflict) return err("Agent ID already exists. Change the name or add a unique suffix.");
+    if (leaderNameConflict) {
+      setStatus({ type: "warn", msg: "Another leader with the same name exists. Use agent_id in uploads to avoid ambiguity." });
+    }
     const fileError = validateFile(leaderPhotoFile);
     if (fileError) {
       setLeaderPhotoError(fileError);
@@ -245,7 +275,7 @@ export default function Participants() {
         photoURL,
       });
       await fetchAgents();
-      ok(leaderForm.id ? "Leader updated." : "Leader added.");
+      ok(isEditingLeader ? "Leader updated." : "Leader added.");
       clearLeader();
     } catch (e2) {
       console.error(e2);
@@ -265,6 +295,7 @@ export default function Participants() {
       platoonId: a.platoonId || "",
       photoURL: a.photoURL || "",
     });
+    setLeaderOriginalId(a.id);
     setLeaderPhotoFile(null);
     setLeaderFileKey(k => k + 1);
     setLeaderPhotoMode(a.photoURL ? "url" : "upload");
@@ -523,7 +554,11 @@ export default function Participants() {
           </button>
         </div>
 
-        {status.msg && <div className={`p-status ${status.type === "ok" ? "ok" : "error"}`}>{status.msg}</div>}
+        {status.msg && (
+          <div className={`p-status ${status.type === "ok" ? "ok" : status.type === "warn" ? "warn" : "error"}`}>
+            {status.msg}
+          </div>
+        )}
       </div>
 
       {/* FORM AREA */}
@@ -536,6 +571,15 @@ export default function Participants() {
               <div className="field">
                 <label>Leader Name</label>
                 <input value={leaderForm.name} onChange={(e) => setLeaderForm(s => ({ ...s, name: e.target.value }))} />
+              </div>
+
+              <div className="field">
+                <label>Agent ID (optional)</label>
+                <input
+                  value={leaderForm.id}
+                  placeholder="Auto from name. Add suffix for uniqueness (e.g., juan-dela-cruz-2)."
+                  onChange={(e) => setLeaderForm(s => ({ ...s, id: slugId(e.target.value) }))}
+                />
               </div>
 
               <div className="field">
@@ -642,10 +686,18 @@ export default function Participants() {
               </div>
             </div>
 
-            <div className="hint">Agent ID: <b>{leaderIdPreview || "(auto)"}</b></div>
+            <div className="hint">
+              Agent ID: <b>{leaderIdPreview || "(auto)"}</b>. Leave blank to auto-generate. Add a unique suffix if needed (e.g., juan-dela-cruz-2).
+            </div>
+            {leaderIdConflict && (
+              <div className="p-status error">Agent ID already exists. Change the name or add a unique suffix.</div>
+            )}
+            {!leaderIdConflict && leaderNameConflict && (
+              <div className="p-status warn">Another leader with the same name exists. Use agent_id in uploads to avoid ambiguity.</div>
+            )}
 
             <div className="actions">
-              <button className="btn-primary" type="submit" disabled={leaderUploading}>{leaderForm.id ? "Save Changes" : "Save"}</button>
+              <button className="btn-primary" type="submit" disabled={leaderUploading}>{isEditingLeader ? "Save Changes" : "Save"}</button>
               <button className="btn" type="button" onClick={clearLeader}>Clear</button>
             </div>
           </form>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { parseRawDataWorkbook, saveRawDataRows } from "../services/rawData.service";
 
 export default function Upload() {
@@ -9,6 +9,9 @@ export default function Upload() {
   const [error, setError] = useState("");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [saveResult, setSaveResult] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const inputRef = useRef(null);
 
   const summary = useMemo(() => {
     const total = rows.length;
@@ -20,7 +23,12 @@ export default function Upload() {
   async function handleFile(file) {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      setError("Please upload an .xlsx file");
+      setError("Only .xlsx files are accepted.");
+      setRows([]);
+      setMeta(null);
+      setFileName("");
+      setSaveResult(null);
+      setProgress({ done: 0, total: 0 });
       return;
     }
     setLoading(true);
@@ -57,6 +65,30 @@ export default function Upload() {
   a.remove();
 }
 
+  function resetUpload() {
+    setFileName("");
+    setRows([]);
+    setMeta(null);
+    setLoading(false);
+    setError("");
+    setSaveResult(null);
+    setProgress({ done: 0, total: 0 });
+    setIsDragging(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setError("Only .xlsx files are accepted.");
+      return;
+    }
+    handleFile(file);
+  }
+
   async function handleSave() {
     const validRows = rows.filter(r => r.status === "valid");
     setProgress({ done: 0, total: validRows.length });
@@ -83,10 +115,9 @@ export default function Upload() {
             <div className="muted">Sheet name "Daily Data" (or first sheet)</div>
           </div>
         </label>
-       <button className="btn" type="button" onClick={downloadTemplate}>
+        <a className="button secondary" href="#" target="_blank" rel="noreferrer">
           Download Template
-        </button>
-
+        </a>
       </div>
 
       {fileName ? (

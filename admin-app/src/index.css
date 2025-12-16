@@ -304,7 +304,7 @@ input:focus, select:focus{
 
 .p-title{ margin:0; font-size: 18px; }
 
-.p-status{
+.p-status{ 
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
@@ -312,6 +312,7 @@ input:focus, select:focus{
 }
 .p-status.ok{ background:#ecfff1; border:1px solid #b8f0c6; color:#167a35; }
 .p-status.error{ background:#fff0f0; border:1px solid #ffd0d0; color:#b01818; }
+.p-status.warn{ background:#fff8e6; border:1px solid #ffd48a; color:#a05a00; }
 
 /* Table-like rows */
 .table{
@@ -410,25 +411,24 @@ input:focus, select:focus{
 }
 
 /* ----- Upload page ----- */
-.upload-actions{
-  display:flex;
-  align-items:center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.upload-drop{
-  flex:1;
+.dropzone{
   border: 2px dashed #d8dcff;
   border-radius: 14px;
-  padding: 14px;
+  padding: 18px;
+  min-height: 150px;
   display:flex;
-  gap: 12px;
+  gap: 14px;
   align-items:center;
+  background:#f9faff;
   cursor:pointer;
+  transition: border-color .15s ease, background .15s ease;
 }
 
-.upload-drop:hover{ border-color: var(--blue2); }
+.dropzone--dragging{ border-color: var(--blue2); background:#eef1ff; }
+
+.dropzone__title{ font-weight:800; font-size: 16px; }
+.dropzone__sub{ color: var(--muted); font-size: 13px; margin-top: 4px; }
+.upload-actions-row{ display:flex; align-items:center; gap: 10px; margin-top: 12px; }
 
 .upload-icon{ font-size: 26px; }
 .upload-title{ font-weight:800; }
