@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { parseRawDataWorkbook, saveRawDataRows } from "../services/rawData.service";
 
 export default function Upload() {
@@ -9,6 +10,17 @@ export default function Upload() {
   const [error, setError] = useState("");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [saveResult, setSaveResult] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const inputRef = useRef(null);
+
+  function downloadTemplate() {
+    const workbook = XLSX.utils.book_new();
+    const worksheetData = [["agent_id", "leader_name", "date", "leads", "payins", "sales"], ["", "", "", "", "", ""]];
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Daily Data");
+    XLSX.writeFile(workbook, "daily-data-template.xlsx");
+  }
 
   const summary = useMemo(() => {
     const total = rows.length;
@@ -20,7 +32,12 @@ export default function Upload() {
   async function handleFile(file) {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      setError("Please upload an .xlsx file");
+      setError("Only .xlsx files are accepted.");
+      setRows([]);
+      setMeta(null);
+      setFileName("");
+      setSaveResult(null);
+      setProgress({ done: 0, total: 0 });
       return;
     }
     setLoading(true);
@@ -48,6 +65,30 @@ export default function Upload() {
     handleFile(file);
   }
 
+  function resetUpload() {
+    setFileName("");
+    setRows([]);
+    setMeta(null);
+    setLoading(false);
+    setError("");
+    setSaveResult(null);
+    setProgress({ done: 0, total: 0 });
+    setIsDragging(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setError("Only .xlsx files are accepted.");
+      return;
+    }
+    handleFile(file);
+  }
+
   async function handleSave() {
     const validRows = rows.filter(r => r.status === "valid");
     setProgress({ done: 0, total: validRows.length });
@@ -65,18 +106,40 @@ export default function Upload() {
       <div className="card-title">Upload Raw Data</div>
       <div className="muted">Import the Daily Data template (.xlsx) and review rows before saving.</div>
 
-      <div className="upload-actions">
-        <label className="upload-drop" htmlFor="file-input">
-          <input id="file-input" type="file" accept=".xlsx" onChange={onInputChange} style={{ display: "none" }} />
-          <div className="upload-icon">📤</div>
-          <div>
-            <div className="upload-title">Select or drop an .xlsx file</div>
-            <div className="muted">Sheet name "Daily Data" (or first sheet)</div>
-          </div>
-        </label>
-        <a className="button secondary" href="#" target="_blank" rel="noreferrer">
+      <div
+        className={`dropzone ${isDragging ? "dropzone--dragging" : ""}`}
+        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={onDrop}
+        onClick={() => inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
+      >
+        <div className="upload-icon" aria-hidden>📤</div>
+        <div>
+          <div className="dropzone__title">Select or drop an .xlsx file</div>
+          <div className="dropzone__sub">.xlsx only. Sheet name "Daily Data" or first sheet.</div>
+        </div>
+        <input
+          ref={inputRef}
+          id="file-input"
+          type="file"
+          accept=".xlsx"
+          onChange={onInputChange}
+          style={{ display: "none" }}
+        />
+      </div>
+
+      <div className="upload-actions-row">
+        <button type="button" className="button secondary" onClick={downloadTemplate}>
           Download Template
-        </a>
+        </button>
+        {(fileName || rows.length > 0) ? (
+          <button className="button" type="button" onClick={resetUpload}>
+            Upload New
+          </button>
+        ) : null}
       </div>
 
       {fileName ? (
