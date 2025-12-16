@@ -26,6 +26,23 @@ function validateFile(file) {
   return "";
 }
 
+function useFilePreview(file) {
+  const [preview, setPreview] = useState("");
+
+  useEffect(() => {
+    if (!file) {
+      setPreview("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  return preview;
+}
+
 export default function Participants() {
   const [tab, setTab] = useState("leaders"); // leaders | companies | depots | platoons
   const [status, setStatus] = useState({ type: "", msg: "" });
@@ -39,6 +56,18 @@ export default function Participants() {
   const [simplePhotoFile, setSimplePhotoFile] = useState(null);
   const [platoonPhotoFile, setPlatoonPhotoFile] = useState(null);
 
+  const [leaderPhotoMode, setLeaderPhotoMode] = useState("upload");
+  const [simplePhotoMode, setSimplePhotoMode] = useState("upload");
+  const [platoonPhotoMode, setPlatoonPhotoMode] = useState("upload");
+
+  const [leaderPhotoUrlInput, setLeaderPhotoUrlInput] = useState("");
+  const [simplePhotoUrlInput, setSimplePhotoUrlInput] = useState("");
+  const [platoonPhotoUrlInput, setPlatoonPhotoUrlInput] = useState("");
+
+  const [leaderPhotoError, setLeaderPhotoError] = useState("");
+  const [simplePhotoError, setSimplePhotoError] = useState("");
+  const [platoonPhotoError, setPlatoonPhotoError] = useState("");
+
   const [leaderFileKey, setLeaderFileKey] = useState(0);
   const [simpleFileKey, setSimpleFileKey] = useState(0);
   const [platoonFileKey, setPlatoonFileKey] = useState(0);
@@ -46,6 +75,10 @@ export default function Participants() {
   const [leaderUploading, setLeaderUploading] = useState(false);
   const [simpleUploading, setSimpleUploading] = useState(false);
   const [platoonUploading, setPlatoonUploading] = useState(false);
+
+  const leaderFilePreview = useFilePreview(leaderPhotoFile);
+  const simpleFilePreview = useFilePreview(simplePhotoFile);
+  const platoonFilePreview = useFilePreview(platoonPhotoFile);
 
   // --- forms
   const [leaderForm, setLeaderForm] = useState({
@@ -126,16 +159,40 @@ export default function Participants() {
     [leaderForm.id, leaderForm.name]
   );
 
+  function handleLeaderModeChange(mode) {
+    setLeaderPhotoMode(mode);
+    setLeaderPhotoError("");
+
+    if (mode === "upload") {
+      setLeaderPhotoUrlInput("");
+      setLeaderForm(s => ({ ...s, photoURL: "" }));
+    }
+    if (mode === "url") {
+      setLeaderPhotoFile(null);
+      setLeaderFileKey(k => k + 1);
+    }
+    if (mode === "none") {
+      setLeaderPhotoFile(null);
+      setLeaderFileKey(k => k + 1);
+      setLeaderPhotoUrlInput("");
+      setLeaderForm(s => ({ ...s, photoURL: "" }));
+    }
+  }
+
   function clearLeader() {
     setLeaderForm({ id: "", name: "", depotId: "", companyId: "", platoonId: "", photoURL: "" });
     setLeaderPhotoFile(null);
     setLeaderFileKey(k => k + 1);
+    setLeaderPhotoMode("upload");
+    setLeaderPhotoUrlInput("");
+    setLeaderPhotoError("");
     setStatus({ type: "", msg: "" });
   }
 
   async function saveLeader(e) {
     e.preventDefault();
     setStatus({ type: "", msg: "" });
+    setLeaderPhotoError("");
 
     const name = leaderForm.name.trim();
     if (!name) return err("Leader name required.");
@@ -143,27 +200,38 @@ export default function Participants() {
     if (!leaderForm.companyId) return err("Select a company.");
     if (!leaderForm.platoonId) return err("Select a platoon.");
 
-    if (leaderPhotoFile && leaderForm.photoURL.trim()) {
-      return err("Choose either an upload or a photo URL, not both.");
+    const urlInput = leaderPhotoUrlInput.trim();
+    if (leaderPhotoFile && urlInput) {
+      const message = "Choose either an upload or a photo URL, not both.";
+      setLeaderPhotoError(message);
+      return err(message);
     }
 
     const id = leaderForm.id || slugId(name);
     const fileError = validateFile(leaderPhotoFile);
-    if (fileError) return err(fileError);
+    if (fileError) {
+      setLeaderPhotoError(fileError);
+      return err(fileError);
+    }
 
     let photoURL = leaderForm.photoURL.trim();
-    setLeaderUploading(!!leaderPhotoFile);
+    if (leaderPhotoMode === "none") {
+      photoURL = "";
+    }
+    setLeaderUploading(leaderPhotoMode === "upload" && !!leaderPhotoFile);
 
     try {
-      if (leaderPhotoFile) {
+      if (leaderPhotoMode === "upload" && leaderPhotoFile) {
         try {
           const upload = await uploadAvatar({ entityType: "agents", entityId: id, file: leaderPhotoFile });
-          photoURL = upload.publicUrl;
+          photoURL = `${upload.publicUrl}?v=${Date.now()}`;
         } catch (uploadErr) {
           console.error(uploadErr);
           setLeaderUploading(false);
           return err("Upload failed. Please try again.");
         }
+      } else if (leaderPhotoMode === "url") {
+        photoURL = urlInput;
       }
 
       await upsertAgent({
@@ -197,6 +265,9 @@ export default function Participants() {
     });
     setLeaderPhotoFile(null);
     setLeaderFileKey(k => k + 1);
+    setLeaderPhotoMode(a.photoURL ? "url" : "upload");
+    setLeaderPhotoUrlInput(a.photoURL || "");
+    setLeaderPhotoError("");
     setStatus({ type: "", msg: "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -207,42 +278,77 @@ export default function Participants() {
     [simpleForm.id, simpleForm.name]
   );
 
+  function handleSimpleModeChange(mode) {
+    setSimplePhotoMode(mode);
+    setSimplePhotoError("");
+
+    if (mode === "upload") {
+      setSimplePhotoUrlInput("");
+      setSimpleForm(s => ({ ...s, photoURL: "" }));
+    }
+    if (mode === "url") {
+      setSimplePhotoFile(null);
+      setSimpleFileKey(k => k + 1);
+    }
+    if (mode === "none") {
+      setSimplePhotoFile(null);
+      setSimpleFileKey(k => k + 1);
+      setSimplePhotoUrlInput("");
+      setSimpleForm(s => ({ ...s, photoURL: "" }));
+    }
+  }
+
   function clearSimple() {
     setSimpleForm({ id: "", name: "", photoURL: "" });
     setSimplePhotoFile(null);
     setSimpleFileKey(k => k + 1);
+    setSimplePhotoMode("upload");
+    setSimplePhotoUrlInput("");
+    setSimplePhotoError("");
     setStatus({ type: "", msg: "" });
   }
 
   async function saveSimple(e) {
     e.preventDefault();
     setStatus({ type: "", msg: "" });
+    setSimplePhotoError("");
 
     const name = simpleForm.name.trim();
     if (!name) return err("Name required.");
 
-    if (simplePhotoFile && simpleForm.photoURL.trim()) {
-      return err("Choose either an upload or a photo URL, not both.");
+    const urlInput = simplePhotoUrlInput.trim();
+    if (simplePhotoFile && urlInput) {
+      const message = "Choose either an upload or a photo URL, not both.";
+      setSimplePhotoError(message);
+      return err(message);
     }
 
     const id = simpleForm.id || slugId(name);
     const payload = { name, photoURL: (simpleForm.photoURL || "").trim() };
     const fileError = validateFile(simplePhotoFile);
-    if (fileError) return err(fileError);
+    if (fileError) {
+      setSimplePhotoError(fileError);
+      return err(fileError);
+    }
 
     const entityType = tab === "depots" ? "depots" : "companies";
-    setSimpleUploading(!!simplePhotoFile);
+    if (simplePhotoMode === "none") {
+      payload.photoURL = "";
+    }
+    setSimpleUploading(simplePhotoMode === "upload" && !!simplePhotoFile);
 
     try {
-      if (simplePhotoFile) {
+      if (simplePhotoMode === "upload" && simplePhotoFile) {
         try {
           const upload = await uploadAvatar({ entityType, entityId: id, file: simplePhotoFile });
-          payload.photoURL = upload.publicUrl;
+          payload.photoURL = `${upload.publicUrl}?v=${Date.now()}`;
         } catch (uploadErr) {
           console.error(uploadErr);
           setSimpleUploading(false);
           return err("Upload failed. Please try again.");
         }
+      } else if (simplePhotoMode === "url") {
+        payload.photoURL = urlInput;
       }
 
       if (tab === "depots") {
@@ -267,6 +373,9 @@ export default function Participants() {
     setSimpleForm({ id: row.id, name: row.name || "", photoURL: row.photoURL || "" });
     setSimplePhotoFile(null);
     setSimpleFileKey(k => k + 1);
+    setSimplePhotoMode(row.photoURL ? "url" : "upload");
+    setSimplePhotoUrlInput(row.photoURL || "");
+    setSimplePhotoError("");
     setStatus({ type: "", msg: "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -277,40 +386,75 @@ export default function Participants() {
     [platoonForm.id, platoonForm.name]
   );
 
+  function handlePlatoonModeChange(mode) {
+    setPlatoonPhotoMode(mode);
+    setPlatoonPhotoError("");
+
+    if (mode === "upload") {
+      setPlatoonPhotoUrlInput("");
+      setPlatoonForm(s => ({ ...s, photoURL: "" }));
+    }
+    if (mode === "url") {
+      setPlatoonPhotoFile(null);
+      setPlatoonFileKey(k => k + 1);
+    }
+    if (mode === "none") {
+      setPlatoonPhotoFile(null);
+      setPlatoonFileKey(k => k + 1);
+      setPlatoonPhotoUrlInput("");
+      setPlatoonForm(s => ({ ...s, photoURL: "" }));
+    }
+  }
+
   function clearPlatoon() {
     setPlatoonForm({ id: "", name: "", photoURL: "" });
     setPlatoonPhotoFile(null);
     setPlatoonFileKey(k => k + 1);
+    setPlatoonPhotoMode("upload");
+    setPlatoonPhotoUrlInput("");
+    setPlatoonPhotoError("");
     setStatus({ type: "", msg: "" });
   }
 
   async function savePlatoon(e) {
     e.preventDefault();
     setStatus({ type: "", msg: "" });
+    setPlatoonPhotoError("");
 
     const name = platoonForm.name.trim();
     if (!name) return err("Platoon name required.");
 
-    if (platoonPhotoFile && platoonForm.photoURL.trim()) {
-      return err("Choose either an upload or a photo URL, not both.");
+    const urlInput = platoonPhotoUrlInput.trim();
+    if (platoonPhotoFile && urlInput) {
+      const message = "Choose either an upload or a photo URL, not both.";
+      setPlatoonPhotoError(message);
+      return err(message);
     }
 
     const id = platoonForm.id || slugId(name);
     const payload = { name, photoURL: (platoonForm.photoURL || "").trim() };
     const fileError = validateFile(platoonPhotoFile);
-    if (fileError) return err(fileError);
-    setPlatoonUploading(!!platoonPhotoFile);
+    if (fileError) {
+      setPlatoonPhotoError(fileError);
+      return err(fileError);
+    }
+    if (platoonPhotoMode === "none") {
+      payload.photoURL = "";
+    }
+    setPlatoonUploading(platoonPhotoMode === "upload" && !!platoonPhotoFile);
 
     try {
-      if (platoonPhotoFile) {
+      if (platoonPhotoMode === "upload" && platoonPhotoFile) {
         try {
           const upload = await uploadAvatar({ entityType: "platoons", entityId: id, file: platoonPhotoFile });
-          payload.photoURL = upload.publicUrl;
+          payload.photoURL = `${upload.publicUrl}?v=${Date.now()}`;
         } catch (uploadErr) {
           console.error(uploadErr);
           setPlatoonUploading(false);
           return err("Upload failed. Please try again.");
         }
+      } else if (platoonPhotoMode === "url") {
+        payload.photoURL = urlInput;
       }
 
       await upsertPlatoon(id, payload);
@@ -329,9 +473,16 @@ export default function Participants() {
     setPlatoonForm({ id: row.id, name: row.name || "", photoURL: row.photoURL || "" });
     setPlatoonPhotoFile(null);
     setPlatoonFileKey(k => k + 1);
+    setPlatoonPhotoMode(row.photoURL ? "url" : "upload");
+    setPlatoonPhotoUrlInput(row.photoURL || "");
+    setPlatoonPhotoError("");
     setStatus({ type: "", msg: "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  const leaderPhotoPreviewUrl = leaderFilePreview || leaderPhotoUrlInput.trim() || leaderForm.photoURL.trim();
+  const simplePhotoPreviewUrl = simpleFilePreview || simplePhotoUrlInput.trim() || simpleForm.photoURL.trim();
+  const platoonPhotoPreviewUrl = platoonFilePreview || platoonPhotoUrlInput.trim() || platoonForm.photoURL.trim();
 
   // ---- UI
   return (
@@ -405,80 +556,83 @@ export default function Participants() {
                 </select>
               </div>
 
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <div className="field photo-section">
                 <label>Photo (optional)</label>
-                <div className="photo-options">
-                  <div className="field" style={{ marginBottom: "0.5rem" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!leaderPhotoFile}
-                        onChange={() => {
-                          setLeaderPhotoFile(null);
-                          setLeaderFileKey(k => k + 1);
-                        }}
-                        disabled={!!leaderForm.photoURL}
-                      />
-                      Upload Photo
-                    </label>
+                <div className="photo-mode-toggle">
+                  <button
+                    type="button"
+                    className={`photo-mode-pill ${leaderPhotoMode === "upload" ? "active" : ""}`}
+                    onClick={() => handleLeaderModeChange("upload")}
+                  >
+                    Upload Photo
+                  </button>
+                  <button
+                    type="button"
+                    className={`photo-mode-pill ${leaderPhotoMode === "url" ? "active" : ""}`}
+                    onClick={() => handleLeaderModeChange("url")}
+                  >
+                    Use Photo URL
+                  </button>
+                </div>
+
+                <div className="photo-input-row">
+                  <div className="photo-preview">
+                    {leaderPhotoPreviewUrl ? (
+                      <img src={leaderPhotoPreviewUrl} alt={leaderForm.name || "Preview"} />
+                    ) : (
+                      <span className="initials">{getInitials(leaderForm.name)}</span>
+                    )}
+                  </div>
+
+                  {leaderPhotoMode === "upload" && (
                     <input
                       key={leaderFileKey}
                       type="file"
                       accept={ACCEPTED_TYPES.join(",")}
-                      disabled={!!leaderForm.photoURL}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         setLeaderPhotoFile(file || null);
+                        setLeaderPhotoError("");
                         if (file) {
+                          setLeaderPhotoUrlInput("");
                           setLeaderForm(s => ({ ...s, photoURL: "" }));
                         }
                       }}
                     />
-                  </div>
+                  )}
 
-                  <div className="field" style={{ marginBottom: "0.5rem" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input
-                        type="checkbox"
-                        checked={!leaderPhotoFile && !!leaderForm.photoURL}
-                        onChange={() => {
-                          if (leaderForm.photoURL) {
-                            setLeaderForm(s => ({ ...s, photoURL: "" }));
-                          }
-                        }}
-                        disabled={!!leaderPhotoFile}
-                      />
-                      Use Photo URL
-                    </label>
+                  {leaderPhotoMode === "url" && (
                     <input
-                      value={leaderForm.photoURL}
+                      value={leaderPhotoUrlInput}
                       placeholder="https://..."
-                      disabled={!!leaderPhotoFile}
                       onChange={(e) => {
-                        setLeaderPhotoFile(null);
-                        setLeaderFileKey(k => k + 1);
-                        setLeaderForm(s => ({ ...s, photoURL: e.target.value }));
+                        setLeaderPhotoUrlInput(e.target.value);
+                        setLeaderPhotoError("");
                       }}
                     />
-                  </div>
-
-                  <div className="actions" style={{ padding: 0 }}>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setLeaderPhotoFile(null);
-                        setLeaderFileKey(k => k + 1);
-                        setLeaderForm(s => ({ ...s, photoURL: "" }));
-                      }}
-                    >
-                      Clear Photo
-                    </button>
-                  </div>
-
-                  <div className="hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
-                  {leaderUploading && <div className="hint">Uploading…</div>}
+                  )}
                 </div>
+
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setLeaderPhotoFile(null);
+                      setLeaderFileKey(k => k + 1);
+                      setLeaderPhotoUrlInput("");
+                      setLeaderPhotoError("");
+                      setLeaderPhotoMode("upload");
+                      setLeaderForm(s => ({ ...s, photoURL: "" }));
+                    }}
+                  >
+                    Clear Photo
+                  </button>
+                </div>
+
+                <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
+                {leaderPhotoError && <div className="photo-error">{leaderPhotoError}</div>}
+                {leaderUploading && <div className="hint">Uploading…</div>}
               </div>
             </div>
 
@@ -503,80 +657,83 @@ export default function Participants() {
                 <input value={simpleForm.name} onChange={(e) => setSimpleForm(s => ({ ...s, name: e.target.value }))} />
               </div>
 
-              <div className="field">
+              <div className="field photo-section">
                 <label>Photo (optional)</label>
-                <div className="photo-options">
-                  <div className="field" style={{ marginBottom: "0.5rem" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!simplePhotoFile}
-                        onChange={() => {
-                          setSimplePhotoFile(null);
-                          setSimpleFileKey(k => k + 1);
-                        }}
-                        disabled={!!simpleForm.photoURL}
-                      />
-                      Upload Photo
-                    </label>
+                <div className="photo-mode-toggle">
+                  <button
+                    type="button"
+                    className={`photo-mode-pill ${simplePhotoMode === "upload" ? "active" : ""}`}
+                    onClick={() => handleSimpleModeChange("upload")}
+                  >
+                    Upload Photo
+                  </button>
+                  <button
+                    type="button"
+                    className={`photo-mode-pill ${simplePhotoMode === "url" ? "active" : ""}`}
+                    onClick={() => handleSimpleModeChange("url")}
+                  >
+                    Use Photo URL
+                  </button>
+                </div>
+
+                <div className="photo-input-row">
+                  <div className="photo-preview">
+                    {simplePhotoPreviewUrl ? (
+                      <img src={simplePhotoPreviewUrl} alt={simpleForm.name || "Preview"} />
+                    ) : (
+                      <span className="initials">{getInitials(simpleForm.name)}</span>
+                    )}
+                  </div>
+
+                  {simplePhotoMode === "upload" && (
                     <input
                       key={simpleFileKey}
                       type="file"
                       accept={ACCEPTED_TYPES.join(",")}
-                      disabled={!!simpleForm.photoURL}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         setSimplePhotoFile(file || null);
+                        setSimplePhotoError("");
                         if (file) {
+                          setSimplePhotoUrlInput("");
                           setSimpleForm(s => ({ ...s, photoURL: "" }));
                         }
                       }}
                     />
-                  </div>
+                  )}
 
-                  <div className="field" style={{ marginBottom: "0.5rem" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input
-                        type="checkbox"
-                        checked={!simplePhotoFile && !!simpleForm.photoURL}
-                        onChange={() => {
-                          if (simpleForm.photoURL) {
-                            setSimpleForm(s => ({ ...s, photoURL: "" }));
-                          }
-                        }}
-                        disabled={!!simplePhotoFile}
-                      />
-                      Use Photo URL
-                    </label>
+                  {simplePhotoMode === "url" && (
                     <input
-                      value={simpleForm.photoURL}
+                      value={simplePhotoUrlInput}
                       placeholder="https://..."
-                      disabled={!!simplePhotoFile}
                       onChange={(e) => {
-                        setSimplePhotoFile(null);
-                        setSimpleFileKey(k => k + 1);
-                        setSimpleForm(s => ({ ...s, photoURL: e.target.value }));
+                        setSimplePhotoUrlInput(e.target.value);
+                        setSimplePhotoError("");
                       }}
                     />
-                  </div>
-
-                  <div className="actions" style={{ padding: 0 }}>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setSimplePhotoFile(null);
-                        setSimpleFileKey(k => k + 1);
-                        setSimpleForm(s => ({ ...s, photoURL: "" }));
-                      }}
-                    >
-                      Clear Photo
-                    </button>
-                  </div>
-
-                  <div className="hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
-                  {simpleUploading && <div className="hint">Uploading…</div>}
+                  )}
                 </div>
+
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setSimplePhotoFile(null);
+                      setSimpleFileKey(k => k + 1);
+                      setSimplePhotoUrlInput("");
+                      setSimplePhotoError("");
+                      setSimplePhotoMode("upload");
+                      setSimpleForm(s => ({ ...s, photoURL: "" }));
+                    }}
+                  >
+                    Clear Photo
+                  </button>
+                </div>
+
+                <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
+                {simplePhotoError && <div className="photo-error">{simplePhotoError}</div>}
+                {simpleUploading && <div className="hint">Uploading…</div>}
               </div>
             </div>
 
@@ -601,80 +758,83 @@ export default function Participants() {
                 <input value={platoonForm.name} onChange={(e) => setPlatoonForm(s => ({ ...s, name: e.target.value }))} />
               </div>
 
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <div className="field photo-section">
                 <label>Photo (optional)</label>
-                <div className="photo-options">
-                  <div className="field" style={{ marginBottom: "0.5rem" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!platoonPhotoFile}
-                        onChange={() => {
-                          setPlatoonPhotoFile(null);
-                          setPlatoonFileKey(k => k + 1);
-                        }}
-                        disabled={!!platoonForm.photoURL}
-                      />
-                      Upload Photo
-                    </label>
+                <div className="photo-mode-toggle">
+                  <button
+                    type="button"
+                    className={`photo-mode-pill ${platoonPhotoMode === "upload" ? "active" : ""}`}
+                    onClick={() => handlePlatoonModeChange("upload")}
+                  >
+                    Upload Photo
+                  </button>
+                  <button
+                    type="button"
+                    className={`photo-mode-pill ${platoonPhotoMode === "url" ? "active" : ""}`}
+                    onClick={() => handlePlatoonModeChange("url")}
+                  >
+                    Use Photo URL
+                  </button>
+                </div>
+
+                <div className="photo-input-row">
+                  <div className="photo-preview">
+                    {platoonPhotoPreviewUrl ? (
+                      <img src={platoonPhotoPreviewUrl} alt={platoonForm.name || "Preview"} />
+                    ) : (
+                      <span className="initials">{getInitials(platoonForm.name)}</span>
+                    )}
+                  </div>
+
+                  {platoonPhotoMode === "upload" && (
                     <input
                       key={platoonFileKey}
                       type="file"
                       accept={ACCEPTED_TYPES.join(",")}
-                      disabled={!!platoonForm.photoURL}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         setPlatoonPhotoFile(file || null);
+                        setPlatoonPhotoError("");
                         if (file) {
+                          setPlatoonPhotoUrlInput("");
                           setPlatoonForm(s => ({ ...s, photoURL: "" }));
                         }
                       }}
                     />
-                  </div>
+                  )}
 
-                  <div className="field" style={{ marginBottom: "0.5rem" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input
-                        type="checkbox"
-                        checked={!platoonPhotoFile && !!platoonForm.photoURL}
-                        onChange={() => {
-                          if (platoonForm.photoURL) {
-                            setPlatoonForm(s => ({ ...s, photoURL: "" }));
-                          }
-                        }}
-                        disabled={!!platoonPhotoFile}
-                      />
-                      Use Photo URL
-                    </label>
+                  {platoonPhotoMode === "url" && (
                     <input
-                      value={platoonForm.photoURL}
+                      value={platoonPhotoUrlInput}
                       placeholder="https://..."
-                      disabled={!!platoonPhotoFile}
                       onChange={(e) => {
-                        setPlatoonPhotoFile(null);
-                        setPlatoonFileKey(k => k + 1);
-                        setPlatoonForm(s => ({ ...s, photoURL: e.target.value }));
+                        setPlatoonPhotoUrlInput(e.target.value);
+                        setPlatoonPhotoError("");
                       }}
                     />
-                  </div>
-
-                  <div className="actions" style={{ padding: 0 }}>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setPlatoonPhotoFile(null);
-                        setPlatoonFileKey(k => k + 1);
-                        setPlatoonForm(s => ({ ...s, photoURL: "" }));
-                      }}
-                    >
-                      Clear Photo
-                    </button>
-                  </div>
-
-                  <div className="hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
-                  {platoonUploading && <div className="hint">Uploading…</div>}
+                  )}
                 </div>
+
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setPlatoonPhotoFile(null);
+                      setPlatoonFileKey(k => k + 1);
+                      setPlatoonPhotoUrlInput("");
+                      setPlatoonPhotoError("");
+                      setPlatoonPhotoMode("upload");
+                      setPlatoonForm(s => ({ ...s, photoURL: "" }));
+                    }}
+                  >
+                    Clear Photo
+                  </button>
+                </div>
+
+                <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
+                {platoonPhotoError && <div className="photo-error">{platoonPhotoError}</div>}
+                {platoonUploading && <div className="hint">Uploading…</div>}
               </div>
             </div>
 

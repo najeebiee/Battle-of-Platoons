@@ -23,8 +23,7 @@ export function getPublicUrl(path) {
 
 export async function uploadAvatar({ entityType, entityId, file }) {
   const ext = getExtension(file);
-  const timestamp = Date.now();
-  const path = `${entityType}/${entityId}/${timestamp}.${ext}`;
+  const path = `${entityType}/${entityId}/main.${ext}`;
 
   const { error } = await supabase.storage
     .from(AVATARS_BUCKET)
