@@ -1,8 +1,4 @@
 import React, { useMemo, useRef, useState } from "react";
-<<<<<<< codex/improve-upload-module-and-handle-duplicates
-import * as XLSX from "xlsx";
-=======
->>>>>>> main
 import { parseRawDataWorkbook, saveRawDataRows } from "../services/rawData.service";
 
 export default function Upload() {
@@ -16,17 +12,6 @@ export default function Upload() {
   const [isDragging, setIsDragging] = useState(false);
 
   const inputRef = useRef(null);
-<<<<<<< codex/improve-upload-module-and-handle-duplicates
-
-  function downloadTemplate() {
-    const workbook = XLSX.utils.book_new();
-    const worksheetData = [["agent_id", "leader_name", "date", "leads", "payins", "sales"], ["", "", "", "", "", ""]];
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Daily Data");
-    XLSX.writeFile(workbook, "daily-data-template.xlsx");
-  }
-=======
->>>>>>> main
 
   const summary = useMemo(() => {
     const total = rows.length;
@@ -71,8 +56,6 @@ export default function Upload() {
     handleFile(file);
   }
 
-<<<<<<< codex/improve-upload-module-and-handle-duplicates
-=======
   function downloadTemplate() {
   const a = document.createElement("a");
   a.href = "/Leaderboard_Template.xlsx";
@@ -82,7 +65,6 @@ export default function Upload() {
   a.remove();
 }
 
->>>>>>> main
   function resetUpload() {
     setFileName("");
     setRows([]);
