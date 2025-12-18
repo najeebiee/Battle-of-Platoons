@@ -38,32 +38,64 @@ function normalizeName(name = "") {
     .replace(/\s+/g, " ");
 }
 
-function parseDateValue(value, errors) {
+function formatDateParts(year, month, day) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function validateDateParts(year, month, day) {
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return null;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+
+  const date = new Date(y, m - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+  return formatDateParts(y, m, d);
+}
+
+function parseDateCell(value) {
   if (value === null || value === undefined || value === "") {
-    errors.push("Missing Date");
-    return { date: "", original: value };
+    return { dateReal: null, originalValue: value, error: "Missing Date" };
   }
 
   if (value instanceof Date) {
-    return { date: value.toISOString().slice(0, 10), original: value }; // already a Date
+    const y = value.getFullYear();
+    const m = value.getMonth() + 1;
+    const d = value.getDate();
+    return { dateReal: formatDateParts(y, m, d), originalValue: value };
   }
 
   if (typeof value === "number") {
     const parsed = XLSX.SSF.parse_date_code(value);
-    if (parsed) {
-      const date = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d));
-      return { date: date.toISOString().slice(0, 10), original: value };
+    if (parsed && parsed.y && parsed.m && parsed.d) {
+      return { dateReal: formatDateParts(parsed.y, parsed.m, parsed.d), originalValue: value };
     }
+    return { dateReal: null, originalValue: value, error: "Invalid Date" };
   }
 
   const str = value.toString().trim();
-  const dateObj = new Date(str);
-  if (!Number.isNaN(dateObj.getTime())) {
-    return { date: dateObj.toISOString().slice(0, 10), original: value };
+  if (!str) {
+    return { dateReal: null, originalValue: value, error: "Missing Date" };
   }
 
-  errors.push("Invalid Date");
-  return { date: "", original: value };
+  const ymdMatch = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(str);
+  if (ymdMatch) {
+    const [, y, m, d] = ymdMatch;
+    const formatted = validateDateParts(Number(y), Number(m), Number(d));
+    if (formatted) return { dateReal: formatted, originalValue: value };
+    return { dateReal: null, originalValue: value, error: "Invalid Date" };
+  }
+
+  const mdyMatch = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(str);
+  if (mdyMatch) {
+    const [, m, d, y] = mdyMatch;
+    const formatted = validateDateParts(Number(y), Number(m), Number(d));
+    if (formatted) return { dateReal: formatted, originalValue: value };
+    return { dateReal: null, originalValue: value, error: "Invalid Date" };
+  }
+
+  return { dateReal: null, originalValue: value, error: "Invalid Date" };
 }
 
 function parseNumber(value, field, errors) {
@@ -151,7 +183,8 @@ export async function parseRawDataWorkbook(file) {
     const errors = [];
 
     const dateCell = rawRow[headerMap.date];
-    const { date: date_real, original: originalDate } = parseDateValue(dateCell, errors);
+    const { dateReal, originalValue: originalDate, error: dateError } = parseDateCell(dateCell);
+    if (dateError) errors.push(dateError);
 
     const leads = parseNumber(rawRow[headerMap.leads], "Leads", errors);
     const payins = parseNumber(rawRow[headerMap.payins], "Payins", errors);
@@ -162,13 +195,18 @@ export async function parseRawDataWorkbook(file) {
 
     const resolved_agent_id = resolveAgent(agent_id_input, leader_name_input, lookups, errors);
 
+    const date_real = dateReal ?? "";
+    const computed_id = `${date_real}_${resolved_agent_id}`;
+
     return {
+      displayIndex: idx + 1,
       sourceRowIndex: idx + 2, // +2 to account for header row and 1-indexing
       date_real,
       date_original: originalDate,
       agent_id_input: agent_id_input?.toString().trim() ?? "",
       leader_name_input: leader_name_input?.toString().trim() ?? "",
       resolved_agent_id,
+      computed_id,
       leads,
       payins,
       sales,
@@ -190,17 +228,20 @@ export async function saveRawDataRows(validRows, onProgress = () => {}) {
   const now = new Date().toISOString();
 
   for (let i = 0; i < validRows.length; i += batchSize) {
-    const batch = validRows.slice(i, i + batchSize).map(row => ({
-      id: `${row.date_real}_${row.resolved_agent_id}`,
-      agent_id: row.resolved_agent_id,
-      leads: row.leads,
-      payins: row.payins,
-      sales: row.sales,
-      date_real: row.date_real,
-      date: { source: "xlsx", original: row.date_original ?? row.date_real },
-      createdAt: { iso: now },
-      updatedAt: { iso: now },
-    }));
+    const batch = validRows.slice(i, i + batchSize).map(row => {
+      const id = row.computed_id || `${row.date_real}_${row.resolved_agent_id}`;
+      return {
+        id,
+        agent_id: row.resolved_agent_id,
+        leads: row.leads,
+        payins: row.payins,
+        sales: row.sales,
+        date_real: row.date_real,
+        date: { source: "xlsx", original: row.date_original ?? row.date_real },
+        createdAt: { iso: now },
+        updatedAt: { iso: now },
+      };
+    });
 
     const { data, error } = await supabase.from("raw_data").upsert(batch, { onConflict: "id" }).select();
     if (error) {
