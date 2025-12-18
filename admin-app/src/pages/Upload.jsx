@@ -180,6 +180,7 @@ export default function Upload() {
                   <th>#</th>
                   <th>Date</th>
                   <th>agent_id</th>
+                  <th>Computed ID</th>
                   <th>Leader Name</th>
                   <th>Leads</th>
                   <th>Payins</th>
@@ -190,10 +191,20 @@ export default function Upload() {
               </thead>
               <tbody>
                 {rows.map(row => (
-                  <tr key={row.sourceRowIndex} className={row.status === "invalid" ? "row-invalid" : ""}>
-                    <td>{row.sourceRowIndex}</td>
+                  <tr key={`${row.displayIndex}-${row.sourceRowIndex}`} className={row.status === "invalid" ? "row-invalid" : ""}>
+                    <td>
+                      <div>{row.displayIndex}</div>
+                      {row.sourceRowIndex ? (
+                        <div className="muted" style={{ fontSize: 12 }}>(Excel row {row.sourceRowIndex})</div>
+                      ) : null}
+                    </td>
                     <td>{row.date_real || "—"}</td>
-                    <td>{row.resolved_agent_id || row.agent_id_input || ""}</td>
+                    <td>
+                      <div>{row.resolved_agent_id || row.agent_id_input || ""}</div>
+                    </td>
+                    <td>
+                      <div className="muted" style={{ fontSize: 12 }}>{row.computed_id}</div>
+                    </td>
                     <td>{row.leader_name_input}</td>
                     <td>{row.leads}</td>
                     <td>{row.payins}</td>
@@ -203,7 +214,11 @@ export default function Upload() {
                         {row.status === "valid" ? "Valid" : "Invalid"}
                       </span>
                     </td>
-                    <td>{row.errors.join("; ")}</td>
+                    <td>
+                      {row.errors.length
+                        ? `${row.errors.join("; ")}${row.sourceRowIndex ? ` (Excel row ${row.sourceRowIndex})` : ""}`
+                        : ""}
+                    </td>
                   </tr>
                 ))}
               </tbody>
