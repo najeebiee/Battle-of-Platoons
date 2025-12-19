@@ -5,7 +5,7 @@ import { supabase } from "./supabase";
 export async function listAgents() {
   const { data, error } = await supabase
     .from("agents")
-    .select("*")
+    .select("id,name,photoURL,depotId,companyId,platoonId")
     .order("name", { ascending: true });
 
   if (error) throw error;
