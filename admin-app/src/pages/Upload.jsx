@@ -10,15 +10,56 @@ export default function Upload() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [saveResult, setSaveResult] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [importMode, setImportMode] = useState("warn");
 
   const inputRef = useRef(null);
 
-  const summary = useMemo(() => {
-    const total = rows.length;
-    const valid = rows.filter(r => r.status === "valid").length;
-    const invalid = total - valid;
-    return { total, valid, invalid };
-  }, [rows]);
+  const processed = useMemo(() => {
+    const displayRows = rows.map(row => {
+      const displayWarnings = row.warnings ?? [];
+      const displayErrors = [...(row.errors ?? [])];
+      let displayStatus = "Valid";
+      let statusTone = "valid";
+      let isValidForSave = row.status === "valid";
+
+      if (row.status === "invalid") {
+        displayStatus = "Invalid";
+        statusTone = "invalid";
+        isValidForSave = false;
+      } else if (row.duplicate) {
+        if (importMode === "insert_only") {
+          displayStatus = "Invalid";
+          statusTone = "invalid";
+          displayErrors.push("Duplicate ID exists");
+          isValidForSave = false;
+        } else {
+          displayStatus = "Duplicate (Existing)";
+          statusTone = "duplicate";
+        }
+      }
+
+      return {
+        ...row,
+        displayWarnings,
+        displayErrors,
+        displayStatus,
+        statusTone,
+        isValidForSave,
+      };
+    });
+
+    const total = displayRows.length;
+    const validNew = displayRows.filter(row => row.status === "valid" && !row.duplicate).length;
+    const duplicate = displayRows.filter(row => row.duplicate).length;
+    const invalid = displayRows.filter(row => row.displayStatus === "Invalid").length;
+    const rowsForSave = displayRows.filter(row => row.isValidForSave);
+
+    return {
+      displayRows,
+      rowsForSave,
+      summary: { total, validNew, duplicate, invalid },
+    };
+  }, [rows, importMode]);
 
   async function handleFile(file) {
     if (!file) return;
@@ -74,6 +115,7 @@ export default function Upload() {
     setSaveResult(null);
     setProgress({ done: 0, total: 0 });
     setIsDragging(false);
+    setImportMode("warn");
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -90,14 +132,22 @@ export default function Upload() {
   }
 
   async function handleSave() {
-    const validRows = rows.filter(r => r.status === "valid");
-    setProgress({ done: 0, total: validRows.length });
+    setProgress({ done: 0, total: processed.rowsForSave.length });
     setSaveResult(null);
     try {
-      const result = await saveRawDataRows(validRows, (done, total) => setProgress({ done, total }));
-      setSaveResult({ ...result, skipped: rows.length - validRows.length });
+      const result = await saveRawDataRows(
+        processed.rowsForSave,
+        importMode,
+        (done, total) => setProgress({ done, total })
+      );
+      setSaveResult({ ...result, skipped: rows.length - processed.rowsForSave.length });
     } catch (e) {
-      setSaveResult({ upsertedCount: 0, errors: [e.message || "Failed to save"], skipped: rows.length - validRows.length });
+      setSaveResult({
+        insertedCount: 0,
+        upsertedCount: 0,
+        errors: [e.message || "Failed to save"],
+        skipped: rows.length - processed.rowsForSave.length,
+      });
     }
   }
 
@@ -160,16 +210,45 @@ export default function Upload() {
         <>
           <div className="summary-grid">
             <div className="summary-pill">
+              <div className="summary-label">Import Mode</div>
+              <div>
+                <select
+                  value={importMode}
+                  onChange={e => {
+                    setImportMode(e.target.value);
+                    setSaveResult(null);
+                  }}
+                >
+                  <option value="warn">Warn (upsert)</option>
+                  <option value="upsert">Upsert</option>
+                  <option value="insert_only">Insert Only</option>
+                </select>
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                {importMode === "insert_only"
+                  ? "Duplicates will be skipped."
+                  : importMode === "upsert"
+                    ? "Duplicates will overwrite existing rows."
+                    : "Duplicates will be flagged but still overwrite."}
+              </div>
+            </div>
+          </div>
+          <div className="summary-grid">
+            <div className="summary-pill">
               <div className="summary-label">Total</div>
-              <div className="summary-value">{summary.total}</div>
+              <div className="summary-value">{processed.summary.total}</div>
             </div>
             <div className="summary-pill">
-              <div className="summary-label">Valid</div>
-              <div className="summary-value valid">{summary.valid}</div>
+              <div className="summary-label">Valid (New)</div>
+              <div className="summary-value valid">{processed.summary.validNew}</div>
+            </div>
+            <div className="summary-pill">
+              <div className="summary-label">Duplicates</div>
+              <div className="summary-value duplicate">{processed.summary.duplicate}</div>
             </div>
             <div className="summary-pill">
               <div className="summary-label">Invalid</div>
-              <div className="summary-value invalid">{summary.invalid}</div>
+              <div className="summary-value invalid">{processed.summary.invalid}</div>
             </div>
           </div>
 
@@ -190,8 +269,17 @@ export default function Upload() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(row => (
-                  <tr key={`${row.displayIndex}-${row.sourceRowIndex}`} className={row.status === "invalid" ? "row-invalid" : ""}>
+                {processed.displayRows.map(row => {
+                  const warningText = row.displayWarnings?.length
+                    ? row.displayWarnings.map(warn => `Warning: ${warn}`)
+                    : [];
+                  const issueText = [...(row.displayErrors ?? []), ...warningText].join("; ");
+
+                  return (
+                    <tr
+                      key={`${row.displayIndex}-${row.sourceRowIndex}`}
+                      className={row.displayStatus === "Invalid" ? "row-invalid" : ""}
+                    >
                     <td>
                       <div>{row.displayIndex}</div>
                     </td>
@@ -207,21 +295,22 @@ export default function Upload() {
                     <td>{row.payins}</td>
                     <td>{row.sales}</td>
                     <td>
-                      <span className={`status-pill ${row.status === "valid" ? "valid" : "invalid"}`}>
-                        {row.status === "valid" ? "Valid" : "Invalid"}
+                      <span className={`status-pill ${row.statusTone}`}>
+                        {row.displayStatus}
                       </span>
                     </td>
                     <td>
-                      {row.errors.length ? row.errors.join("; ") : ""}
+                      {issueText}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           <div className="save-bar">
-            <button className="button primary" disabled={!summary.valid || loading} onClick={handleSave}>
+            <button className="button primary" disabled={!processed.rowsForSave.length || loading} onClick={handleSave}>
               Save to Database
             </button>
             {progress.total ? (
@@ -233,8 +322,9 @@ export default function Upload() {
 
       {saveResult ? (
         <div className="result-box">
-          <div><strong>Upserted:</strong> {saveResult.upsertedCount}</div>
-          <div><strong>Skipped (invalid):</strong> {saveResult.skipped}</div>
+          <div><strong>Inserted:</strong> {saveResult.insertedCount ?? 0}</div>
+          <div><strong>Upserted:</strong> {saveResult.upsertedCount ?? 0}</div>
+          <div><strong>Skipped:</strong> {saveResult.skipped}</div>
           {saveResult.errors?.length ? (
             <div className="error-list">
               <div><strong>Errors:</strong></div>

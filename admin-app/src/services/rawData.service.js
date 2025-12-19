@@ -301,17 +301,36 @@ export async function parseRawDataWorkbook(file) {
     };
   });
 
+  const computedIds = Array.from(
+    new Set(rows.filter(row => row.date_real && row.resolved_agent_id).map(row => row.computed_id))
+  );
+
+  let existingIds = new Set();
+  if (computedIds.length) {
+    const { data, error } = await supabase.from("raw_data").select("id").in("id", computedIds);
+    if (error) throw error;
+    existingIds = new Set((data ?? []).map(item => item.id));
+  }
+
+  const rowsWithDuplicates = rows.map(row => {
+    const duplicate = existingIds.has(row.computed_id);
+    const warnings = duplicate ? ["Duplicate ID exists"] : [];
+    return { ...row, duplicate, warnings };
+  });
+
   return {
-    rows,
-    meta: { sheetName, totalRows: rows.length },
+    rows: rowsWithDuplicates,
+    meta: { sheetName, totalRows: rowsWithDuplicates.length },
   };
 }
 
-export async function saveRawDataRows(validRows, onProgress = () => {}) {
+export async function saveRawDataRows(validRows, mode = "warn", onProgress = () => {}) {
   const batchSize = 200;
   let upsertedCount = 0;
+  let insertedCount = 0;
   const errors = [];
   const now = new Date().toISOString();
+  const isInsertOnly = mode === "insert_only";
 
   for (let i = 0; i < validRows.length; i += batchSize) {
     const batch = validRows.slice(i, i + batchSize).map(row => {
@@ -329,17 +348,26 @@ export async function saveRawDataRows(validRows, onProgress = () => {}) {
       };
     });
 
-    const { data, error } = await supabase.from("raw_data").upsert(batch, { onConflict: "id" }).select();
-    if (error) {
-      errors.push(error.message || "Unknown database error");
+    if (isInsertOnly) {
+      const { error } = await supabase.from("raw_data").insert(batch, { returning: "minimal" });
+      if (error) {
+        errors.push(error.message || "Unknown database error");
+      } else {
+        insertedCount += batch.length;
+      }
     } else {
-      upsertedCount += data?.length ?? 0;
+      const { data, error } = await supabase.from("raw_data").upsert(batch, { onConflict: "id" }).select();
+      if (error) {
+        errors.push(error.message || "Unknown database error");
+      } else {
+        upsertedCount += data?.length ?? 0;
+      }
     }
 
     onProgress(Math.min(i + batch.length, validRows.length), validRows.length);
   }
 
-  return { upsertedCount, errors };
+  return { insertedCount, upsertedCount, errors };
 }
 
 function applyRawDataFilters(query, { dateFrom, dateTo, agentId, limit = 200 }) {
