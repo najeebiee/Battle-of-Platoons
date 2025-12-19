@@ -166,6 +166,31 @@ input:focus, select:focus{
   border-radius: 12px;
 }
 
+.tabs{
+  display:inline-flex;
+  gap:8px;
+  background:#f5f6ff;
+  padding: 6px;
+  border-radius: 12px;
+}
+
+.tab-button{
+  border:none;
+  background:transparent;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight:800;
+  color: var(--muted);
+  cursor:pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.tab-button.active{
+  background: var(--blue);
+  color:#fff;
+  box-shadow: 0 8px 24px rgba(5,15,90,0.25);
+}
+
 .photo-section{
   grid-column: 1 / -1;
   display:flex;

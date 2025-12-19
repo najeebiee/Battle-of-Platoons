@@ -156,9 +156,9 @@ function normalizeAgentRecord(agent = {}) {
   return {
     id: agent.id,
     name: agent.name ?? "",
-    depotId: agent.depotId ?? agent.depot_id ?? agent.depot ?? "",
-    companyId: agent.companyId ?? agent.company_id ?? agent.company ?? "",
-    platoonId: agent.platoonId ?? agent.platoon_id ?? agent.platoon ?? "",
+    depotId: agent.depotId ?? agent.depot_id ?? "",
+    companyId: agent.companyId ?? agent.company_id ?? "",
+    platoonId: agent.platoonId ?? agent.platoon_id ?? "",
   };
 }
 
@@ -166,7 +166,7 @@ async function fetchAgentsByIds(ids = []) {
   if (!ids.length) return new Map();
   const { data, error } = await supabase
     .from("agents")
-    .select("id,name,depotId,depot_id,depot,companyId,company_id,company,platoonId,platoon_id,platoon")
+    .select("id,name,photoURL,depotId,companyId,platoonId")
     .in("id", ids);
   if (error) throw error;
 
@@ -353,7 +353,7 @@ function applyRawDataFilters(query, { dateFrom, dateTo, agentId, limit = 200 }) 
 }
 
 export async function listRawData({ dateFrom, dateTo, agentId, limit = 200 } = {}) {
-  const baseSelect = "id,date_real,agent_id,leads,payins,sales,agents:agent_id (id,name,depotId,companyId,platoonId)";
+  const baseSelect = "id,date_real,agent_id,leads,payins,sales,agents:agents(id,name,photoURL,depotId,companyId,platoonId)";
 
   try {
     const { data, error } = await applyRawDataFilters(
@@ -381,8 +381,7 @@ export async function updateRawData(id, { leads, payins, sales }) {
     .single();
   if (error) throw error;
 
-  const [enriched] = await enrichRawDataRows([data]);
-  return enriched;
+  return data;
 }
 
 export async function deleteRawData(id) {
