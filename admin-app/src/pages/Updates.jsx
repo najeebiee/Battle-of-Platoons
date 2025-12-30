@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { listAgents } from "../services/agents.service";
 import {
+  canEditRow,
   listRawData,
   unvoidRawDataWithAudit,
   updateRawDataWithAudit,
   voidRawDataWithAudit,
 } from "../services/rawData.service";
+import { getMyProfile } from "../services/profile.service";
 import { supabase } from "../services/supabase";
 
 // ----------------------
@@ -80,6 +82,8 @@ const initialFilters = {
   platoons: "",
 };
 
+const PERMISSION_TOOLTIP = "You can only modify your own source data";
+
 export default function Updates() {
   const [activeTab, setActiveTab] = useState("leaders");
 
@@ -105,6 +109,8 @@ export default function Updates() {
 
   // Auth / session
   const [sessionUser, setSessionUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   // Void/unvoid confirmation modal
   const [confirmAction, setConfirmAction] = useState({ type: "", row: null, reason: "" });
@@ -138,6 +144,27 @@ export default function Updates() {
         console.error(e);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    setProfileLoading(true);
+    getMyProfile()
+      .then(data => {
+        if (!mounted) return;
+        setProfile(data);
+      })
+      .catch(e => {
+        if (!mounted) return;
+        setError(e?.message || "Failed to load profile");
+      })
+      .finally(() => {
+        if (mounted) setProfileLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Initial fetch (no filters)
@@ -268,6 +295,10 @@ export default function Updates() {
   // ----------------------
   function startEdit(row) {
     if (activeTab !== "leaders" || row.voided) return;
+    if (!canEditRow(row, profile, agentMap[row.agent_id])) {
+      setError(PERMISSION_TOOLTIP);
+      return;
+    }
     setEditingId(row.id);
     setEditValues({
       leads: row.leads ?? "",
@@ -308,6 +339,12 @@ export default function Updates() {
       return;
     }
 
+    const targetRow = rows.find(r => r.id === rowId);
+    if (!targetRow || !canEditRow(targetRow, profile, agentMap[targetRow.agent_id])) {
+      setError(PERMISSION_TOOLTIP);
+      return;
+    }
+
     setSavingId(rowId);
     setError("");
     setStatus("");
@@ -339,6 +376,10 @@ export default function Updates() {
   // Void / Unvoid
   // ----------------------
   function openConfirm(type, row) {
+    if (!canEditRow(row, profile, agentMap[row.agent_id])) {
+      setError(PERMISSION_TOOLTIP);
+      return;
+    }
     setConfirmAction({ type, row, reason: "" });
     setError("");
     setStatus("");
@@ -360,6 +401,11 @@ export default function Updates() {
 
     const reason = confirmAction.reason.trim();
     const rowId = confirmAction.row.id;
+    const targetRow = rows.find(r => r.id === rowId) || confirmAction.row;
+    if (!canEditRow(targetRow, profile, agentMap[targetRow?.agent_id])) {
+      setError(PERMISSION_TOOLTIP);
+      return;
+    }
 
     setActionLoading(true);
     setError("");
@@ -591,6 +637,13 @@ export default function Updates() {
           <tbody>
             {visibleRows.map(row => {
               const isEditing = activeTab === "leaders" && row.id === editingId;
+              const agent = agentMap[row.agent_id];
+              const canModify = canEditRow(row, profile, agent);
+              const permissionBlocked = profileLoading || !canModify;
+              const permissionTitle = permissionBlocked ? PERMISSION_TOOLTIP : undefined;
+              const isEditDisabled = savingId === row.id || row.voided || permissionBlocked;
+              const isVoidDisabled = actionLoading || permissionBlocked;
+              const isUnvoidDisabled = actionLoading || permissionBlocked;
 
               return (
                 <tr key={row.id}>
@@ -686,8 +739,15 @@ export default function Updates() {
                             type="button"
                             className="button secondary"
                             onClick={() => startEdit(row)}
-                            disabled={savingId === row.id || row.voided}
-                            title={row.voided ? "Cannot edit a voided row" : undefined}
+                            disabled={isEditDisabled}
+                            title={
+                              !canModify
+                                ? permissionTitle
+                                : row.voided
+                                ? "Cannot edit a voided row"
+                                : undefined
+                            }
+                            style={isEditDisabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                           >
                             Edit
                           </button>
@@ -702,8 +762,13 @@ export default function Updates() {
                             type="button"
                             className="button secondary"
                             onClick={() => openConfirm("void", row)}
-                            disabled={actionLoading}
-                            style={{ background: "#ffe8e8", color: "#b00020" }}
+                            disabled={isVoidDisabled}
+                            style={{
+                              background: "#ffe8e8",
+                              color: "#b00020",
+                              ...(isVoidDisabled ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                            }}
+                            title={permissionTitle}
                           >
                             Void
                           </button>
@@ -714,8 +779,13 @@ export default function Updates() {
                             type="button"
                             className="button secondary"
                             onClick={() => openConfirm("unvoid", row)}
-                            disabled={actionLoading}
-                            style={{ background: "#e6f5e6", color: "#1b6b1b" }}
+                            disabled={isUnvoidDisabled}
+                            style={{
+                              background: "#e6f5e6",
+                              color: "#1b6b1b",
+                              ...(isUnvoidDisabled ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                            }}
+                            title={permissionTitle}
                           >
                             Unvoid
                           </button>
