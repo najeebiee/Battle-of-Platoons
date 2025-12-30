@@ -126,6 +126,48 @@ function parseNumber(value, field, errors) {
   return 0;
 }
 
+function normalizeSourceValue(source) {
+  return (source || "").toString().toLowerCase();
+}
+
+export function isPublishable(companyRow, depotRow) {
+  if (!companyRow) return false;
+  const companySource = normalizeSourceValue(companyRow.source);
+  if (companySource !== "company") return false;
+  if (companyRow.voided) return false;
+  if (companyRow.approved === true) return true;
+
+  if (!depotRow) return false;
+  const depotSource = normalizeSourceValue(depotRow.source);
+  if (depotSource !== "depot") return false;
+
+  const leadsMatch = Number(companyRow.leads ?? 0) === Number(depotRow.leads ?? 0);
+  const payinsMatch = Number(companyRow.payins ?? 0) === Number(depotRow.payins ?? 0);
+  const salesMatch = Number(companyRow.sales ?? 0) === Number(depotRow.sales ?? 0);
+
+  return leadsMatch && payinsMatch && salesMatch;
+}
+
+export function canEditRow(row, profile, agent) {
+  if (!row || !profile?.role) return false;
+  const source = normalizeSourceValue(row.source);
+  const role = profile.role;
+  if (role === "super_admin") return true;
+
+  if (role === "company_admin") {
+    return source === "company";
+  }
+
+  if (role === "depot_admin") {
+    const profileDepotId = profile.depot_id ?? profile.depotId ?? "";
+    const agentDepotId = agent?.depotId ?? agent?.depot_id ?? "";
+    if (!profileDepotId || !agentDepotId) return false;
+    return source === "depot" && String(profileDepotId) === String(agentDepotId);
+  }
+
+  return false;
+}
+
 async function buildAgentLookups() {
   const agents = await listAgents();
   const byId = new Map();

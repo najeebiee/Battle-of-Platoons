@@ -6,6 +6,7 @@ import {
   updateRawDataWithAudit,
   voidRawDataWithAudit,
 } from "../services/rawData.service";
+import { getMyProfile } from "../services/profile.service";
 import { supabase } from "../services/supabase";
 
 // ----------------------
@@ -80,6 +81,30 @@ const initialFilters = {
   platoons: "",
 };
 
+function canEditRow(row, currentRole) {
+  if (!row || !currentRole) return false;
+  if (currentRole === "super_admin") return true;
+  if (currentRole === "company_admin") return row.source === "company";
+  if (currentRole === "depot_admin") return row.source === "depot";
+  return false;
+}
+
+function canVoidRow(row, currentRole) {
+  return canEditRow(row, currentRole);
+}
+
+function allowedSourceLabel(role) {
+  if (role === "company_admin") return "company";
+  if (role === "depot_admin") return "depot";
+  return "both";
+}
+
+const PERMISSION_TOOLTIP = role => {
+  const label = allowedSourceLabel(role);
+  if (label === "both") return "You can edit and void both sources.";
+  return `You can only edit ${label} rows.`;
+};
+
 export default function Updates() {
   const [activeTab, setActiveTab] = useState("leaders");
 
@@ -105,6 +130,9 @@ export default function Updates() {
 
   // Auth / session
   const [sessionUser, setSessionUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const currentRole = profile?.role || "";
 
   // Void/unvoid confirmation modal
   const [confirmAction, setConfirmAction] = useState({ type: "", row: null, reason: "" });
@@ -138,6 +166,27 @@ export default function Updates() {
         console.error(e);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    setProfileLoading(true);
+    getMyProfile()
+      .then(data => {
+        if (!mounted) return;
+        setProfile(data);
+      })
+      .catch(e => {
+        if (!mounted) return;
+        setError(e?.message || "Failed to load profile");
+      })
+      .finally(() => {
+        if (mounted) setProfileLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Initial fetch (no filters)
@@ -260,7 +309,7 @@ export default function Updates() {
       return bd - ad;
     });
 
-    return filtered;
+  return filtered;
   }, [activeTab, agentMap, filtersApplied, rows]);
 
   // ----------------------
@@ -268,6 +317,11 @@ export default function Updates() {
   // ----------------------
   function startEdit(row) {
     if (activeTab !== "leaders" || row.voided) return;
+    const currentRole = profile?.role;
+    if (!canEditRow(row, currentRole)) {
+      setError(PERMISSION_TOOLTIP(currentRole));
+      return;
+    }
     setEditingId(row.id);
     setEditValues({
       leads: row.leads ?? "",
@@ -308,6 +362,12 @@ export default function Updates() {
       return;
     }
 
+    const targetRow = rows.find(r => r.id === rowId);
+    if (!targetRow || !canEditRow(targetRow, currentRole)) {
+      setError(PERMISSION_TOOLTIP(currentRole));
+      return;
+    }
+
     setSavingId(rowId);
     setError("");
     setStatus("");
@@ -339,6 +399,10 @@ export default function Updates() {
   // Void / Unvoid
   // ----------------------
   function openConfirm(type, row) {
+    if (!canVoidRow(row, currentRole)) {
+      setError(PERMISSION_TOOLTIP(currentRole));
+      return;
+    }
     setConfirmAction({ type, row, reason: "" });
     setError("");
     setStatus("");
@@ -360,6 +424,11 @@ export default function Updates() {
 
     const reason = confirmAction.reason.trim();
     const rowId = confirmAction.row.id;
+    const targetRow = rows.find(r => r.id === rowId) || confirmAction.row;
+    if (!canVoidRow(targetRow, currentRole)) {
+      setError(PERMISSION_TOOLTIP(currentRole));
+      return;
+    }
 
     setActionLoading(true);
     setError("");
@@ -420,6 +489,28 @@ export default function Updates() {
       : activeTab === "companies"
       ? "Commander"
       : "Team";
+
+  function renderSourcePill(row) {
+    const isCompany = row.source === "company";
+    const background = isCompany ? "#e6f1ff" : "#fff4e6";
+    const color = isCompany ? "#0b4a91" : "#a05a00";
+    const label = isCompany ? "Company" : "Depot";
+    return (
+      <span
+        style={{
+          display: "inline-block",
+          padding: "2px 8px",
+          borderRadius: 10,
+          fontSize: 12,
+          fontWeight: 600,
+          background,
+          color,
+        }}
+      >
+        {label}
+      </span>
+    );
+  }
 
   const filterLabel =
     activeTab === "leaders"
@@ -577,8 +668,10 @@ export default function Updates() {
         <table className="data-table">
           <thead>
             <tr>
+              <th>#</th>
               <th>Date</th>
               <th>{identityHeader}</th>
+              <th>Source</th>
               <th>Leads</th>
               <th>Payins</th>
               <th>Sales</th>
@@ -589,13 +682,26 @@ export default function Updates() {
           </thead>
 
           <tbody>
-            {visibleRows.map(row => {
+            {visibleRows.map((row, index) => {
               const isEditing = activeTab === "leaders" && row.id === editingId;
+              const canModify = canEditRow(row, currentRole);
+              const canModifyVoid = canVoidRow(row, currentRole);
+              const permissionBlocked = profileLoading || !canModify;
+              const permissionBlockedVoid = profileLoading || !canModifyVoid;
+              const permissionTitle = permissionBlocked ? PERMISSION_TOOLTIP(currentRole) : undefined;
+              const permissionTitleVoid = permissionBlockedVoid ? PERMISSION_TOOLTIP(currentRole) : undefined;
+              const isEditDisabled = savingId === row.id || row.voided || permissionBlocked;
+              const isVoidDisabled = actionLoading || permissionBlockedVoid;
+              const isUnvoidDisabled = actionLoading || permissionBlockedVoid;
 
               return (
                 <tr key={row.id}>
+                  <td>
+                    <div className="muted" style={{ fontSize: 12 }}>{index + 1}</div>
+                  </td>
                   <td>{row.date_real}</td>
                   <td>{renderIdentityCell(row)}</td>
+                  <td>{renderSourcePill(row)}</td>
 
                   <td>
                     {isEditing ? (
@@ -686,8 +792,15 @@ export default function Updates() {
                             type="button"
                             className="button secondary"
                             onClick={() => startEdit(row)}
-                            disabled={savingId === row.id || row.voided}
-                            title={row.voided ? "Cannot edit a voided row" : undefined}
+                            disabled={isEditDisabled}
+                            title={
+                              !canModify
+                                ? permissionTitle
+                                : row.voided
+                                ? "Cannot edit a voided row"
+                                : undefined
+                            }
+                            style={isEditDisabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                           >
                             Edit
                           </button>
@@ -702,8 +815,13 @@ export default function Updates() {
                             type="button"
                             className="button secondary"
                             onClick={() => openConfirm("void", row)}
-                            disabled={actionLoading}
-                            style={{ background: "#ffe8e8", color: "#b00020" }}
+                            disabled={isVoidDisabled}
+                            style={{
+                              background: "#ffe8e8",
+                              color: "#b00020",
+                              ...(isVoidDisabled ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                            }}
+                            title={permissionTitleVoid}
                           >
                             Void
                           </button>
@@ -714,8 +832,13 @@ export default function Updates() {
                             type="button"
                             className="button secondary"
                             onClick={() => openConfirm("unvoid", row)}
-                            disabled={actionLoading}
-                            style={{ background: "#e6f5e6", color: "#1b6b1b" }}
+                            disabled={isUnvoidDisabled}
+                            style={{
+                              background: "#e6f5e6",
+                              color: "#1b6b1b",
+                              ...(isUnvoidDisabled ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                            }}
+                            title={permissionTitleVoid}
                           >
                             Unvoid
                           </button>
@@ -729,7 +852,7 @@ export default function Updates() {
 
             {!visibleRows.length && !loading ? (
               <tr>
-                <td colSpan={8} className="muted" style={{ textAlign: "center", padding: 16 }}>
+                <td colSpan={10} className="muted" style={{ textAlign: "center", padding: 16 }}>
                   No data to display.
                 </td>
               </tr>

@@ -1,4 +1,5 @@
 import { listAgents } from "./agents.service";
+import { isPublishable } from "./rawData.service";
 import { supabase } from "./supabase";
 
 function computeStatus(entry) {
@@ -57,6 +58,8 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
       payins: Number(row.payins ?? 0) || 0,
       sales: Number(row.sales ?? 0) || 0,
       approved: Boolean(row.approved),
+      source: row.source,
+      voided: Boolean(row.voided),
     };
     if (row.source === "company") entry.company = payload;
     if (row.source === "depot") entry.depot = payload;
@@ -70,7 +73,7 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
     const statusValue = computeStatus(entry);
     const approvedCompany = Boolean(entry.company?.approved);
     const matched = statusValue === "matched";
-    const publishable = entry.company ? approvedCompany || matched : false;
+    const publishable = isPublishable(entry.company, entry.depot);
     return {
       ...entry,
       leader_name: agent?.name ?? "(Restricted)",

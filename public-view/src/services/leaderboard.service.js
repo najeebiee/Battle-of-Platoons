@@ -25,55 +25,66 @@ export async function getLeaderboard({
   scoring = defaultScore,
 }) {
   // 1) Fetch raw_data + agents (basic fields only)
-  const { data: rawRows, error } = await supabase
-    .from("raw_data")
-    .select(
-      `
-      approved,
-      source,
-      voided,
-      id,
-      leads,
-      payins,
-      sales,
-      date_real,
-      date,
-      agent_id,
-      agentId,
-      agents:agents (
+  const [
+    { data: companyRows, error: companyError },
+    { data: depotRows, error: depotError },
+  ] = await Promise.all([
+    supabase
+      .from("raw_data")
+      .select(
+        `
+        approved,
+        source,
+        voided,
         id,
-        name,
-        photoURL,
-        depotId,
-        companyId,
-        platoonId,
-        role
+        leads,
+        payins,
+        sales,
+        date_real,
+        date,
+        agent_id,
+        agentId,
+        agents:agents (
+          id,
+          name,
+          photoURL,
+          depotId,
+          companyId,
+          platoonId,
+          role
+        )
+      `
       )
-    `
-    )
-    .gte("date_real", startDate)
-    .lte("date_real", endDate)
-    .eq("voided", false)
-    .eq("source", "company");
+      .gte("date_real", startDate)
+      .lte("date_real", endDate)
+      .eq("voided", false)
+      .eq("source", "company"),
+    supabase
+      .from("raw_data")
+      .select("agent_id,date_real,leads,payins,sales,source,voided")
+      .gte("date_real", startDate)
+      .lte("date_real", endDate)
+      .eq("voided", false)
+      .eq("source", "depot"),
+  ]);
 
-  if (error) throw error;
+  if (companyError) throw companyError;
+  if (depotError) throw depotError;
 
   // 2) If date_real exists & is correct, above filter is enough.
   //    Keep a safety filter in JS in case date_real has time/edge cases.
   const start = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T23:59:59`);
 
-  const publishableRows = (rawRows ?? []).filter((r) => {
-    const isCompany = (r?.source ?? "company") === "company";
-    const isNotVoided = r?.voided === false || r?.voided === null || r?.voided === undefined;
-    const matchedOrApproved = r?.approved === true || r?.matched === true || r?.publishable === true;
-    const hasMatchedOrPublishFlag = r?.matched !== undefined || r?.publishable !== undefined;
+  const depotPairs = new Map();
+  (depotRows ?? []).forEach((row) => {
+    if (!row?.agent_id || !row?.date_real) return;
+    depotPairs.set(`${row.date_real}_${row.agent_id}`, row);
+  });
 
-    // Rely on RLS to return only publishable rows, but hard-block if explicit flags say otherwise.
-    if (!isCompany || !isNotVoided) return false;
-    if (matchedOrApproved) return true;
-    if (hasMatchedOrPublishFlag) return false;
-    return true; // Backend should have filtered already; keep to avoid hiding matched rows without flags.
+  const publishableRows = (companyRows ?? []).filter((r) => {
+    const pair = depotPairs.get(`${r.date_real}_${r.agent_id}`);
+    return isPublishable(r, pair);
   });
 
   let filtered = publishableRows.filter((r) => {
@@ -224,6 +235,27 @@ function defaultScore(row) {
 function toNumber(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeSourceValue(source) {
+  return (source || "").toString().toLowerCase();
+}
+
+function isPublishable(companyRow, depotRow) {
+  if (!companyRow) return false;
+  const companySource = normalizeSourceValue(companyRow.source);
+  if (companySource !== "company") return false;
+  if (companyRow.voided) return false;
+  if (companyRow.approved === true) return true;
+
+  if (!depotRow) return false;
+  const depotSource = normalizeSourceValue(depotRow.source);
+  if (depotSource !== "depot") return false;
+
+  const leadsMatch = Number(companyRow.leads ?? 0) === Number(depotRow.leads ?? 0);
+  const payinsMatch = Number(companyRow.payins ?? 0) === Number(depotRow.payins ?? 0);
+  const salesMatch = Number(companyRow.sales ?? 0) === Number(depotRow.sales ?? 0);
+  return leadsMatch && payinsMatch && salesMatch;
 }
 
 /**
