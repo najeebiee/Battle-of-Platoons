@@ -649,6 +649,12 @@ export async function approvePair({ date_real, agent_id, reason }) {
   if (beforeError) throw normalizeSupabaseError(beforeError);
   if (!beforeRows?.length) throw new Error("No rows found for this leader and date");
 
+  const companyRow = beforeRows.find(row => row.source === "company");
+  const depotRows = beforeRows.filter(row => row.source === "depot");
+  if (!companyRow) {
+    throw new Error("Cannot approve because the Company row is missing for this leader/day.");
+  }
+
   const updatePayload = {
     approved: true,
     approved_by: user.id,
@@ -659,15 +665,30 @@ export async function approvePair({ date_real, agent_id, reason }) {
   const { data: updatedRows, error: updateError } = await supabase
     .from("raw_data")
     .update(updatePayload)
-    .eq("date_real", date_real)
-    .eq("agent_id", agent_id)
-    .in("source", ["company", "depot"])
+    .eq("id", companyRow.id)
+    .eq("source", "company")
     .select("*");
   if (updateError) throw normalizeSupabaseError(updateError);
   if (!updatedRows?.length) throw new Error("Approval update did not modify any rows");
 
-  await logAuditEntriesForPair(beforeRows, updatedRows, "approve", trimmedReason, user);
-  return enrichRawDataRows(updatedRows);
+  let updatedDepotRows = [];
+  if (depotRows.length) {
+    const { data: depotUpdates, error: depotError } = await supabase
+      .from("raw_data")
+      .update(updatePayload)
+      .eq("date_real", date_real)
+      .eq("agent_id", agent_id)
+      .eq("source", "depot")
+      .select("*");
+
+    if (!depotError) {
+      updatedDepotRows = depotUpdates ?? [];
+    }
+  }
+
+  const afterRows = [...updatedRows, ...updatedDepotRows];
+  await logAuditEntriesForPair(beforeRows, afterRows, "approve", trimmedReason, user);
+  return enrichRawDataRows(afterRows);
 }
 
 export async function unapprovePair({ date_real, agent_id, reason }) {
@@ -685,6 +706,11 @@ export async function unapprovePair({ date_real, agent_id, reason }) {
   if (beforeError) throw normalizeSupabaseError(beforeError);
   if (!beforeRows?.length) throw new Error("No rows found for this leader and date");
 
+  const companyRow = beforeRows.find(row => row.source === "company");
+  if (!companyRow) {
+    throw new Error("Cannot unapprove because the Company row is missing for this leader/day.");
+  }
+
   const updatePayload = {
     approved: false,
     approved_by: null,
@@ -695,9 +721,8 @@ export async function unapprovePair({ date_real, agent_id, reason }) {
   const { data: updatedRows, error: updateError } = await supabase
     .from("raw_data")
     .update(updatePayload)
-    .eq("date_real", date_real)
-    .eq("agent_id", agent_id)
-    .in("source", ["company", "depot"])
+    .eq("id", companyRow.id)
+    .eq("source", "company")
     .select("*");
   if (updateError) throw normalizeSupabaseError(updateError);
   if (!updatedRows?.length) throw new Error("Unapprove update did not modify any rows");

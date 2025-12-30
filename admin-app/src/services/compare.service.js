@@ -68,7 +68,9 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
   let rows = Array.from(entries.values()).map(entry => {
     const agent = agentsById.get(entry.agent_id);
     const statusValue = computeStatus(entry);
-    const approved = Boolean(entry.company?.approved || entry.depot?.approved);
+    const approvedCompany = Boolean(entry.company?.approved);
+    const matched = statusValue === "matched";
+    const publishable = entry.company ? approvedCompany || matched : false;
     return {
       ...entry,
       leader_name: agent?.name ?? "(Restricted)",
@@ -76,8 +78,9 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
       delta: computeDelta(entry.company, entry.depot),
       restricted: !agent,
       restricted_agent_id: agent ? null : entry.agent_id,
-      approved,
-      publishable: approved || statusValue === "matched",
+      approved: approvedCompany,
+      publishable,
+      matched,
     };
   });
 

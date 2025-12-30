@@ -374,7 +374,7 @@ export default function Upload() {
                       key={`${row.excelRowNumber}-${row.sourceRowIndex}`}
                       className={row.displayStatus === "Invalid" ? "row-invalid" : ""}
                     >
-                    <td title={`Excel row ${row.excelRowNumber}`}>
+                    <td>
                       <div>{idx + 1}</div>
                     </td>
                     <td>{row.date_real || "—"}</td>

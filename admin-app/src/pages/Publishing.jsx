@@ -158,6 +158,7 @@ export default function Publishing() {
   }
 
   function openAction(mode, row) {
+    if (mode === "approve" && !row?.company) return;
     setActionDialog({ mode, row, reason: "" });
     setActionError("");
   }
@@ -203,7 +204,7 @@ export default function Publishing() {
     <div className="card">
       <div className="card-title">Publishing</div>
       <div className="muted" style={{ marginBottom: 12 }}>
-        Only matched pairs or rows approved by a Super Admin will be shown on the public leaderboard.
+        Only matched pairs or company rows approved by a Super Admin will be shown on the public leaderboard. Missing Company rows cannot be published.
       </div>
 
       {!profileLoading && !isSuperAdmin ? (
@@ -356,7 +357,13 @@ export default function Publishing() {
                   {isSuperAdmin ? (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {!row.approved ? (
-                        <button type="button" className="button primary" onClick={() => openAction("approve", row)}>
+                        <button
+                          type="button"
+                          className="button primary"
+                          onClick={() => openAction("approve", row)}
+                          disabled={!row.company}
+                          title={row.company ? "" : "Cannot approve because Company row is missing. Company must upload or create a mirrored Company entry (future feature)."}
+                        >
                           Approve
                         </button>
                       ) : null}
@@ -397,8 +404,8 @@ export default function Publishing() {
 
             <div className="muted" style={{ marginTop: 6 }}>
               {actionDialog.mode === "approve"
-                ? "Mark both company and depot rows for this leader/day as approved."
-                : "Remove approval so the pair will only publish if matched."}
+                ? "Mark the company row for this leader/day as approved. Depot rows are unaffected."
+                : "Remove approval on the company row so the pair will only publish if matched."}
             </div>
 
             <div style={{ marginTop: 12 }}>

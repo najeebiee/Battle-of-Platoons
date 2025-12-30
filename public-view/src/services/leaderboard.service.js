@@ -29,6 +29,9 @@ export async function getLeaderboard({
     .from("raw_data")
     .select(
       `
+      approved,
+      source,
+      voided,
       id,
       leads,
       payins,
@@ -60,7 +63,20 @@ export async function getLeaderboard({
   const start = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T23:59:59`);
 
-  let filtered = (rawRows ?? []).filter((r) => {
+  const publishableRows = (rawRows ?? []).filter((r) => {
+    const isCompany = (r?.source ?? "company") === "company";
+    const isNotVoided = r?.voided === false || r?.voided === null || r?.voided === undefined;
+    const matchedOrApproved = r?.approved === true || r?.matched === true || r?.publishable === true;
+    const hasMatchedOrPublishFlag = r?.matched !== undefined || r?.publishable !== undefined;
+
+    // Rely on RLS to return only publishable rows, but hard-block if explicit flags say otherwise.
+    if (!isCompany || !isNotVoided) return false;
+    if (matchedOrApproved) return true;
+    if (hasMatchedOrPublishFlag) return false;
+    return true; // Backend should have filtered already; keep to avoid hiding matched rows without flags.
+  });
+
+  let filtered = publishableRows.filter((r) => {
     const d = getRowDate(r);
     return d && d >= start && d <= end;
   });

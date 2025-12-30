@@ -252,6 +252,10 @@ function App() {
         )}
         {error && <div className="status-text status-text--error">{error}</div>}
 
+        <div className="status-text" style={{ fontSize: 13, marginBottom: 12 }}>
+          Only publishable results are shown (Matched or Super Admin Approved).
+        </div>
+
         {!loading && !error && (
           <>
             {rows.length === 0 ? (
