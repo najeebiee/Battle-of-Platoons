@@ -82,16 +82,8 @@ const initialFilters = {
   platoons: "",
 };
 
-function canEditRow(row, currentRole) {
-  if (!row || !currentRole) return false;
-  if (currentRole === "super_admin") return true;
-  if (currentRole === "company_admin") return row.source === "company";
-  if (currentRole === "depot_admin") return row.source === "depot";
-  return false;
-}
-
-function canVoidRow(row, currentRole) {
-  return canEditRow(row, currentRole);
+function canVoidRow(row, profile, agent) {
+  return canEditRow(row, profile, agent);
 }
 
 function allowedSourceLabel(role) {
@@ -319,7 +311,8 @@ export default function Updates() {
   function startEdit(row) {
     if (activeTab !== "leaders" || row.voided) return;
     const currentRole = profile?.role;
-    if (!canEditRow(row, currentRole)) {
+    const agent = agentMap[row.agent_id];
+    if (!canEditRow(row, profile, agent)) {
       setError(PERMISSION_TOOLTIP(currentRole));
       return;
     }
@@ -364,7 +357,8 @@ export default function Updates() {
     }
 
     const targetRow = rows.find(r => r.id === rowId);
-    if (!targetRow || !canEditRow(targetRow, currentRole)) {
+    const agent = agentMap[targetRow?.agent_id];
+    if (!targetRow || !canEditRow(targetRow, profile, agent)) {
       setError(PERMISSION_TOOLTIP(currentRole));
       return;
     }
@@ -400,7 +394,8 @@ export default function Updates() {
   // Void / Unvoid
   // ----------------------
   function openConfirm(type, row) {
-    if (!canVoidRow(row, currentRole)) {
+    const agent = agentMap[row.agent_id];
+    if (!canVoidRow(row, profile, agent)) {
       setError(PERMISSION_TOOLTIP(currentRole));
       return;
     }
@@ -426,7 +421,8 @@ export default function Updates() {
     const reason = confirmAction.reason.trim();
     const rowId = confirmAction.row.id;
     const targetRow = rows.find(r => r.id === rowId) || confirmAction.row;
-    if (!canVoidRow(targetRow, currentRole)) {
+    const agent = agentMap[targetRow?.agent_id];
+    if (!canVoidRow(targetRow, profile, agent)) {
       setError(PERMISSION_TOOLTIP(currentRole));
       return;
     }
@@ -685,8 +681,9 @@ export default function Updates() {
           <tbody>
             {visibleRows.map((row, index) => {
               const isEditing = activeTab === "leaders" && row.id === editingId;
-              const canModify = canEditRow(row, currentRole);
-              const canModifyVoid = canVoidRow(row, currentRole);
+              const agent = agentMap[row.agent_id];
+              const canModify = canEditRow(row, profile, agent);
+              const canModifyVoid = canVoidRow(row, profile, agent);
               const permissionBlocked = profileLoading || !canModify;
               const permissionBlockedVoid = profileLoading || !canModifyVoid;
               const permissionTitle = permissionBlocked ? PERMISSION_TOOLTIP(currentRole) : undefined;
