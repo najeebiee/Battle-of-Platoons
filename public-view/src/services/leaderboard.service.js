@@ -1,5 +1,5 @@
 // public-view/src/services/leaderboard.service.js
-import { supabase } from "./supabase";
+import { supabase, supabaseConfigured } from "./supabase";
 
 /**
  * Battle of Platoons - Leaderboard Service (Supabase)
@@ -24,6 +24,10 @@ export async function getLeaderboard({
   roleFilter = null, // null | "platoon" | "squad"
   scoring = defaultScore,
 }) {
+  if (!supabaseConfigured || !supabase) {
+    throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+  }
+
   // 1) Fetch raw_data + agents (basic fields only)
   const [
     { data: companyRows, error: companyError },
@@ -85,6 +89,9 @@ export async function getLeaderboard({
   let warnedMissingAgentId = false;
   let warnedMissingAgentData = false;
 
+  const companyRowsFetched = companyRows?.length ?? 0;
+  const depotRowsFetched = depotRows?.length ?? 0;
+
   const publishableRows = (companyRows ?? []).filter((r) => {
     if (isDev) {
       if (!r?.agent_id && !warnedMissingAgentId) {
@@ -141,7 +148,36 @@ export async function getLeaderboard({
     totalSales: rows.reduce((s, r) => s + toNumber(r.sales), 0),
   };
 
-  return { metrics, rows };
+  return {
+    metrics,
+    rows,
+    debug: {
+      companyRowsFetched,
+      depotRowsFetched,
+      publishableRowsCount: publishableRows.length,
+      filteredByRangeCount: filtered.length,
+      startDate,
+      endDate,
+      groupBy,
+      roleFilter,
+    },
+  };
+}
+
+export async function probeRawDataVisibility() {
+  if (!supabaseConfigured || !supabase) {
+    return { ok: false, reason: "not_configured", count: null, error: null };
+  }
+
+  const { count, error } = await supabase
+    .from("raw_data")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    return { ok: false, count: null, error };
+  }
+
+  return { ok: true, count: count ?? 0, error: null };
 }
 
 /* ------------------------------ Aggregation ------------------------------ */

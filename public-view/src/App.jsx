@@ -1,7 +1,8 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getLeaderboard } from "./services/leaderboard.service";
+import { getLeaderboard, probeRawDataVisibility } from "./services/leaderboard.service";
+import { supabaseConfigured, supabaseConfigError, getSupabaseProjectRef } from "./services/supabase";
 import "./styles.css";
 
 const VIEW_TABS = [
@@ -122,19 +123,24 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-  let projectRef = "missing";
-  if (supabaseUrl) {
-    try {
-      projectRef = new URL(supabaseUrl).hostname.split(".")[0] || "unknown";
-    } catch (e) {
-      projectRef = "invalid-url";
+  const [probe, setProbe] = useState({ status: "idle", count: null, error: null });
+  const projectRef = getSupabaseProjectRef();
+
+  useEffect(() => {
+    if (!supabaseConfigured) {
+      setError(
+        "Supabase env vars missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment (e.g., Vercel project settings or local .env)."
+      );
+      setLoading(false);
+    } else {
+      setError("");
     }
-  }
+  }, [supabaseConfigured]);
 
   useEffect(() => {
     let isCancelled = false;
     async function load() {
+      if (!supabaseConfigured) return;
       setLoading(true);
       setError("");
       try {
@@ -150,7 +156,11 @@ function App() {
         if (!isCancelled) setData(result);
       } catch (e) {
         console.error(e);
-        if (!isCancelled) setError("Unable to load leaderboard data.");
+        const friendly = "Unable to load leaderboard data.";
+        const devDetails = e?.message
+          ? `${e.message}${e.code ? ` (code: ${e.code})` : ""}`
+          : friendly;
+        if (!isCancelled) setError(import.meta.env.DEV ? devDetails : friendly);
       } finally {
         if (!isCancelled) setLoading(false);
       }
@@ -161,6 +171,34 @@ function App() {
     };
   }, [activeWeek, activeView, leaderRoleFilter]);
 
+  useEffect(() => {
+    if (!supabaseConfigured) {
+      setProbe({ status: "idle", count: null, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    setProbe({ status: "loading", count: null, error: null });
+
+    probeRawDataVisibility()
+      .then((res) => {
+        if (cancelled) return;
+        setProbe({
+          status: "done",
+          count: res?.count ?? null,
+          error: res?.error || null,
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setProbe({ status: "done", count: null, error: err });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabaseConfigured]);
+
   const today = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "2-digit",
@@ -169,6 +207,11 @@ function App() {
 
   const metrics = data?.metrics || { entitiesCount: 0, totalLeads: 0, totalSales: 0 };
   const rows = data?.rows || [];
+  const debug = data?.debug || {};
+  const publishableRowsCount = debug.publishableRowsCount ?? 0;
+  const filteredByRangeCount = debug.filteredByRangeCount ?? 0;
+  const companyRowsFetched = debug.companyRowsFetched ?? 0;
+  const depotRowsFetched = debug.depotRowsFetched ?? 0;
   const top3 = rows.slice(0, 3);
   const rest = rows.slice(3);
   const entitiesLabel = activeView === "companies" ? "Commanders" : activeView === "depots" ? "Depots" : "Leaders";
@@ -179,6 +222,54 @@ function App() {
       : activeView === "depots"
       ? "Depot Rankings"
       : "Commander Rankings";
+
+  const statusBlocks = [];
+
+  if (!supabaseConfigured) {
+    statusBlocks.push(
+      <div key="config-error" className="status-text status-text--error" style={{ marginBottom: 12 }}>
+        <strong>CONFIG ERROR:</strong> {supabaseConfigError || "Supabase env vars missing."} Set{" "}
+        <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in your deployment (e.g., Vercel project
+        settings) or local <code>.env</code>. Older builds may have worked with baked keys, but this build requires the
+        env vars.
+      </div>
+    );
+  } else if (probe.status === "done" && !probe.error && probe.count === 0) {
+    statusBlocks.push(
+      <div key="probe-empty" className="status-text" style={{ marginBottom: 12 }}>
+        <strong>DATA NOT PUBLISHABLE / RLS FILTERED:</strong> Connected to Supabase, but <code>raw_data</code> returned
+        0 rows for anon access.
+        <ul style={{ marginTop: 6, paddingLeft: 18, fontSize: 13 }}>
+          <li>RLS publishable filter might hide all rows (approved=true OR matched depot/company totals).</li>
+          <li>No approved/matched company rows exist for this project yet.</li>
+          <li>Project ref mismatch—verify you are using the correct Supabase env vars (see debug banner).</li>
+        </ul>
+        <div style={{ fontSize: 13, marginTop: 4 }}>
+          Next actions: approve one company row and re-test; verify <code>raw_data</code> RLS for source='company' &amp;
+          voided=false &amp; approved=true/matched; confirm env vars point to the intended project.
+        </div>
+      </div>
+    );
+  } else if (probe.status === "done" && probe.error) {
+    const probeMsg = import.meta.env.DEV
+      ? `${probe.error?.message ?? "Unknown error"}${probe.error?.code ? ` (code: ${probe.error.code})` : ""}`
+      : "The public role could not read raw_data.";
+    statusBlocks.push(
+      <div key="probe-error" className="status-text status-text--error" style={{ marginBottom: 12 }}>
+        <strong>Connected, but raw_data probe failed:</strong> {probeMsg}
+      </div>
+    );
+  } else if (probe.status === "done" && (probe.count ?? 0) > 0 && !loading && rows.length === 0) {
+    statusBlocks.push(
+      <div key="no-publishable" className="status-text" style={{ marginBottom: 12 }}>
+        <strong>raw_data is visible, but no publishable results for this week range.</strong>{" "}
+        <span style={{ fontSize: 13 }}>
+          (company rows fetched: {companyRowsFetched}, depot pairs: {depotRowsFetched}, publishable matches:{" "}
+          {publishableRowsCount}, after date filter: {filteredByRangeCount})
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -199,8 +290,9 @@ function App() {
             zIndex: 9999,
           }}
         >
-          <span>Supabase: {projectRef}</span>
-          <span>Rows: {rows.length}</span>
+          <span>Project: {projectRef}</span>
+          <span>raw_data visible: {probe.status === "done" ? probe.count ?? "error" : "?"}</span>
+          <span>Leaderboard rows: {rows.length}</span>
           <span>Error: {error || "none"}</span>
         </div>
       )}
@@ -214,6 +306,8 @@ function App() {
           <div className="page-title">Battle of Platoons</div>
           <div className="page-date">{today}</div>
         </header>
+
+        {statusBlocks}
 
         {/* Week selector + metrics */}
         <section className="week-metrics">
