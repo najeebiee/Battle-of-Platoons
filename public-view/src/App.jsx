@@ -300,7 +300,7 @@ function App() {
         {/* Top header */}
         <header className="top-header">
           <div className="brand">
-            <div className="brand-logo" />
+            <img src="/gg-logo.png" alt="Grinders Guild logo" className="brand-logo" />
             <div className="brand-text">Grinders Guild</div>
           </div>
           <div className="page-title">Battle of Platoons</div>

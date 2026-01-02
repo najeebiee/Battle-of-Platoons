@@ -54,7 +54,8 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #c4c7ff, #858bff);
+  object-fit: cover;
+  display: block;
 }
 
 .brand-text {

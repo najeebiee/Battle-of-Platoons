@@ -49,7 +49,8 @@ body{
   width:34px;
   height:34px;
   border-radius:10px;
-  background: linear-gradient(135deg,#c4c7ff,#858bff);
+  object-fit:cover;
+  display:block;
 }
 
 .sb-brand{ font-weight:800; }
