@@ -171,16 +171,17 @@ export function canEditRow(row, profile, agent) {
 async function buildAgentLookups() {
   const agents = await listAgents();
   const byId = new Map();
-  const byName = new Map();
+  const byNameNormalized = new Map();
 
   agents.forEach(agent => {
-    byId.set(agent.id, agent);
-    const normName = normalizeName(agent.name);
-    if (!byName.has(normName)) byName.set(normName, []);
-    byName.get(normName).push(agent);
+    const normalized = normalizeAgentRecord(agent);
+    byId.set(normalized.id, normalized);
+    const normName = normalizeName(normalized.name);
+    if (!byNameNormalized.has(normName)) byNameNormalized.set(normName, []);
+    byNameNormalized.get(normName).push(normalized);
   });
 
-  return { byId, byName };
+  return { byId, byNameNormalized };
 }
 
 function buildSuggestion(agent, lookupMaps) {
@@ -203,7 +204,7 @@ function resolveLeaderName(leaderNameInput, lookups, lookupMaps, errors) {
   }
 
   const normName = normalizeName(leaderName);
-  const matches = lookups.byName.get(normName) ?? [];
+  const matches = lookups.byNameNormalized.get(normName) ?? [];
   if (matches.length === 1) return { resolvedId: matches[0].id, suggestions: [] };
   if (matches.length > 1) {
     errors.push(
@@ -305,30 +306,40 @@ async function enrichRawDataRows(rows = []) {
   });
 }
 
-export async function parseRawDataWorkbook(file, { source = "company" } = {}) {
+export async function parseRawDataWorkbook(
+  file,
+  { source = "company" } = {},
+  onProgress = () => {}
+) {
   if (!file) throw new Error("File is required");
   const normalizedSource = source === "depot" ? "depot" : "company";
+  const progressCb = typeof onProgress === "function" ? onProgress : () => {};
 
+  const parseStart = Date.now();
   const [lookups, lookupMaps] = await Promise.all([buildAgentLookups(), fetchLookupMaps()]);
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+
+  progressCb(0, 0, "reading");
+  const buf = await file.arrayBuffer();
+  const workbook = XLSX.read(buf, { type: "array", cellDates: true });
 
   const sheetName = workbook.SheetNames.includes("Daily Data")
     ? "Daily Data"
     : workbook.SheetNames[0];
-
   if (!sheetName) throw new Error("No sheets found in workbook");
 
   const sheet = workbook.Sheets[sheetName];
-  const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: "" });
+  const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
   if (!rawRows.length) throw new Error("Sheet is empty");
 
-  const headersRaw = rawRows[0];
   const headerMap = {};
-  headersRaw.forEach((header, idx) => {
+  const headers = new Set();
+  rawRows.forEach(row => {
+    Object.keys(row).forEach(key => headers.add(key));
+  });
+  headers.forEach(header => {
     const norm = normalizeHeaderName(header);
     const key = findHeaderKey(norm);
-    if (key && !(key in headerMap)) headerMap[key] = idx;
+    if (key && !(key in headerMap)) headerMap[key] = header;
   });
 
   const missingRequired = REQUIRED_FIELDS.filter(f => headerMap[f] === undefined);
@@ -336,7 +347,11 @@ export async function parseRawDataWorkbook(file, { source = "company" } = {}) {
     throw new Error(`Missing required columns: ${missingRequired.join(", ")}`);
   }
 
-  const rows = rawRows.slice(1).map((rawRow, idx) => {
+  const rows = [];
+  const totalRows = rawRows.length;
+  progressCb(0, totalRows, "processing");
+  for (let idx = 0; idx < rawRows.length; idx++) {
+    const rawRow = rawRows[idx];
     const errors = [];
 
     const dateCell = rawRow[headerMap.date];
@@ -347,7 +362,8 @@ export async function parseRawDataWorkbook(file, { source = "company" } = {}) {
     const payins = parseNumber(rawRow[headerMap.payins], "Payins", errors);
     const sales = parseNumber(rawRow[headerMap.sales], "Sales", errors);
 
-    const leader_name_input = headerMap.leader_name !== undefined ? rawRow[headerMap.leader_name] : "";
+    const leader_name_input =
+      headerMap.leader_name !== undefined ? rawRow[headerMap.leader_name] : "";
     const { resolvedId: resolved_agent_id, suggestions } = resolveLeaderName(
       leader_name_input,
       lookups,
@@ -359,7 +375,7 @@ export async function parseRawDataWorkbook(file, { source = "company" } = {}) {
     const computedId =
       date_real && resolved_agent_id ? `${date_real}_${resolved_agent_id}_${normalizedSource}` : "";
 
-    return {
+    rows.push({
       sourceRowIndex: idx,
       excelRowNumber: idx + 2, // +2 to account for header row and 1-indexing
       date_real,
@@ -374,28 +390,66 @@ export async function parseRawDataWorkbook(file, { source = "company" } = {}) {
       errors,
       suggestions,
       source: normalizedSource,
-    };
-  });
+    });
 
+    if ((idx + 1) % 50 === 0) {
+      progressCb(idx + 1, totalRows, "processing");
+      // yield to event loop to keep UI responsive
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+
+  if (totalRows) {
+    progressCb(totalRows, totalRows, "processing");
+  }
+
+  const duplicateStart = Date.now();
   const computedIds = Array.from(
     new Set(rows.filter(row => row.computedId).map(row => row.computedId))
   );
 
-  let existingIds = new Set();
-  if (computedIds.length) {
-    const { data, error } = await supabase.from("raw_data").select("id").in("id", computedIds);
-    if (error) throw error;
-    existingIds = new Set((data ?? []).map(item => item.id));
+  const existingIds = new Set();
+  const chunkSize = 400;
+  if (!computedIds.length) {
+    progressCb(totalRows, totalRows, "checking_duplicates");
+  } else {
+    for (let i = 0; i < computedIds.length; i += chunkSize) {
+      const chunk = computedIds.slice(i, i + chunkSize);
+      const progressDone = Math.min(
+        totalRows,
+        Math.round(((i + chunk.length) / computedIds.length) * totalRows)
+      );
+      progressCb(progressDone, totalRows, "checking_duplicates");
+      // eslint-disable-next-line no-await-in-loop
+      const { data, error } = await supabase.from("raw_data").select("id").in("id", chunk);
+      if (error) throw error;
+      (data ?? []).forEach(item => existingIds.add(item.id));
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    progressCb(totalRows, totalRows, "checking_duplicates");
   }
 
   const rowsWithDuplicates = rows.map(row => {
     const duplicate = row.computedId ? existingIds.has(row.computedId) : false;
-    return { ...row, duplicate, will_overwrite: duplicate };
+    return {
+      ...row,
+      duplicate,
+      will_overwrite: duplicate,
+    };
   });
+
+  const parseEnd = Date.now();
 
   return {
     rows: rowsWithDuplicates,
-    meta: { sheetName, totalRows: rowsWithDuplicates.length },
+    meta: {
+      sheetName,
+      totalRows: rowsWithDuplicates.length,
+      parseMs: duplicateStart - parseStart,
+      duplicateCheckMs: parseEnd - duplicateStart,
+    },
   };
 }
 

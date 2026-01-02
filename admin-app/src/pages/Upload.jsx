@@ -8,7 +8,8 @@ export default function Upload() {
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [saveProgress, setSaveProgress] = useState({ done: 0, total: 0 });
+  const [parseProgress, setParseProgress] = useState({ done: 0, total: 0, stage: "" });
   const [saveResult, setSaveResult] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [importMode, setImportMode] = useState("warn");
@@ -25,6 +26,14 @@ export default function Upload() {
     : "Select which source you are uploading.";
 
   const inputRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const processed = useMemo(() => {
     const displayRows = rows.map(row => {
@@ -36,6 +45,7 @@ export default function Upload() {
       let displayStatus = "Valid";
       let statusTone = "valid";
       let isValidForSave = row.status === "valid" && row.resolved_agent_id;
+      const rowWillOverwrite = row.duplicate && importMode !== "insert_only";
 
       if (row.status === "invalid") {
         displayStatus = "Invalid";
@@ -59,6 +69,7 @@ export default function Upload() {
 
       return {
         ...row,
+        will_overwrite: rowWillOverwrite,
         displayWarnings,
         displayErrors,
         displayStatus,
@@ -79,6 +90,22 @@ export default function Upload() {
       summary: { total, validNew, duplicate, invalid },
     };
   }, [rows, importMode]);
+
+  const parseProgressText = useMemo(() => {
+    if (!parseProgress.stage) return "";
+    if (parseProgress.stage === "reading") return "Reading file…";
+    if (parseProgress.stage === "processing") {
+      return parseProgress.total
+        ? `Processing ${parseProgress.done}/${parseProgress.total}`
+        : "Processing…";
+    }
+    if (parseProgress.stage === "checking_duplicates") {
+      return parseProgress.total
+        ? `Checking duplicates ${parseProgress.done}/${parseProgress.total}`
+        : "Checking duplicates…";
+    }
+    return "";
+  }, [parseProgress]);
 
   useEffect(() => {
     let mounted = true;
@@ -107,22 +134,32 @@ export default function Upload() {
     setLoading(true);
     setError("");
     setSaveResult(null);
-    setProgress({ done: 0, total: 0 });
+    setSaveProgress({ done: 0, total: 0 });
+    setParseProgress({ done: 0, total: 0, stage: "reading" });
 
     try {
-      const { rows: parsedRows, meta: workbookMeta } = await parseRawDataWorkbook(file, {
-        source: selectedSource,
-      });
-      setRows(parsedRows);
-      setMeta(workbookMeta);
-      setFileName(file.name);
+      const { rows: parsedRows, meta: workbookMeta } = await parseRawDataWorkbook(
+        file,
+        { source: selectedSource },
+        (done, total, stage) => {
+          if (!isMountedRef.current) return;
+          setParseProgress({ done, total, stage });
+        }
+      );
+      if (isMountedRef.current) {
+        setRows(parsedRows);
+        setMeta(workbookMeta);
+        setFileName(file.name);
+      }
     } catch (e) {
+      if (!isMountedRef.current) return;
       setRows([]);
       setMeta(null);
       setFileName("");
       setError(e.message || "Failed to parse file");
+      setParseProgress({ done: 0, total: 0, stage: "" });
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }
 
@@ -134,7 +171,8 @@ export default function Upload() {
       setMeta(null);
       setFileName("");
       setSaveResult(null);
-      setProgress({ done: 0, total: 0 });
+      setSaveProgress({ done: 0, total: 0 });
+      setParseProgress({ done: 0, total: 0, stage: "" });
       return;
     }
     setParsedFile(file);
@@ -170,7 +208,8 @@ export default function Upload() {
     setLoading(false);
     setError("");
     setSaveResult(null);
-    setProgress({ done: 0, total: 0 });
+    setSaveProgress({ done: 0, total: 0 });
+    setParseProgress({ done: 0, total: 0, stage: "" });
     setIsDragging(false);
     setImportMode("warn");
     setParsedFile(null);
@@ -197,16 +236,21 @@ export default function Upload() {
   }
 
   async function handleSave() {
-    setProgress({ done: 0, total: processed.rowsForSave.length });
+    setSaveProgress({ done: 0, total: processed.rowsForSave.length });
     setSaveResult(null);
     try {
       const result = await saveRawDataRows(
         processed.rowsForSave,
         { mode: importMode, source },
-        (done, total) => setProgress({ done, total })
+        (done, total) => {
+          if (!isMountedRef.current) return;
+          setSaveProgress({ done, total });
+        }
       );
+      if (!isMountedRef.current) return;
       setSaveResult({ ...result, skipped: rows.length - processed.rowsForSave.length });
     } catch (e) {
+      if (!isMountedRef.current) return;
       setSaveResult({
         insertedCount: 0,
         upsertedCount: 0,
@@ -297,7 +341,11 @@ export default function Upload() {
         </div>
       ) : null}
 
-      {loading ? <div className="muted">Parsing workbook…</div> : null}
+      {loading ? (
+        <div className="muted">
+          {parseProgressText || "Parsing workbook…"}
+        </div>
+      ) : null}
 
       {rows.length ? (
         <>
@@ -410,8 +458,8 @@ export default function Upload() {
             <button className="button primary" disabled={!processed.rowsForSave.length || loading} onClick={handleSave}>
               Save to Database
             </button>
-            {progress.total ? (
-              <div className="muted">Saving {progress.done}/{progress.total}…</div>
+            {saveProgress.total ? (
+              <div className="muted">Saving {saveProgress.done}/{saveProgress.total}…</div>
             ) : null}
           </div>
         </>
