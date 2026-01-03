@@ -15,6 +15,7 @@ const LEADER_ROLE_TABS = [
   { key: "all", label: "All" },
   { key: "platoon", label: "Platoon" },
   { key: "squad", label: "Squad" },
+  { key: "team", label: "Team" },
 ];
 
 function formatCurrencyPHP(n) {
@@ -471,6 +472,7 @@ function Podium({ top3, view }) {
 function LeaderboardTable({ rows, view }) {
   if (!rows.length) return null;
 
+  const showUpline = view === "leaders";
   const labelHeader =
     view === "leaders"
       ? "Leader Name"
@@ -485,6 +487,7 @@ function LeaderboardTable({ rows, view }) {
           <tr>
             <th>Rank</th>
             <th>{labelHeader}</th>
+            {showUpline && <th>Upline</th>}
             <th>Leads</th>
             <th>Payins</th>
             <th>Sales</th>
@@ -517,6 +520,7 @@ function LeaderboardTable({ rows, view }) {
                   </div>
                 </div>
               </td>
+              {showUpline && <td>{r.uplineName || "—"}</td>}
               <td>{r.leads}</td>
               <td>{r.payins}</td>
               <td>{formatCurrencyPHP(r.sales)}</td>

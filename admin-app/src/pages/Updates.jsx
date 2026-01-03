@@ -70,7 +70,7 @@ const TABS = [
   { key: "leaders", label: "Leaders" },
   { key: "depots", label: "Depots" },
   { key: "companies", label: "Commanders" },
-  { key: "platoons", label: "Teams" },
+  { key: "platoons", label: "Companies" },
 ];
 
 const initialFilters = {
@@ -257,7 +257,7 @@ export default function Updates() {
         label = r.companyName || a?.company?.name || a?.companyId || "Unknown commander";
       } else if (activeTab === "platoons") {
         value = a?.platoonId || "";
-        label = r.platoonName || a?.platoon?.name || a?.platoonId || "Unknown team";
+        label = r.platoonName || a?.platoon?.name || a?.platoonId || "Unknown company";
       }
 
       if (!value) continue;
@@ -485,7 +485,7 @@ export default function Updates() {
       ? "Depot"
       : activeTab === "companies"
       ? "Commander"
-      : "Team";
+      : "Company";
 
   function renderSourcePill(row) {
     const isCompany = row.source === "company";
@@ -516,7 +516,7 @@ export default function Updates() {
       ? "Depot"
       : activeTab === "companies"
       ? "Commander"
-      : "Team";
+      : "Company";
 
   function renderStatus(row) {
     if (row.voided) {

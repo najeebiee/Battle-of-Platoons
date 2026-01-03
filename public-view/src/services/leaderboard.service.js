@@ -22,12 +22,16 @@ export async function getLeaderboard({
   startDate, // "YYYY-MM-DD"
   endDate, // "YYYY-MM-DD"
   groupBy = "leaders", // "leaders" | "depots" | "companies"
-  roleFilter = null, // null | "platoon" | "squad"
+  roleFilter = null, // null | "platoon" | "squad" | "team"
   scoring = defaultScore,
 }) {
   if (!supabaseConfigured || !supabase) {
     throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
   }
+
+  const agentsPromise = supabase
+    .from("agents")
+    .select("id,name,upline_agent_id,depot_id,company_id,platoon_id,role,photo_url,photoURL");
 
   // 1) Fetch raw_data + agents (basic fields only) - rely on RLS for publishability
   const { data: companyRows, error: companyError } = await supabase
@@ -48,10 +52,12 @@ export async function getLeaderboard({
         id,
         name,
         photoURL,
+        photo_url,
         depot_id,
         company_id,
         platoon_id,
-        role
+        role,
+        upline_agent_id
       )
     `
     )
@@ -95,9 +101,15 @@ export async function getLeaderboard({
     });
   }
 
+  const { data: agentsList, error: agentsError } = await agentsPromise;
+  if (agentsError) throw agentsError;
+  const normalizedAgents = (agentsList ?? []).map(normalizeAgent);
+  const agentsMap = new Map(normalizedAgents.map((a) => [String(a.id), a]));
+
   if (groupBy === "leaders" && roleFilter) {
     filtered = filtered.filter((r) => {
-      const role = r?.agents?.role ?? "platoon";
+      const agentId = String(r?.agent_id ?? r?.agents?.id ?? "");
+      const role = r?.agents?.role ?? agentsMap.get(agentId)?.role ?? "platoon";
       return role === roleFilter;
     });
   }
@@ -122,6 +134,7 @@ export async function getLeaderboard({
     depotsMap,
     companiesMap,
     platoonsMap,
+    agentsMap,
   });
 
   // 5) Metrics for header cards
@@ -173,46 +186,56 @@ function aggregateLeaderboard({
   depotsMap,
   companiesMap,
   platoonsMap,
+  agentsMap,
 }) {
   const map = new Map();
 
   for (const r of rows) {
-    const a = r.agents || {};
+    const joinedAgent = r.agents || {};
     const leads = toNumber(r.leads);
     const payins = toNumber(r.payins);
     const sales = toNumber(r.sales);
 
-    const agentId = String(r.agent_id ?? a.id ?? "");
+    const agentId = String(r.agent_id ?? joinedAgent.id ?? "");
+    const mappedAgent = agentId && agentsMap ? agentsMap.get(agentId) : null;
+    const agentData = { ...mappedAgent, ...joinedAgent };
 
     // Resolve lookup entities
-    const depot = a.depot_id ? depotsMap.get(String(a.depot_id)) : null;
-    const company = a.company_id ? companiesMap.get(String(a.company_id)) : null;
-    const platoon = a.platoon_id ? platoonsMap.get(String(a.platoon_id)) : null;
+    const depotId = agentData.depot_id ?? agentData.depotId ?? null;
+    const companyId = agentData.company_id ?? agentData.companyId ?? null;
+    const platoonId = agentData.platoon_id ?? agentData.platoonId ?? null;
+
+    const depot = depotId ? depotsMap.get(String(depotId)) : null;
+    const company = companyId ? companiesMap.get(String(companyId)) : null;
+    const platoon = platoonId ? platoonsMap.get(String(platoonId)) : null;
+    const uplineId = agentData.uplineId ?? agentData.upline_agent_id ?? "";
+    const upline = uplineId ? agentsMap?.get(String(uplineId)) : null;
 
     // Determine grouping key + display name + avatar
     let key = "";
     let name = "";
     let avatarUrl = "";
     let platoonName = "";
+    const uplineName = upline?.name ?? "";
 
     if (mode === "leaders") {
       key = agentId;
-      name = a.name ?? "(Unnamed)";
-      avatarUrl = a.photoURL ?? "";
+      name = agentData.name ?? "(Unnamed)";
+      avatarUrl = agentData.photoURL ?? agentData.photo_url ?? "";
       platoonName = platoon?.name ?? ""; // show platoon label in UI for leaders
     } else if (mode === "depots") {
-      key = String(a.depot_id ?? "");
+      key = String(depotId ?? "");
       name = (depot?.name ?? key) || "(No Depot)";
       avatarUrl = depot?.photoURL ?? "";
     } else if (mode === "companies") {
-      key = String(a.company_id ?? "");
+      key = String(companyId ?? "");
       name = (company?.name ?? key) || "(No Commander)";
       avatarUrl = company?.photoURL ?? "";
     } else {
       // fallback to leaders
       key = agentId;
-      name = a.name ?? "(Unnamed)";
-      avatarUrl = a.photoURL ?? "";
+      name = agentData.name ?? "(Unnamed)";
+      avatarUrl = agentData.photoURL ?? agentData.photo_url ?? "";
       platoonName = platoon?.name ?? "";
     }
 
@@ -230,6 +253,7 @@ function aggregateLeaderboard({
         sales: 0,
         points: 0,
         rank: 0,
+        uplineName: mode === "leaders" ? uplineName : "",
       });
     }
 
@@ -237,6 +261,12 @@ function aggregateLeaderboard({
     item.leads += leads;
     item.payins += payins;
     item.sales += sales;
+    if (mode === "leaders" && platoonName && !item.platoon) {
+      item.platoon = platoonName;
+    }
+    if (mode === "leaders" && uplineName && !item.uplineName) {
+      item.uplineName = uplineName;
+    }
   }
 
   const result = Array.from(map.values()).map((x) => ({
@@ -255,6 +285,19 @@ function aggregateLeaderboard({
 }
 
 /* ------------------------------ Helpers ------------------------------ */
+
+function normalizeAgent(a) {
+  return {
+    id: a?.id ?? "",
+    name: a?.name ?? "",
+    uplineId: a?.uplineId ?? a?.upline_agent_id ?? "",
+    depot_id: a?.depot_id ?? null,
+    company_id: a?.company_id ?? null,
+    platoon_id: a?.platoon_id ?? null,
+    role: a?.role ?? "platoon",
+    photoURL: a?.photoURL ?? a?.photo_url ?? "",
+  };
+}
 
 function defaultScore(row) {
   // Simple baseline scoring:

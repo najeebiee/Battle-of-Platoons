@@ -85,6 +85,7 @@ export default function Participants() {
     depotId: "",
     companyId: "",
     platoonId: "",
+    uplineId: "",
     role: "platoon",
     photoURL: "",
   });
@@ -149,6 +150,7 @@ export default function Participants() {
   const depotById = useMemo(() => Object.fromEntries(depots.map(d => [d.id, d])), [depots]);
   const companyById = useMemo(() => Object.fromEntries(companies.map(c => [c.id, c])), [companies]);
   const platoonById = useMemo(() => Object.fromEntries(platoons.map(p => [p.id, p])), [platoons]);
+  const agentById = useMemo(() => Object.fromEntries(agents.map(a => [a.id, a])), [agents]);
 
   function ok(msg) { setStatus({ type: "ok", msg }); }
   function err(msg) { setStatus({ type: "error", msg }); }
@@ -189,6 +191,13 @@ export default function Participants() {
     [agents, isEditingLeader, leaderNameNormalized, leaderOriginalId, leaderSuggestedId]
   );
 
+  const selfIdForUpline = leaderOriginalId || leaderSuggestedId;
+
+  const availableUplineLeaders = useMemo(() => {
+    if (!leaderForm.depotId) return [];
+    return agents.filter(a => a.depotId === leaderForm.depotId && a.id !== selfIdForUpline);
+  }, [agents, leaderForm.depotId, selfIdForUpline]);
+
   function handleLeaderModeChange(mode) {
     setLeaderPhotoMode(mode);
     setLeaderPhotoError("");
@@ -209,6 +218,22 @@ export default function Participants() {
     }
   }
 
+  function handleDepotChange(nextDepotId) {
+    setLeaderForm(s => {
+      const next = { ...s, depotId: nextDepotId };
+      if (s.uplineId) {
+        const stillValid = agents.some(
+          a => a.id === s.uplineId && a.depotId === nextDepotId && a.id !== selfIdForUpline
+        );
+        if (!stillValid) {
+          next.uplineId = "";
+          setStatus({ type: "warn", msg: "Upline cleared because it is not in the selected depot." });
+        }
+      }
+      return next;
+    });
+  }
+
   function clearLeader() {
     setLeaderForm({
       id: "",
@@ -216,6 +241,7 @@ export default function Participants() {
       depotId: "",
       companyId: "",
       platoonId: "",
+      uplineId: "",
       role: "platoon",
       photoURL: "",
     });
@@ -237,7 +263,7 @@ export default function Participants() {
     if (!name) return err("Leader name required.");
     if (!leaderForm.depotId) return err("Select a depot.");
     if (!leaderForm.companyId) return err("Select a commander.");
-    if (!leaderForm.platoonId) return err("Select a team.");
+    if (!leaderForm.platoonId) return err("Select a company.");
 
     const urlInput = leaderPhotoUrlInput.trim();
     if (leaderPhotoFile && urlInput) {
@@ -249,6 +275,11 @@ export default function Participants() {
     const id = isEditingLeader ? leaderOriginalId : leaderSuggestedId;
     if (!id) return err("Agent ID is required. Change the name or add a unique suffix.");
     if (leaderIdConflict) return err("Agent ID already exists. Change the name or add a unique suffix.");
+    if (leaderForm.uplineId && leaderForm.uplineId === id) return err("Leader cannot be their own upline.");
+    const selectedUpline = leaderForm.uplineId ? agents.find(a => a.id === leaderForm.uplineId) : null;
+    if (selectedUpline && selectedUpline.depotId !== leaderForm.depotId) {
+      return err("Upline must belong to the selected depot.");
+    }
     const fileError = validateFile(leaderPhotoFile);
     if (fileError) {
       setLeaderPhotoError(fileError);
@@ -283,6 +314,7 @@ export default function Participants() {
         depotId: leaderForm.depotId,
         companyId: leaderForm.companyId,
         platoonId: leaderForm.platoonId,
+        uplineAgentId: leaderForm.uplineId || null,
         role: leaderForm.role || "platoon",
         photoURL,
       });
@@ -305,6 +337,7 @@ export default function Participants() {
       depotId: a.depotId || "",
       companyId: a.companyId || "",
       platoonId: a.platoonId || "",
+      uplineId: a.uplineAgentId || "",
       role: a.role || "platoon",
       photoURL: a.photoURL || "",
     });
@@ -470,7 +503,7 @@ export default function Participants() {
     setPlatoonPhotoError("");
 
     const name = platoonForm.name.trim();
-    if (!name) return err("Team name required.");
+    if (!name) return err("Company name required.");
 
     const urlInput = platoonPhotoUrlInput.trim();
     if (platoonPhotoFile && urlInput) {
@@ -509,7 +542,7 @@ export default function Participants() {
 
       await upsertPlatoon(id, payload);
       await fetchPlatoons();
-      ok(platoonForm.id ? "Team updated." : "Team added.");
+      ok(platoonForm.id ? "Company updated." : "Company added.");
       clearPlatoon();
     } catch (e2) {
       console.error(e2);
@@ -549,7 +582,7 @@ export default function Participants() {
             Depots
           </button>
           <button className={`p-tab ${tab === "platoons" ? "active" : ""}`} onClick={() => { setTab("platoons"); clearPlatoon(); }}>
-            Teams
+            Companies
           </button>
         </div>
 
@@ -598,7 +631,7 @@ export default function Participants() {
 
               <div className="field">
                 <label>Depot</label>
-                <select value={leaderForm.depotId} onChange={(e) => setLeaderForm(s => ({ ...s, depotId: e.target.value }))}>
+                <select value={leaderForm.depotId} onChange={(e) => handleDepotChange(e.target.value)}>
                   <option value="">Select depot…</option>
                   {depots.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -613,11 +646,34 @@ export default function Participants() {
               </div>
 
               <div className="field">
-                <label>Team</label>
+                <label>Company</label>
                 <select value={leaderForm.platoonId} onChange={(e) => setLeaderForm(s => ({ ...s, platoonId: e.target.value }))}>
-                  <option value="">Select team…</option>
+                  <option value="">Select company…</option>
                   {platoons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
+              </div>
+
+              <div className="field">
+                <label>Upline (optional)</label>
+                <select
+                  value={leaderForm.uplineId}
+                  onChange={(e) => setLeaderForm(s => ({ ...s, uplineId: e.target.value }))}
+                  disabled={!leaderForm.depotId || availableUplineLeaders.length === 0}
+                >
+                  <option value="">
+                    {!leaderForm.depotId
+                      ? "Select depot first"
+                      : availableUplineLeaders.length === 0
+                        ? "No leaders available in this depot"
+                        : "Select upline…"}
+                  </option>
+                  {availableUplineLeaders.map(l => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+                {!leaderForm.depotId && <div className="hint">Select a depot to choose an upline.</div>}
               </div>
 
               <div className="field">
@@ -625,6 +681,7 @@ export default function Participants() {
                 <select value={leaderForm.role || "platoon"} onChange={(e) => setLeaderForm(s => ({ ...s, role: e.target.value }))}>
                   <option value="platoon">Platoon Leader</option>
                   <option value="squad">Squad Leader</option>
+                  <option value="team">Team Leader</option>
                 </select>
               </div>
 
@@ -825,7 +882,7 @@ export default function Participants() {
 
       {tab === "platoons" && (
         <div className="card">
-          <div className="card-title">{platoonForm.id ? "Edit Team" : "Add Team"}</div>
+          <div className="card-title">{platoonForm.id ? "Edit Company" : "Add Company"}</div>
 
           <form className="form" onSubmit={savePlatoon}>
             <div className="grid">
@@ -930,7 +987,7 @@ export default function Participants() {
           <div className="card-title">Leaders List</div>
           <div className="table">
             <div className="t-head">
-              <div>Leader</div><div>Depot</div><div>Commander</div><div>Team</div><div className="t-right">Actions</div>
+              <div>Leader</div><div>Depot</div><div>Commander</div><div>Company</div><div>Upline</div><div className="t-right">Actions</div>
             </div>
 
             {agents.map(a => (
@@ -944,6 +1001,7 @@ export default function Participants() {
                 <div>{depotById[a.depotId]?.name || a.depotId || "-"}</div>
                 <div>{companyById[a.companyId]?.name || a.companyId || "-"}</div>
                 <div>{platoonById[a.platoonId]?.name || a.platoonId || "-"}</div>
+                <div>{a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-"}</div>
                 <div className="t-right">
                   <button className="btn-link" onClick={() => editLeader(a)}>Edit</button>
                 </div>
@@ -1009,10 +1067,10 @@ export default function Participants() {
 
       {tab === "platoons" && (
         <div className="card">
-          <div className="card-title">Teams List</div>
+          <div className="card-title">Companies List</div>
           <div className="table">
             <div className="t-head">
-              <div>Team</div><div></div><div></div><div></div><div className="t-right">Actions</div>
+              <div>Company</div><div></div><div></div><div></div><div className="t-right">Actions</div>
             </div>
 
             {platoons.map(p => (
