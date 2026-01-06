@@ -35,6 +35,7 @@ export default function App() {
             <Route path="participants" element={<Participants />} />
             <Route path="updates" element={<Updates />} />
             <Route path="formulas" element={<Formulas />} />
+            <Route path="scoring-formulas" element={<Formulas />} />
             <Route path="upload" element={<Upload />} />
             <Route path="compare" element={<Compare />} />
             <Route path="publishing" element={<Publishing />} />

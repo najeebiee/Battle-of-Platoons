@@ -44,7 +44,10 @@ export default function Sidebar() {
           Updates History
         </NavLink>
 
-        <NavLink to="/formulas" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
+        <NavLink
+          to="/scoring-formulas"
+          className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}
+        >
           Scoring Formulas
         </NavLink>
 
