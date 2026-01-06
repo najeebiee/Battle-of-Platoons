@@ -21,7 +21,7 @@ import { supabase, supabaseConfigured } from "./supabase";
 export async function getLeaderboard({
   startDate, // "YYYY-MM-DD"
   endDate, // "YYYY-MM-DD"
-  groupBy = "leaders", // "leaders" | "depots" | "companies"
+  groupBy = "leaders", // "leaders" | "depots" | "companies" | "platoon"
   roleFilter = null, // null | "platoon" | "squad" | "team"
   scoring = defaultScore,
 }) {
@@ -188,6 +188,10 @@ function aggregateLeaderboard({
   platoonsMap,
   agentsMap,
 }) {
+  if (mode === "platoon") {
+    return aggregateUplines({ rows, scoringFn, agentsMap });
+  }
+
   const map = new Map();
 
   for (const r of rows) {
@@ -285,6 +289,69 @@ function aggregateLeaderboard({
 }
 
 /* ------------------------------ Helpers ------------------------------ */
+
+/**
+ * Platoon tab: aggregate all publishable leader rows under their upline_agent_id.
+ * This groups all downlines for the same upline into a single row and sums
+ * leads, payins, sales, then reuses the standard scoringFn for points.
+ */
+function aggregateUplines({ rows, scoringFn, agentsMap }) {
+  const NO_UPLINE_KEY = "no-upline";
+  const totalsByUpline = new Map();
+
+  for (const r of rows) {
+    const joinedAgent = r.agents || {};
+    const agentId = String(r.agent_id ?? joinedAgent.id ?? "");
+    const mappedAgent = agentId && agentsMap ? agentsMap.get(agentId) : null;
+    const agentData = { ...mappedAgent, ...joinedAgent };
+
+    const leads = toNumber(r.leads);
+    const payins = toNumber(r.payins);
+    const sales = toNumber(r.sales);
+
+    const uplineIdRaw = agentData.uplineId ?? agentData.upline_agent_id ?? "";
+    const uplineKey = uplineIdRaw ? String(uplineIdRaw) : NO_UPLINE_KEY;
+
+    if (!totalsByUpline.has(uplineKey)) {
+      totalsByUpline.set(uplineKey, { leads: 0, payins: 0, sales: 0 });
+    }
+
+    const bucket = totalsByUpline.get(uplineKey);
+    bucket.leads += leads;
+    bucket.payins += payins;
+    bucket.sales += sales;
+  }
+
+  const result = Array.from(totalsByUpline.entries()).map(([uplineKey, totals]) => {
+    const uplineAgent = uplineKey !== NO_UPLINE_KEY ? agentsMap?.get(String(uplineKey)) : null;
+    const name =
+      uplineAgent?.name ?? (uplineKey === NO_UPLINE_KEY ? "No Upline" : "Unknown Upline");
+    const avatarUrl = uplineAgent?.photoURL ?? uplineAgent?.photo_url ?? "";
+    const row = {
+      key: uplineKey,
+      name,
+      avatarUrl,
+      platoon: "",
+      leads: totals.leads,
+      payins: totals.payins,
+      sales: totals.sales,
+    };
+
+    return {
+      ...row,
+      points: scoringFn(row),
+    };
+  });
+
+  result.sort(
+    (a, b) =>
+      b.points - a.points || b.sales - a.sales || b.leads - a.leads || b.payins - a.payins
+  );
+
+  for (let i = 0; i < result.length; i++) result[i].rank = i + 1;
+
+  return result;
+}
 
 function normalizeAgent(a) {
   return {

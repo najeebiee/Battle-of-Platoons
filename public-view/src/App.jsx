@@ -6,6 +6,7 @@ import { supabaseConfigured, supabaseConfigError, getSupabaseProjectRef } from "
 import "./styles.css";
 
 const VIEW_TABS = [
+  { key: "platoon", label: "Platoon" },
   { key: "depots", label: "Depots" },
   { key: "leaders", label: "Leaders" },
   { key: "companies", label: "Commanders" },
@@ -119,7 +120,7 @@ function App() {
   const [activeWeek, setActiveWeek] = useState(initialWeeks.currentKey);
   const activeWeekTab = weekTabs.find((w) => w.key === activeWeek);
   const weekRangeLabel = formatWeekRange(activeWeekTab?.displayRange);
-  const [activeView, setActiveView] = useState("leaders");
+  const [activeView, setActiveView] = useState("platoon");
   const [leaderRoleFilter, setLeaderRoleFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -215,10 +216,19 @@ function App() {
   const depotRowsFetched = debug.depotRowsFetched ?? 0;
   const top3 = rows.slice(0, 3);
   const rest = rows.slice(3);
-  const entitiesLabel = activeView === "companies" ? "Commanders" : activeView === "depots" ? "Depots" : "Leaders";
+  const entitiesLabel =
+    activeView === "companies"
+      ? "Commanders"
+      : activeView === "depots"
+      ? "Depots"
+      : activeView === "platoon"
+      ? "Uplines"
+      : "Leaders";
 
   const title =
-    activeView === "leaders"
+    activeView === "platoon"
+      ? "Upline Rankings"
+      : activeView === "leaders"
       ? "Platoon Leader Rankings"
       : activeView === "depots"
       ? "Depot Rankings"
@@ -472,12 +482,13 @@ function Podium({ top3, view }) {
 function LeaderboardTable({ rows, view }) {
   if (!rows.length) return null;
 
-  const showUpline = view === "leaders";
   const labelHeader =
     view === "leaders"
       ? "Leader Name"
       : view === "depots"
       ? "Depot"
+      : view === "platoon"
+      ? "Upline"
       : "Commander";
 
   return (
@@ -487,7 +498,6 @@ function LeaderboardTable({ rows, view }) {
           <tr>
             <th>Rank</th>
             <th>{labelHeader}</th>
-            {showUpline && <th>Upline</th>}
             <th>Leads</th>
             <th>Payins</th>
             <th>Sales</th>
@@ -520,7 +530,6 @@ function LeaderboardTable({ rows, view }) {
                   </div>
                 </div>
               </td>
-              {showUpline && <td>{r.uplineName || "—"}</td>}
               <td>{r.leads}</td>
               <td>{r.payins}</td>
               <td>{formatCurrencyPHP(r.sales)}</td>

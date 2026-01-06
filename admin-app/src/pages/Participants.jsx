@@ -193,9 +193,12 @@ export default function Participants() {
 
   const selfIdForUpline = leaderOriginalId || leaderSuggestedId;
 
-  const availableUplineLeaders = useMemo(() => (
-    agents.filter(a => a.id !== selfIdForUpline)
-  ), [agents, selfIdForUpline]);
+  const availableUplineLeaders = useMemo(() => {
+    // In edit mode, allow selecting the current leader as their own upline.
+    // In add mode, keep self filtered out since the agent does not exist yet.
+    if (isEditingLeader) return agents;
+    return agents.filter(a => a.id !== selfIdForUpline);
+  }, [agents, isEditingLeader, selfIdForUpline]);
 
   function handleLeaderModeChange(mode) {
     setLeaderPhotoMode(mode);
@@ -262,7 +265,9 @@ export default function Participants() {
     const id = isEditingLeader ? leaderOriginalId : leaderSuggestedId;
     if (!id) return err("Agent ID is required. Change the name or add a unique suffix.");
     if (leaderIdConflict) return err("Agent ID already exists. Change the name or add a unique suffix.");
-    if (leaderForm.uplineId && leaderForm.uplineId === id) return err("Leader cannot be their own upline.");
+    if (!isEditingLeader && leaderForm.uplineId && leaderForm.uplineId === id) {
+      return err("Leader cannot be their own upline.");
+    }
     const fileError = validateFile(leaderPhotoFile);
     if (fileError) {
       setLeaderPhotoError(fileError);
