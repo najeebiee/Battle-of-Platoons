@@ -6,7 +6,6 @@ import { supabaseConfigured, supabaseConfigError, getSupabaseProjectRef } from "
 import "./styles.css";
 
 const VIEW_TABS = [
-  { key: "platoon", label: "Platoon" },
   { key: "depots", label: "Depots" },
   { key: "leaders", label: "Leaders" },
   { key: "companies", label: "Commanders" },
@@ -120,7 +119,7 @@ function App() {
   const [activeWeek, setActiveWeek] = useState(initialWeeks.currentKey);
   const activeWeekTab = weekTabs.find((w) => w.key === activeWeek);
   const weekRangeLabel = formatWeekRange(activeWeekTab?.displayRange);
-  const [activeView, setActiveView] = useState("platoon");
+  const [activeView, setActiveView] = useState("depots");
   const [leaderRoleFilter, setLeaderRoleFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -148,11 +147,16 @@ function App() {
       try {
         const week = weekTabs.find((w) => w.key === activeWeek);
         const range = week?.range;
+        const leadersPlatoonView = activeView === "leaders" && leaderRoleFilter === "platoon";
+
         const result = await getLeaderboard({
           startDate: toYMD(range.start),
           endDate: toYMD(range.end),
-          groupBy: activeView,
-          roleFilter: leaderRoleFilter === "all" ? null : leaderRoleFilter,
+          groupBy: leadersPlatoonView ? "platoon" : activeView,
+          roleFilter:
+            activeView === "leaders" && !leadersPlatoonView && leaderRoleFilter !== "all"
+              ? leaderRoleFilter
+              : null,
         });
 
         if (!isCancelled) setData(result);
@@ -207,6 +211,8 @@ function App() {
     year: "numeric",
   });
 
+  const leadersPlatoonView = activeView === "leaders" && leaderRoleFilter === "platoon";
+  const displayView = leadersPlatoonView ? "platoon" : activeView;
   const metrics = data?.metrics || { entitiesCount: 0, totalLeads: 0, totalSales: 0 };
   const rows = data?.rows || [];
   const debug = data?.debug || {};
@@ -217,20 +223,20 @@ function App() {
   const top3 = rows.slice(0, 3);
   const rest = rows.slice(3);
   const entitiesLabel =
-    activeView === "companies"
+    displayView === "companies"
       ? "Commanders"
-      : activeView === "depots"
+      : displayView === "depots"
       ? "Depots"
-      : activeView === "platoon"
+      : displayView === "platoon"
       ? "Uplines"
       : "Leaders";
 
   const title =
-    activeView === "platoon"
+    displayView === "platoon"
       ? "Upline Rankings"
-      : activeView === "leaders"
+      : displayView === "leaders"
       ? "Platoon Leader Rankings"
-      : activeView === "depots"
+      : displayView === "depots"
       ? "Depot Rankings"
       : "Commander Rankings";
 
@@ -400,8 +406,8 @@ function App() {
               </div>
             ) : (
               <>
-                <Podium top3={top3} view={activeView} />
-                <LeaderboardTable rows={rows} view={activeView} />
+                <Podium top3={top3} view={displayView} />
+                <LeaderboardTable rows={rows} view={displayView} />
               </>
             )}
           </>
