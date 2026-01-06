@@ -193,10 +193,9 @@ export default function Participants() {
 
   const selfIdForUpline = leaderOriginalId || leaderSuggestedId;
 
-  const availableUplineLeaders = useMemo(() => {
-    if (!leaderForm.depotId) return [];
-    return agents.filter(a => a.depotId === leaderForm.depotId && a.id !== selfIdForUpline);
-  }, [agents, leaderForm.depotId, selfIdForUpline]);
+  const availableUplineLeaders = useMemo(() => (
+    agents.filter(a => a.id !== selfIdForUpline)
+  ), [agents, selfIdForUpline]);
 
   function handleLeaderModeChange(mode) {
     setLeaderPhotoMode(mode);
@@ -219,19 +218,7 @@ export default function Participants() {
   }
 
   function handleDepotChange(nextDepotId) {
-    setLeaderForm(s => {
-      const next = { ...s, depotId: nextDepotId };
-      if (s.uplineId) {
-        const stillValid = agents.some(
-          a => a.id === s.uplineId && a.depotId === nextDepotId && a.id !== selfIdForUpline
-        );
-        if (!stillValid) {
-          next.uplineId = "";
-          setStatus({ type: "warn", msg: "Upline cleared because it is not in the selected depot." });
-        }
-      }
-      return next;
-    });
+    setLeaderForm(s => ({ ...s, depotId: nextDepotId }));
   }
 
   function clearLeader() {
@@ -276,10 +263,6 @@ export default function Participants() {
     if (!id) return err("Agent ID is required. Change the name or add a unique suffix.");
     if (leaderIdConflict) return err("Agent ID already exists. Change the name or add a unique suffix.");
     if (leaderForm.uplineId && leaderForm.uplineId === id) return err("Leader cannot be their own upline.");
-    const selectedUpline = leaderForm.uplineId ? agents.find(a => a.id === leaderForm.uplineId) : null;
-    if (selectedUpline && selectedUpline.depotId !== leaderForm.depotId) {
-      return err("Upline must belong to the selected depot.");
-    }
     const fileError = validateFile(leaderPhotoFile);
     if (fileError) {
       setLeaderPhotoError(fileError);
@@ -658,14 +641,10 @@ export default function Participants() {
                 <select
                   value={leaderForm.uplineId}
                   onChange={(e) => setLeaderForm(s => ({ ...s, uplineId: e.target.value }))}
-                  disabled={!leaderForm.depotId || availableUplineLeaders.length === 0}
+                  disabled={availableUplineLeaders.length === 0}
                 >
                   <option value="">
-                    {!leaderForm.depotId
-                      ? "Select depot first"
-                      : availableUplineLeaders.length === 0
-                        ? "No leaders available in this depot"
-                        : "Select upline…"}
+                    {availableUplineLeaders.length === 0 ? "No leaders available" : "Select upline…"}
                   </option>
                   {availableUplineLeaders.map(l => (
                     <option key={l.id} value={l.id}>
@@ -673,7 +652,6 @@ export default function Participants() {
                     </option>
                   ))}
                 </select>
-                {!leaderForm.depotId && <div className="hint">Select a depot to choose an upline.</div>}
               </div>
 
               <div className="field">
