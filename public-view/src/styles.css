@@ -135,7 +135,7 @@ body {
   box-shadow: none;
 }
 
-/* Metric cards */
+/* Metric bar */
 
 .metric-bar {
   display: flex;
@@ -145,26 +145,33 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+.metric-segment,
 .metric-card {
   flex: 1 1 0;
+  min-width: 0;
   padding: 14px 16px;
   color: #ffffff;
-  text-align: left;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.metric-bar .metric-card + .metric-card {
-  border-left: 1px solid rgba(255, 255, 255, 0.3);
+.metric-bar .metric-segment:not(:last-child) {
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .metric-label {
   font-size: 13px;
-  opacity: 0.85;
-  margin-bottom: 6px;
+  opacity: 0.88;
+  letter-spacing: 0.01em;
 }
 
 .metric-value {
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* View toggle */
@@ -239,9 +246,10 @@ body {
 
 .podium {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  gap: 16px;
+  gap: 20px;
   margin-bottom: 32px;
 }
 
@@ -250,28 +258,23 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 0 1 220px;
+  flex: 0 1 clamp(240px, 28vw, 320px);
+  width: clamp(240px, 28vw, 320px);
 }
 
 .podium-card {
   background: var(--blue-card);
   border-radius: 26px;
-  padding: 18px 16px 20px;
+  padding: 26px 18px 20px;
   color: #ffffff;
   text-align: center;
   box-shadow: var(--shadow-card);
-  min-height: 220px;
+  min-height: 230px;
   width: 100%;
-}
-
-.podium-item:nth-child(2) .podium-card {
-  min-height: 250px;
-  padding-top: 24px;
-}
-
-.podium-item:nth-child(1) .podium-card,
-.podium-item:nth-child(3) .podium-card {
-  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .podium-card--winner {
@@ -292,13 +295,13 @@ body {
   box-shadow: 0 0 0 4px rgba(255, 122, 60, 0.7), var(--shadow-card);
 }
 
-.podium-rank {
+.podium-rank-badge {
   position: absolute;
-  top: -16px;
+  top: -18px;
   left: 50%;
   transform: translateX(-50%);
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: #ffffff;
   color: var(--blue-bg);
@@ -307,6 +310,7 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 1;
+  box-shadow: var(--shadow-card);
 }
 
 .podium-avatar-wrapper {
@@ -474,6 +478,11 @@ body {
     flex-direction: column;
     border-radius: 16px;
   }
+
+  .metric-bar .metric-segment:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  }
 }
 
 @media (max-width: 640px) {
@@ -486,38 +495,25 @@ body {
     justify-self: center;
   }
 
-  .podium{
-    flex-wrap: wrap;
-    gap: 10px;
+  .podium {
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .podium-item {
+    width: min(100%, 360px);
+    flex-basis: min(100%, 360px);
+  }
+
+  .metric-bar {
+    box-shadow: var(--shadow-card);
   }
 
   .podium-card{
-    min-height: 170px;
-    padding: 14px 10px 14px;
+    min-height: 180px;
+    padding: 18px 12px 16px;
     border-radius: 18px;
-  }
-
-  /* make center (winner) taller */
-  .podium-item:nth-child(2) .podium-card{
-    min-height: 210px;
-  }
-
-  .podium-avatar{
-    width: 54px;
-    height: 54px;
-    border-radius: 14px;
-  }
-
-  .podium-name{
-    font-size: 13px;
-  }
-
-  .podium-subtext{
-    font-size: 12px;
-  }
-
-  .podium-stats{
-    font-size: 12px;
   }
 
   .table-wrapper {

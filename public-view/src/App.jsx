@@ -119,6 +119,34 @@ function getInitials(name = "") {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function normalizePodiumItems(topItems = []) {
+  const cleaned = (topItems || []).filter(Boolean);
+  const sorted = [...cleaned].sort((a, b) => {
+    if (a?.rank != null && b?.rank != null) return a.rank - b.rank;
+    return (b?.points ?? 0) - (a?.points ?? 0);
+  });
+
+  if (sorted.length >= 3) {
+    return [sorted[1], sorted[0], sorted[2]];
+  }
+
+  if (sorted.length === 2) {
+    return [sorted[1], sorted[0]];
+  }
+
+  if (sorted.length === 1) {
+    return [sorted[0]];
+  }
+
+  return [];
+}
+
+function getPodiumOffset(rank) {
+  if (rank === 2) return 18;
+  if (rank === 3) return 34;
+  return 0;
+}
+
 function App() {
   const initialWeeks = buildWeekTabsForCurrentMonth();
   const [weekTabs] = useState(initialWeeks.tabs);
@@ -354,9 +382,22 @@ function App() {
           </div>
 
           <div className="metric-bar">
-            <MetricCard label={entitiesLabel} value={metrics.entitiesCount} />
-            <MetricCard label="Leads" value={metrics.totalLeads} />
-            <MetricCard label="Sales" value={formatCurrencyPHP(metrics.totalSales)} />
+            {[
+              { label: entitiesLabel, value: metrics.entitiesCount },
+              { label: "Leads", value: metrics.totalLeads },
+              { label: "Sales", value: formatCurrencyPHP(metrics.totalSales) },
+            ].map((metric, index) => (
+              <motion.div
+                key={metric.label}
+                className="metric-segment"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+              >
+                <div className="metric-label">{metric.label}</div>
+                <div className="metric-value">{metric.value}</div>
+              </motion.div>
+            ))}
           </div>
         </section>
 
@@ -423,47 +464,14 @@ function App() {
   );
 }
 
-function MetricCard({ label, value, className, ...props }) {
-  // Spread motion props first so className on the animated element cannot be overwritten.
-  const { className: _ignoredClassName, ...safeMotionProps } = props;
-  const cardClass = mergeClassNames("metric-card", className);
-  return (
-    <motion.div
-      {...safeMotionProps}
-      className={cardClass}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="metric-label">{label}</div>
-      <div className="metric-value">{value}</div>
-    </motion.div>
-  );
-}
-
 function Podium({ top3, view }) {
-  if (!top3.length) return null;
-
-  // arrange as [2nd, 1st, 3rd]
-  const arranged = [top3[1], top3[0], top3[2]];
+  const podiumItems = normalizePodiumItems(top3);
+  if (!podiumItems.length) return null;
 
   return (
     <div className="podium">
-      {arranged.map((item, index) => {
-        if (!item) {
-          return (
-            <div key={index} className="podium-item">
-              <div className="podium-rank">{index === 1 ? 1 : index === 0 ? 2 : 3}</div>
-              <div className="podium-card podium-card--placeholder" />
-            </div>
-          );
-        }
-        const rank =
-          index === 1
-            ? 1
-            : index === 0
-            ? (top3[1]?.rank ?? 2)
-            : (top3[2]?.rank ?? 3);
+      {podiumItems.map((item, index) => {
+        const rank = item.rank ?? index + 1;
 
         const accentClasses = mergeClassNames(
           "podium-card",
@@ -475,12 +483,12 @@ function Podium({ top3, view }) {
         return (
           <motion.div
             key={item.key || item.id}
-            className="podium-item"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
+            className={mergeClassNames("podium-item", `podium-item--rank-${rank}`)}
+            initial={{ opacity: 0, y: getPodiumOffset(rank) + 20 }}
+            animate={{ opacity: 1, y: getPodiumOffset(rank) }}
             transition={{ duration: 0.4, delay: index * 0.1 }}
           >
-            <div className="podium-rank">{rank}</div>
+            <div className="podium-rank-badge">{rank}</div>
             <div className={accentClasses}>
               <div className="podium-avatar-wrapper">
                 <div className="podium-avatar">
