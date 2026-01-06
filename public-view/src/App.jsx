@@ -440,7 +440,7 @@ function Podium({ top3, view }) {
   return (
     <div className="podium">
       {arranged.map((item, index) => {
-        if (!item) return <div key={index} className="podium-card-placeholder" />;
+        if (!item) return <div key={index} className="podium-card podium-card--placeholder" />;
         const rank =
           index === 1
             ? 1
@@ -448,13 +448,18 @@ function Podium({ top3, view }) {
             ? (top3[1]?.rank ?? 2)
             : (top3[2]?.rank ?? 3);
 
-        const accentClass =
-          rank === 1 ? "podium-card--gold" : rank === 3 ? "podium-card--orange" : "";
+        const accentClasses = [
+          rank === 1 ? "podium-card--winner" : "",
+          rank === 1 ? "podium-card--gold" : "",
+          rank === 3 ? "podium-card--orange" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
 
         return (
           <motion.div
             key={item.key || item.id}
-            className={`podium-card ${accentClass}`}
+            className={`podium-card${accentClasses ? ` ${accentClasses}` : ""}`}
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.1 }}

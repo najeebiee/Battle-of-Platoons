@@ -251,6 +251,15 @@ body {
   min-height: 220px;
 }
 
+.podium-card--winner {
+  box-shadow: 0 0 0 4px rgba(255, 213, 74, 0.7), var(--shadow-card);
+}
+
+.podium-card--placeholder {
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .podium-card--gold {
   box-shadow: 0 0 0 4px rgba(255, 213, 74, 0.7), var(--shadow-card);
 }
