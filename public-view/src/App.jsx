@@ -141,12 +141,6 @@ function normalizePodiumItems(topItems = []) {
   return [];
 }
 
-function getPodiumOffset(rank) {
-  if (rank === 2) return 18;
-  if (rank === 3) return 34;
-  return 0;
-}
-
 function App() {
   const initialWeeks = buildWeekTabsForCurrentMonth();
   const [weekTabs] = useState(initialWeeks.tabs);
@@ -382,22 +376,33 @@ function App() {
           </div>
 
           <div className="metric-bar">
-            {[
-              { label: entitiesLabel, value: metrics.entitiesCount },
-              { label: "Leads", value: metrics.totalLeads },
-              { label: "Sales", value: formatCurrencyPHP(metrics.totalSales) },
-            ].map((metric, index) => (
-              <motion.div
-                key={metric.label}
-                className="metric-segment"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <div className="metric-label">{metric.label}</div>
-                <div className="metric-value">{metric.value}</div>
-              </motion.div>
-            ))}
+            <motion.div
+              className="metric-segment"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="metric-label">{entitiesLabel}</div>
+              <div className="metric-value">{metrics.entitiesCount}</div>
+            </motion.div>
+            <motion.div
+              className="metric-segment"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.05 }}
+            >
+              <div className="metric-label">Leads</div>
+              <div className="metric-value">{metrics.totalLeads}</div>
+            </motion.div>
+            <motion.div
+              className="metric-segment"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <div className="metric-label">Sales</div>
+              <div className="metric-value">{formatCurrencyPHP(metrics.totalSales)}</div>
+            </motion.div>
           </div>
         </section>
 
@@ -441,10 +446,6 @@ function App() {
         )}
         {error && <div className="status-text status-text--error">{error}</div>}
 
-        <div className="status-text" style={{ fontSize: 13, marginBottom: 12 }}>
-          Only publishable results are shown (Matched or Super Admin Approved).
-        </div>
-
         {!loading && !error && (
           <>
             {rows.length === 0 ? (
@@ -484,8 +485,8 @@ function Podium({ top3, view }) {
           <motion.div
             key={item.key || item.id}
             className={mergeClassNames("podium-item", `podium-item--rank-${rank}`)}
-            initial={{ opacity: 0, y: getPodiumOffset(rank) + 20 }}
-            animate={{ opacity: 1, y: getPodiumOffset(rank) }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: index * 0.1 }}
           >
             <div className="podium-rank-badge">{rank}</div>
