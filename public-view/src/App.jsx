@@ -482,32 +482,34 @@ function Podium({ top3, view }) {
             key={item.key || item.id}
             className={mergeClassNames("podium-item", `podium-item--rank-${rank}`)}
           >
-            <motion.div
-              className={accentClasses}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-            >
-              <div className="podium-rank-badge">{rank}</div>
-              <div className="podium-avatar-wrapper">
-                <div className="podium-avatar">
-                  {item.avatarUrl ? (
-                    <img src={item.avatarUrl} alt={item.name} />
-                  ) : (
-                    <div className="podium-initials">{getInitials(item.name)}</div>
-                  )}
+            <div className={accentClasses}>
+              <motion.div
+                className="podium-card-inner"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+              >
+                <div className="podium-rank-badge">{rank}</div>
+                <div className="podium-avatar-wrapper">
+                  <div className="podium-avatar">
+                    {item.avatarUrl ? (
+                      <img src={item.avatarUrl} alt={item.name} />
+                    ) : (
+                      <div className="podium-initials">{getInitials(item.name)}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="podium-name">{item.name}</div>
-              {view === "leaders" && item.platoon && (
-                <div className="podium-subtext">{item.platoon}</div>
-              )}
-              <div className="podium-stats">
-                <div>{item.points.toFixed(1)} pts</div>
-                <div>{item.leads} leads</div>
-                <div>{formatCurrencyPHP(item.sales)} sales</div>
-              </div>
-            </motion.div>
+                <div className="podium-name">{item.name}</div>
+                {view === "leaders" && item.platoon && (
+                  <div className="podium-subtext">{item.platoon}</div>
+                )}
+                <div className="podium-stats">
+                  <div>{item.points.toFixed(1)} pts</div>
+                  <div>{item.leads} leads</div>
+                  <div>{formatCurrencyPHP(item.sales)} sales</div>
+                </div>
+              </motion.div>
+            </div>
           </div>
         );
       })}
