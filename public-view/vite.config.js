@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs/promises';
 
 const resolvePath = (...segments) =>
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), ...segments);
@@ -27,6 +28,28 @@ const stripEmotionRequire = {
   },
 };
 
+const stripEmotionRequireEsbuild = {
+  name: 'strip-emotion-require-esbuild',
+  setup(build) {
+    build.onLoad({ filter: /framer-motion\/.*\.(mjs|js)$/ }, async (args) => {
+      const source = await fs.readFile(args.path, 'utf8');
+      if (!source.includes('require("@emotion/is-prop-valid").default')) return;
+
+      const importStatement = 'import emotionIsPropValid from "@emotion/is-prop-valid";\n';
+      const hasImport = /from ["']@emotion\/is-prop-valid["']/.test(source);
+      const patched = source.replace(
+        /require\("@emotion\/is-prop-valid"\)\.default/g,
+        'emotionIsPropValid'
+      );
+
+      return {
+        contents: hasImport ? patched : importStatement + patched,
+        loader: 'js',
+      };
+    });
+  },
+};
+
 export default defineConfig({
   plugins: [stripEmotionRequire, react()],
   resolve: {
@@ -44,6 +67,9 @@ export default defineConfig({
   optimizeDeps: {
     // Ensure mixed ESM/CJS dependencies pre-bundle cleanly to avoid runtime require() in the browser.
     include: ['framer-motion', '@emotion/is-prop-valid'],
+    esbuildOptions: {
+      plugins: [stripEmotionRequireEsbuild],
+    },
   },
   build: {
     commonjsOptions: {

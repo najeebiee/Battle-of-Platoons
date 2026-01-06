@@ -1,9 +1,11 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { getLeaderboard, probeRawDataVisibility } from "./services/leaderboard.service";
 import { supabaseConfigured, supabaseConfigError, getSupabaseProjectRef } from "./services/supabase";
 import "./styles.css";
+
+// Findings: layout wrappers were flattened, so the shared metric bar and podium positioning lost their shared blue container and relative rank anchors.
 
 const VIEW_TABS = [
   { key: "depots", label: "Depots" },
@@ -351,7 +353,7 @@ function App() {
             </div>
           </div>
 
-          <div className="metric-cards">
+          <div className="metric-bar">
             <MetricCard label={entitiesLabel} value={metrics.entitiesCount} />
             <MetricCard label="Leads" value={metrics.totalLeads} />
             <MetricCard label="Sales" value={formatCurrencyPHP(metrics.totalSales)} />
@@ -450,10 +452,10 @@ function Podium({ top3, view }) {
       {arranged.map((item, index) => {
         if (!item) {
           return (
-            <div
-              key={index}
-              className={mergeClassNames("podium-card", "podium-card--placeholder")}
-            />
+            <div key={index} className="podium-item">
+              <div className="podium-rank">{index === 1 ? 1 : index === 0 ? 2 : 3}</div>
+              <div className="podium-card podium-card--placeholder" />
+            </div>
           );
         }
         const rank =
@@ -473,30 +475,31 @@ function Podium({ top3, view }) {
         return (
           <motion.div
             key={item.key || item.id}
-            // Keep className on the animated wrapper so podium styles stay attached.
-            className={accentClasses}
+            className="podium-item"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.1 }}
           >
             <div className="podium-rank">{rank}</div>
-            <div className="podium-avatar-wrapper">
-              <div className="podium-avatar">
-                {item.avatarUrl ? (
-                  <img src={item.avatarUrl} alt={item.name} />
-                ) : (
-                  <div className="podium-initials">{getInitials(item.name)}</div>
-                )}
+            <div className={accentClasses}>
+              <div className="podium-avatar-wrapper">
+                <div className="podium-avatar">
+                  {item.avatarUrl ? (
+                    <img src={item.avatarUrl} alt={item.name} />
+                  ) : (
+                    <div className="podium-initials">{getInitials(item.name)}</div>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="podium-name">{item.name}</div>
-            {view === "leaders" && item.platoon && (
-              <div className="podium-subtext">{item.platoon}</div>
-            )}
-            <div className="podium-stats">
-              <div>{item.points.toFixed(1)} pts</div>
-              <div>{item.leads} leads</div>
-              <div>{formatCurrencyPHP(item.sales)} sales</div>
+              <div className="podium-name">{item.name}</div>
+              {view === "leaders" && item.platoon && (
+                <div className="podium-subtext">{item.platoon}</div>
+              )}
+              <div className="podium-stats">
+                <div>{item.points.toFixed(1)} pts</div>
+                <div>{item.leads} leads</div>
+                <div>{formatCurrencyPHP(item.sales)} sales</div>
+              </div>
             </div>
           </motion.div>
         );
@@ -517,7 +520,7 @@ function LeaderboardTable({ rows, view, roleFilter }) {
       ? "Upline"
       : "Commander";
 
-  const showUpline = view === "leaders" && roleFilter === "squad";
+  const showUpline = false;
 
   return (
     <div className="table-wrapper">
