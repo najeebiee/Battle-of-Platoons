@@ -662,6 +662,12 @@ function LeaderboardTable({ rows, view, roleFilter }) {
                   </div>
                 </div>
               </td>
+              {showUpline && <td>{r.uplineName || "—"}</td>}
+              <td>{r.leads}</td>
+              <td>{r.payins}</td>
+              <td>{formatCurrencyPHP(r.sales)}</td>
+              <td className="cell-right">{r.points.toFixed(1)}</td>
+            </tr>
           ))}
         </tbody>
       </table>
