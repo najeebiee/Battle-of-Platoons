@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  getProfilesByIds,
   listFinalizedWeeks,
   listRawDataAudit,
   listScoringFormulaAudit,
@@ -50,6 +51,23 @@ function truncate(text = "", max = 60) {
   const trimmed = text.toString();
   if (trimmed.length <= max) return trimmed;
   return `${trimmed.slice(0, max)}…`;
+}
+
+function isUuid(value) {
+  if (!value) return false;
+  const text = value.toString();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text);
+}
+
+function shortUuid(value) {
+  if (!value) return "";
+  return value.toString().slice(0, 8);
+}
+
+function getProfileActorId(row) {
+  const raw = row?.actor_id ?? "";
+  const value = raw?.toString?.() ?? "";
+  return isUuid(value) ? value : "";
 }
 
 function normalizeRawDataRow(row) {
@@ -191,10 +209,10 @@ function downloadCsv(content, filename) {
   URL.revokeObjectURL(url);
 }
 
-function applyClientFilters(rows, filters) {
+function applyClientFilters(rows, filters, resolver = {}) {
   const action = filters.action?.trim();
   const entityType = filters.entityType?.trim();
-  const actorValue = filters.actorId?.trim();
+  const actorValue = filters.actorId?.trim().toLowerCase();
   const leaderValue = filters.leaderId?.trim();
   const searchValue = filters.search?.trim().toLowerCase();
   const { fromTs, toTs } = toIsoRange(filters.dateFrom, filters.dateTo);
@@ -206,9 +224,9 @@ function applyClientFilters(rows, filters) {
     if (action && row.action !== action) return false;
 
     if (actorValue) {
-      const actorId = row.actor_id?.toString() ?? "";
-      const actorName = row.actor_name?.toString() ?? "";
-      if (!actorId.includes(actorValue) && !actorName.toLowerCase().includes(actorValue.toLowerCase())) {
+      const actorId = resolver.getActorId ? resolver.getActorId(row) : row.actor_id?.toString() ?? "";
+      const actorDisplay = resolver.getActorDisplay ? resolver.getActorDisplay(row) : row.actor_name?.toString() ?? "";
+      if (!actorId.toLowerCase().includes(actorValue) && !actorDisplay.toLowerCase().includes(actorValue)) {
         return false;
       }
     }
@@ -226,11 +244,13 @@ function applyClientFilters(rows, filters) {
     }
 
     if (searchValue) {
+      const actorDisplay = resolver.getActorDisplay ? resolver.getActorDisplay(row) : row.actor_name;
+      const actorId = resolver.getActorId ? resolver.getActorId(row) : row.actor_id;
       const haystack = [
         row.action,
         row.reason,
-        row.actor_id,
-        row.actor_name,
+        actorId,
+        actorDisplay,
         row.leader_id,
         row.entity_id,
       ]
@@ -255,6 +275,8 @@ export default function AuditLog() {
   const [detailRow, setDetailRow] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState("");
+  const [emailById, setEmailById] = useState({});
+  const [emailMissingById, setEmailMissingById] = useState({});
 
   const [filters, setFilters] = useState({
     dateFrom: "",
@@ -268,6 +290,86 @@ export default function AuditLog() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
 
   const isSuperAdmin = profile?.role === "super_admin";
+
+  const actorIdsToResolve = useMemo(() => {
+    const ids = new Set();
+    rows.forEach(row => {
+      const actorId = getProfileActorId(row);
+      if (!actorId) return;
+      if (emailById[actorId] || emailMissingById[actorId]) return;
+      ids.add(actorId);
+    });
+    return Array.from(ids);
+  }, [rows, emailById, emailMissingById]);
+
+  useEffect(() => {
+    if (!isSuperAdmin || actorIdsToResolve.length === 0) return;
+    let cancelled = false;
+    const chunkSize = 200;
+
+    async function resolveEmails() {
+      for (let i = 0; i < actorIdsToResolve.length; i += chunkSize) {
+        const chunk = actorIdsToResolve.slice(i, i + chunkSize);
+        const profiles = await getProfilesByIds(chunk);
+        if (cancelled) return;
+
+        const foundIds = new Set();
+        const nextEmailById = {};
+        (profiles ?? []).forEach(profileRow => {
+          if (!profileRow?.id) return;
+          foundIds.add(profileRow.id);
+          if (profileRow.email) nextEmailById[profileRow.id] = profileRow.email;
+        });
+
+        const nextMissing = {};
+        chunk.forEach(id => {
+          if (!foundIds.has(id)) nextMissing[id] = true;
+        });
+
+        if (Object.keys(nextEmailById).length) {
+          setEmailById(prev => ({ ...prev, ...nextEmailById }));
+        }
+        if (Object.keys(nextMissing).length) {
+          setEmailMissingById(prev => ({ ...prev, ...nextMissing }));
+        }
+      }
+    }
+
+    resolveEmails();
+    return () => {
+      cancelled = true;
+    };
+  }, [actorIdsToResolve, isSuperAdmin]);
+
+  function getActorMeta(row) {
+    const actorId = row.actor_id ? row.actor_id.toString() : "";
+    const uuidActorId = isUuid(actorId) ? actorId : "";
+    const resolvedEmail = uuidActorId ? emailById[uuidActorId] : "";
+    const actorEmail = row.actor_email ? row.actor_email.toString() : "";
+    const actorName = row.actor_name ? row.actor_name.toString() : "";
+    const nonUuidActorLabel = actorName && !isUuid(actorName) ? actorName : "";
+    const emailUnavailable = uuidActorId && emailMissingById[uuidActorId] && !resolvedEmail && !actorEmail;
+
+    let display = "Unknown";
+    if (resolvedEmail) display = resolvedEmail;
+    else if (actorEmail) display = actorEmail;
+    else if (emailUnavailable) display = "(email unavailable)";
+    else if (nonUuidActorLabel) display = nonUuidActorLabel;
+    else if (uuidActorId) display = shortUuid(uuidActorId);
+
+    const secondary = resolvedEmail
+      ? shortUuid(uuidActorId)
+      : emailUnavailable
+        ? shortUuid(uuidActorId)
+        : "";
+
+    return { display, secondary, actorId: actorId || "" };
+  }
+
+  const actorResolver = useMemo(() => ({
+    getActorId: row => (row.actor_id ? row.actor_id.toString() : ""),
+    getActorDisplay: row => getActorMeta(row).display,
+  }), [emailById, emailMissingById]);
 
   useEffect(() => {
     let mounted = true;
@@ -342,14 +444,8 @@ export default function AuditLog() {
           ...(finalizedResult.data || []).flatMap(normalizeFinalizedWeek),
         ];
 
-        const filtered = applyClientFilters(normalized, appliedFilters).sort((a, b) => {
-          const aTime = new Date(a.created_at || 0).getTime();
-          const bTime = new Date(b.created_at || 0).getTime();
-          return bTime - aTime;
-        });
-
         if (!active) return;
-        setRows(filtered);
+        setRows(normalized);
         setCounts({
           raw: rawResult.count ?? 0,
           scoring: scoringResult.count ?? 0,
@@ -371,6 +467,14 @@ export default function AuditLog() {
     };
   }, [appliedFilters, isSuperAdmin, page]);
 
+  const visibleRows = useMemo(() => {
+    return applyClientFilters(rows, appliedFilters, actorResolver).sort((a, b) => {
+      const aTime = new Date(a.created_at || 0).getTime();
+      const bTime = new Date(b.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+  }, [rows, appliedFilters, actorResolver]);
+
   const actionOptions = useMemo(() => {
     const actionSet = new Set(BASE_ACTIONS);
     rows.forEach(row => {
@@ -382,7 +486,7 @@ export default function AuditLog() {
   const totalCount = counts.raw + counts.scoring + counts.finalized;
   const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 1;
   const hasPrev = page > 0;
-  const hasNext = totalCount ? (page + 1) * PAGE_SIZE < totalCount : rows.length >= PAGE_SIZE;
+  const hasNext = totalCount ? (page + 1) * PAGE_SIZE < totalCount : visibleRows.length >= PAGE_SIZE;
 
   function handleApply() {
     setPage(0);
@@ -475,7 +579,7 @@ export default function AuditLog() {
         await fetchAllFinalized();
       }
 
-      const filtered = applyClientFilters(allRows, appliedFilters).sort((a, b) => {
+      const filtered = applyClientFilters(allRows, appliedFilters, actorResolver).sort((a, b) => {
         const aTime = new Date(a.created_at || 0).getTime();
         const bTime = new Date(b.created_at || 0).getTime();
         return bTime - aTime;
@@ -568,11 +672,11 @@ export default function AuditLog() {
             </select>
           </div>
           <div>
-            <label className="form-label">Actor (id/email)</label>
+            <label className="form-label">User (email or UUID)</label>
             <input
               type="text"
               className="input"
-              placeholder="Actor id or email"
+              placeholder="Email or UUID"
               value={filters.actorId}
               onChange={e => setFilters(prev => ({ ...prev, actorId: e.target.value }))}
             />
@@ -635,23 +739,33 @@ export default function AuditLog() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(row => (
-              <tr key={row.id}>
-                <td>{formatDate(row.created_at)}</td>
-                <td>{row.entity_type}</td>
-                <td>{row.action || "—"}</td>
-                <td>{row.actor_name || row.actor_id || "—"}</td>
-                <td>{row.leader_id || "—"}</td>
-                <td title={row.reason}>{truncate(row.reason)}</td>
-                <td>{row.source_table}</td>
-                <td>
-                  <button type="button" className="button secondary" onClick={() => setDetailRow(row)}>
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!rows.length && !loading ? (
+            {visibleRows.map(row => {
+              const actorMeta = getActorMeta(row);
+              return (
+                <tr key={row.id}>
+                  <td>{formatDate(row.created_at)}</td>
+                  <td>{row.entity_type}</td>
+                  <td>{row.action || "—"}</td>
+                  <td title={actorMeta.actorId || undefined}>
+                    <div>{actorMeta.display}</div>
+                    {actorMeta.secondary ? (
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        {actorMeta.secondary}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td>{row.leader_id || "—"}</td>
+                  <td title={row.reason}>{truncate(row.reason)}</td>
+                  <td>{row.source_table}</td>
+                  <td>
+                    <button type="button" className="button secondary" onClick={() => setDetailRow(row)}>
+                      View
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {!visibleRows.length && !loading ? (
               <tr>
                 <td colSpan={8} className="muted" style={{ textAlign: "center" }}>
                   No audit entries found for the selected filters.
@@ -684,11 +798,11 @@ export default function AuditLog() {
               </button>
             </div>
 
-            <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
+              <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
               <div><strong>Source:</strong> {detailRow.source_table}</div>
               <div><strong>Action:</strong> {detailRow.action || "—"}</div>
               <div><strong>Reason:</strong> {detailRow.reason || "—"}</div>
-              <div><strong>Actor:</strong> {detailRow.actor_name || detailRow.actor_id || "—"}</div>
+              <div><strong>Actor:</strong> {getActorMeta(detailRow).display}</div>
               <div><strong>Actor ID:</strong> {detailRow.actor_id || "—"}</div>
               <div><strong>Entity:</strong> {detailRow.entity_type}</div>
               <div><strong>Entity ID:</strong> {detailRow.entity_id || "—"}</div>
