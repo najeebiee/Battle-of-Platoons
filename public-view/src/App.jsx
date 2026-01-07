@@ -645,7 +645,7 @@ function LeaderboardTable({ rows, view, roleFilter }) {
           <tr>
             <th>Rank</th>
             <th>{labelHeader}</th>
-            {showUpline && <th>Upline</th>}
+            {showUpline}
             <th>Leads</th>
             <th>Payins</th>
             <th>Sales</th>
