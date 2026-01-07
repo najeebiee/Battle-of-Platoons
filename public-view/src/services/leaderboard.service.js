@@ -20,10 +20,18 @@ import { computeTotalScore } from "./scoringEngine";
  * - Instead: fetch lookups separately and attach by depot_id/company_id/platoon_id.
  */
 
+export async function listTeams() {
+  return supabase.from("platoons").select("id,name,photoURL,photo_url").order("name");
+}
+
+export async function listCommanders() {
+  return supabase.from("companies").select("id,name,photoURL,photo_url").order("name");
+}
+
 export async function getLeaderboard({
   startDate, // "YYYY-MM-DD"
   endDate, // "YYYY-MM-DD"
-  groupBy = "leaders", // "leaders" | "depots" | "companies" | "platoon"
+  groupBy = "leaders", // "leaders" | "depots" | "commanders" | "teams" | "platoon"
   roleFilter = null, // null | "platoon" | "squad" | "team"
   battleType = null, // override battle type passed to scoring formula RPC
   weekKey = null,
@@ -121,16 +129,15 @@ export async function getLeaderboard({
   }
 
   // 3) Fetch lookups in parallel (for names/logos + platoon display)
-  const [{ data: depots }, { data: companies }, { data: platoons }] =
-    await Promise.all([
-      supabase.from("depots").select("id,name,photoURL"),
-      supabase.from("companies").select("id,name,photoURL"),
-      supabase.from("platoons").select("id,name,photoURL"),
-    ]);
+  const [{ data: depots }, { data: commanders }, { data: teams }] = await Promise.all([
+    supabase.from("depots").select("id,name,photoURL,photo_url").order("name"),
+    listCommanders(),
+    listTeams(),
+  ]);
 
   const depotsMap = new Map((depots ?? []).map((d) => [String(d.id), d]));
-  const companiesMap = new Map((companies ?? []).map((c) => [String(c.id), c]));
-  const platoonsMap = new Map((platoons ?? []).map((p) => [String(p.id), p]));
+  const commandersMap = new Map((commanders ?? []).map((c) => [String(c.id), c]));
+  const teamsMap = new Map((teams ?? []).map((p) => [String(p.id), p]));
 
   const { data: activeFormula, error: formulaError } = await formulaPromise;
   if (formulaError) throw formulaError;
@@ -141,11 +148,11 @@ export async function getLeaderboard({
   // 4) Aggregate
   const rows = aggregateLeaderboard({
     rows: filtered,
-    mode: groupBy,
+    mode: normalizeGroupBy(groupBy),
     scoringFn,
     depotsMap,
-    companiesMap,
-    platoonsMap,
+    commandersMap,
+    teamsMap,
     agentsMap,
   });
 
@@ -205,8 +212,8 @@ function aggregateLeaderboard({
   mode,
   scoringFn,
   depotsMap,
-  companiesMap,
-  platoonsMap,
+  commandersMap,
+  teamsMap,
   agentsMap,
 }) {
   if (mode === "platoon") {
@@ -231,8 +238,8 @@ function aggregateLeaderboard({
     const platoonId = agentData.platoon_id ?? agentData.platoonId ?? null;
 
     const depot = depotId ? depotsMap.get(String(depotId)) : null;
-    const company = companyId ? companiesMap.get(String(companyId)) : null;
-    const platoon = platoonId ? platoonsMap.get(String(platoonId)) : null;
+    const company = companyId ? commandersMap.get(String(companyId)) : null;
+    const platoon = platoonId ? teamsMap.get(String(platoonId)) : null;
     const uplineId = agentData.uplineId ?? agentData.upline_agent_id ?? "";
     const upline = uplineId ? agentsMap?.get(String(uplineId)) : null;
 
@@ -252,10 +259,14 @@ function aggregateLeaderboard({
       key = String(depotId ?? "");
       name = (depot?.name ?? key) || "(No Depot)";
       avatarUrl = depot?.photoURL ?? "";
-    } else if (mode === "companies") {
+    } else if (mode === "commanders") {
       key = String(companyId ?? "");
       name = (company?.name ?? key) || "(No Company)";
-      avatarUrl = company?.photoURL ?? "";
+      avatarUrl = company?.photoURL ?? company?.photo_url ?? "";
+    } else if (mode === "teams") {
+      key = String(platoonId ?? "");
+      name = (platoon?.name ?? key) || "(No Team)";
+      avatarUrl = platoon?.photoURL ?? platoon?.photo_url ?? "";
     } else {
       // fallback to leaders
       key = agentId;
@@ -430,9 +441,16 @@ function normalizeBattleType(input) {
   const key = String(input || "").toLowerCase();
   if (key === "depots") return "depots";
   if (key === "companies") return "companies";
+  if (key === "teams") return "companies";
+  if (key === "commanders") return "companies";
   if (key === "platoon" || key === "platoons") return "platoons";
   if (key === "leaders") return "leaders";
   return key || "leaders";
+}
+
+function normalizeGroupBy(input) {
+  if (input === "companies") return "commanders";
+  return input;
 }
 
 function toIsoWeekKey(dateStr) {
