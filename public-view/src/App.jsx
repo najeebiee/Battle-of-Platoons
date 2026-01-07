@@ -576,18 +576,19 @@ function Podium({ top3, view }) {
       {podiumItems.map((item, index) => {
         const rank = item.rank ?? index + 1;
 
-          const cardClass = [
-            "podium-card",
-            rank === 1 && "podium-card--winner",
-            rank === 1 && "podium-card--gold",
-            rank === 3 && "podium-card--orange",
-          ].filter(Boolean).join(" ");
+        // CSS didn’t apply because podium-card class wasn’t rendered.
+        const cardClass = mergeClassNames(
+          "podium-card",
+          rank === 1 && "podium-card--winner",
+          rank === 1 && "podium-card--gold",
+          rank === 3 && "podium-card--orange"
+        );
 
-          return (
-            <div
-              key={item.key || item.id}
-              className={mergeClassNames("podium-item", `podium-item--rank-${rank}`)}
-            >
+        return (
+          <div
+            key={item.key || item.id}
+            className={mergeClassNames("podium-item", `podium-item--rank-${rank}`)}
+          >
             <motion.div
               className={cardClass}
               initial={{ opacity: 0 }}
@@ -691,7 +692,6 @@ function LeaderboardTable({ rows, view, roleFilter }) {
 }
 
 export default App;
-
 
 
 
