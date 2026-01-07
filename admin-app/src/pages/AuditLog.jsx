@@ -346,15 +346,18 @@ export default function AuditLog() {
 
   function getActorMeta(row) {
     const actorId = row.actor_id ? row.actor_id.toString() : "";
+    const uuidActorId = isUuid(actorId) ? actorId : "";
     const resolvedEmail = uuidActorId ? emailById[uuidActorId] : "";
     const actorEmail = row.actor_email ? row.actor_email.toString() : "";
     const actorName = row.actor_name ? row.actor_name.toString() : "";
+    const nonUuidActorLabel = actorName && !isUuid(actorName) ? actorName : "";
     const emailUnavailable = uuidActorId && emailMissingById[uuidActorId] && !resolvedEmail && !actorEmail;
 
     let display = "Unknown";
     if (resolvedEmail) display = resolvedEmail;
     else if (actorEmail) display = actorEmail;
     else if (emailUnavailable) display = "(email unavailable)";
+    else if (nonUuidActorLabel) display = nonUuidActorLabel;
 
     return { display, secondary, actorId: actorId || "" };
   }
