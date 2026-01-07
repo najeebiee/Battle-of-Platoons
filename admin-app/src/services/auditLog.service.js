@@ -111,8 +111,8 @@ export async function getProfilesByIds(userIds = []) {
   if (!Array.isArray(userIds) || userIds.length === 0) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id,email")
-    .in("user_id", userIds);
+    .select("id,email")
+    .in("id", userIds);
   if (error) return [];
   return data ?? [];
 }
