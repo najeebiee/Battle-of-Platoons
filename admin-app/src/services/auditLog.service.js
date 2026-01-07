@@ -109,10 +109,9 @@ export async function listFinalizedWeeks({ limit = 50, offset = 0 }) {
 
 export async function getProfilesByIds(userIds = []) {
   if (!Array.isArray(userIds) || userIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id,email")
-    .in("id", userIds);
+  const { data, error } = await supabase.rpc("get_user_emails_super_admin", {
+  user_ids: userIds,
+});
   if (error) return [];
   return data ?? [];
 }
