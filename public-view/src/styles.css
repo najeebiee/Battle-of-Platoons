@@ -722,12 +722,12 @@ button {
   }
 
   .brand-text {
-    font-size: 1.5vw;
+    font-size: 2.2vw;
   }
 
   .brand-logo {
-    width: 3vw;
-    height: 3vw;
+    width: 4vw;
+    height: 4vw;
   }
 
   .page-title {
@@ -735,7 +735,7 @@ button {
   }
 
   .page-date {
-    font-size: 1.5vw;
+    font-size: 2.2vw;
   }
 
   .week-tab--active {
