@@ -180,7 +180,7 @@ button {
   flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 3vw;
   height: clamp(38px, 4.2vw, 52px);
   width: 100%;
   overflow: visible;
@@ -631,11 +631,22 @@ button {
   }
 }
 
+@media (max-width: 742px) {
+  .week-tabs {
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 1.5vw;
+  }
+}
+
 @media (max-width: 702px) {
   .topbar {
     flex-direction: column;
   }
-
+  .topbar-metrics .topbar-divider { 
+    display:none; 
+  }
+  
   .week-tabs {
     gap: 4vw;
   }

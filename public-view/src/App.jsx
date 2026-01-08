@@ -471,21 +471,28 @@ function App() {
             </div>
 
             <div className="topbar-metrics">
-    <div className="topbar-segment topbar-segment--metric">
-      <div className="metric-label">{entitiesLabel}</div>
-      <div className="metric-value">{metrics.entitiesCount}</div>
-    </div>
 
-    <div className="topbar-segment topbar-segment--metric">
-      <div className="metric-label">Leads</div>
-      <div className="metric-value">{metrics.totalLeads}</div>
-    </div>
+                <div className="topbar-divider" aria-hidden="true"></div>
 
-    <div className="topbar-segment topbar-segment--metric">
-      <div className="metric-label">Payins</div>
-      <div className="metric-value">{metrics.totalPayins}</div>
-    </div>
-  </div>
+              <div className="topbar-segment topbar-segment--metric">
+                <div className="metric-label">{entitiesLabel}</div>
+                <div className="metric-value">{metrics.entitiesCount}</div>
+              </div>
+
+              <div className="topbar-divider" aria-hidden="true"></div>
+
+              <div className="topbar-segment topbar-segment--metric">
+                <div className="metric-label">Leads</div>
+                <div className="metric-value">{metrics.totalLeads}</div>
+              </div>
+
+              <div className="topbar-divider" aria-hidden="true"></div>
+
+              <div className="topbar-segment topbar-segment--metric">
+                <div className="metric-label">Payins</div>
+                <div className="metric-value">{metrics.totalPayins}</div>
+              </div>
+            </div>
           </div>
         </section>
 
