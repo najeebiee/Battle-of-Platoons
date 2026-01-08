@@ -6,7 +6,7 @@
   --navy: #000a5c;
   --navy-2: #00084a;
   --white: #ffffff;
-  --divider: rgba(255, 255, 255, 0.18);
+  --divider: rgba(255, 255, 255);
   --gold: #ffd54a;
   --orange: #ff7a3c;
   --text-main: #151530;
@@ -154,7 +154,7 @@ button {
 
 .topbar-divider {
   width: 1px;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--divider);
 }
 
 .week-label {
@@ -646,7 +646,7 @@ button {
   .topbar-metrics .topbar-divider { 
     display:none; 
   }
-  
+
   .week-tabs {
     gap: 4vw;
   }
