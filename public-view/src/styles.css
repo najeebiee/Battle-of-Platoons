@@ -890,6 +890,10 @@ button {
   .week-tab--active {
     height: clamp(23px, 4.2vw, 48px);
   }
+  
+  .metric-label {
+    font-size: 2.2vw;
+  }
 }
 
 @media (max-width: 400px) {
@@ -905,23 +909,26 @@ button {
   }
 
   /* ✅ FIX: Make week tabs a stable 2x2 grid on phones */
-  .week-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* 2 columns */
-    gap: 8px;
+  .week-tabs{
+    display: flex;
+    flex-wrap: nowrap;         /* no wrapping */
+    justify-content: center;
+    gap: 6px;
     width: 100%;
-    justify-items: center;
-    align-items: center;
-    overflow: visible; /* no scroll/levitate */
+    min-height: 6vw;
+    overflow: hidden;          /* no scroll bar */
   }
 
-  /* ✅ Keep tabs consistent + readable */
   .week-tab,
-  .week-tab--active {
-    width: 100%;
-    max-width: 160px;              /* prevents super wide pills */
-    font-size: 12px;               /* more reliable than vw on mobile */
+  .week-tab--active{
+    flex: 1 1 0;               /* equal widths, shrinkable */
+    min-width: 0;              /* IMPORTANT: allows shrinking */
+    max-width: none;
+    font-size: clamp(7px, 2.6vw, 12px);
+    padding: 6px 6px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;   /* last resort if too tight */
     text-align: center;
   }
 
@@ -933,9 +940,31 @@ button {
     padding: 6px 9px;
   }
 
+  .topbar {
+    flex-direction: row;  /* override the 640px stacking */
+    flex-wrap: wrap;      /* allow internal wrap safely */
+    align-items: stretch;
+  }
   /* ✅ Give the weeks area more vertical room for 2 rows of tabs */
+  /* weeks full width (top row) */
   .topbar-segment--weeks {
-    min-height: 120px;
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+
+  /* metrics stay in ONE row (second row) */
+  .topbar-metrics {
+    flex: 0 0 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .topbar-segment--metric {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    align-items: center;
   }
 
   .week-row {
@@ -943,19 +972,19 @@ button {
   }
 
   .week-label {
-    font-size: 12px;
+    font-size: 3vw;
   }
 
   .week-range {
-    font-size: 12px;
+    font-size: 3vw;
   }
 
   .metric-value {
-    font-size: 20px;
+    font-size: 5vw;
   }
 
   .metric-label {
-    font-size: 12px;
+    font-size: 2.8vw;
   }
 
   /* View toggle: keep single row, shrink */
@@ -971,6 +1000,7 @@ button {
   .view-pill--active {
     flex: 1 1 0;
     min-width: 0;
+    font-size: clamp(6px, 2.4vw, 12px);
     padding: 6px 6px;
     line-height: 1.1;
     text-align: center;
@@ -978,71 +1008,5 @@ button {
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 12px;
-  }
-}
-
-
-@media (max-width: 400px) {
-  .topbar-metrics {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .topbar-segment--metric {
-    flex: 0 1 25vw;
-    min-width: 0;
-    width: auto;
-  }
-
-  .week-tab,
-  .week-tab--active {
-    width: clamp(22vw, 110px);
-    font-size: 2.2vw;
-  }
-
-  .week-row {
-    width: 82vw;
-  }
-
-  .week-tab {
-    padding: 6px 9px;
-  }
-  
-  .week-label {
-    font-size: 3vw;
-  }
-
-  .week-range {
-    font-size: 2.8vw;
-  }
-
-  .metric-value {
-    font-size: 5vw;
-  }
-
-  .metric-label {
-    font-size: 2.5vw;
-  }
-
-  .view-toggle {
-    width: 100%;
-    max-width: 100%;
-    flex-wrap: nowrap;
-    justify-content: center;
-    gap: 4px;
-  }
-
-  .view-pill,
-  .view-pill--active {
-    flex: 1 1 0;
-    min-width: 0;
-    font-size: 12px;
-    padding: 6px 6px;
-    line-height: 1.1;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    font-size: 2.5vw;
-    text-overflow: ellipsis;
   }
 }
