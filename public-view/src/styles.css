@@ -764,30 +764,95 @@ button {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 400px) {
+  .topbar-metrics {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .topbar-segment--metric {
+    flex: 0 1 25vw;
+    min-width: 0;
+    width: auto;
+  }
+
+  /* ✅ FIX: Make week tabs a stable 2x2 grid on phones */
   .week-tabs {
-    flex-wrap: wrap;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2 columns */
     gap: 8px;
+    width: 100%;
+    justify-items: center;
+    align-items: center;
+    overflow: visible; /* no scroll/levitate */
+  }
+
+  /* ✅ Keep tabs consistent + readable */
+  .week-tab,
+  .week-tab--active {
+    width: 100%;
+    max-width: 160px;              /* prevents super wide pills */
+    font-size: 12px;               /* more reliable than vw on mobile */
+    white-space: nowrap;
+    text-align: center;
   }
 
   .week-tab {
     padding: 6px 9px;
-    font-size: 12px;
   }
 
   .week-tab--active {
-    padding: 6px 10px;
+    padding: 6px 9px;
   }
 
-  .metric-label {
-    font-size: 3vw;
+  /* ✅ Give the weeks area more vertical room for 2 rows of tabs */
+  .topbar-segment--weeks {
+    min-height: 120px;
+  }
+
+  .week-row {
+    width: 100%;
+  }
+
+  .week-label {
+    font-size: 12px;
+  }
+
+  .week-range {
+    font-size: 12px;
   }
 
   .metric-value {
-    font-size: 4vw;
+    font-size: 20px;
+  }
+
+  .metric-label {
+    font-size: 12px;
+  }
+
+  /* View toggle: keep single row, shrink */
+  .view-toggle {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .view-pill,
+  .view-pill--active {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 6px 6px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
   }
 }
+
 
 @media (max-width: 400px) {
   .topbar-metrics {
