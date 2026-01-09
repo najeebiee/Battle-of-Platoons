@@ -38,24 +38,39 @@ button {
   background: linear-gradient(to bottom, #f5f6ff 0%, #ffffff 40%);
 }
 
-.page-inner {
-  margin: 0 1.6vw;
-  padding: 20px 0px;
+.site-header {
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 1px solid #e6eaf5;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+.site-header__inner {
+  width: 100%;
+  padding: 14px 16px;
+}
+
+.page-inner{
+  max-width: clamp(1200px, 92vw, 1600px);
+  margin: 0 auto;
+  padding: 18px 16px 64px;
 }
 
 /* Header (base) */
 .top-header {
+  width: 100%;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 0;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-self: start;
   min-width: 0;               /* allow text shrink/ellipsis */
 }
 
@@ -76,6 +91,7 @@ button {
 }
 
 .page-title {
+  justify-self: center;
   text-align: center;
   font-size: clamp(1.35rem, 3.2vw, 2.4rem);   /* lower min + lower max */
   font-weight: 900;
@@ -95,7 +111,6 @@ button {
 
 .week-metrics {
   display: block;
-  margin-top: 18px;
   margin-bottom: 32px;
 }
 
@@ -316,13 +331,13 @@ button {
 
 @media (max-width: 380px) {
   .view-toggle {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     border-radius: 16px;
     padding: 6px;
   }
 
   .view-pill {
-    flex: 1 1 48%;
+    flex: 1 1 0;
     min-width: 0;
   }
 }
@@ -696,7 +711,8 @@ button {
   }
 }
 
-@media (max-width: 710px) {
+@media (max-width: 730px) {
+
   .topbar {
     flex-direction: column;
   }
@@ -739,7 +755,7 @@ button {
   }
 
   .week-tab--active {
-    height: clamp(28px, 4.2vw, 52px);
+    height: clamp(23px, 4.2vw, 48px);
   }
 }
 
@@ -757,5 +773,78 @@ button {
 
   .week-tab--active {
     padding: 6px 10px;
+  }
+
+  .metric-label {
+    font-size: 3vw;
+  }
+
+  .metric-value {
+    font-size: 4vw;
+  }
+}
+
+@media (max-width: 400px) {
+  .topbar-metrics {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .topbar-segment--metric {
+    flex: 0 1 25vw;
+    min-width: 0;
+    width: auto;
+  }
+
+  .week-tab,
+  .week-tab--active {
+    width: clamp(22vw, 110px);
+    font-size: 2.2vw;
+  }
+
+  .week-row {
+    width: 82vw;
+  }
+
+  .week-tab {
+    padding: 6px 9px;
+  }
+  
+  .week-label {
+    font-size: 3vw;
+  }
+
+  .week-range {
+    font-size: 2.8vw;
+  }
+
+  .metric-value {
+    font-size: 5vw;
+  }
+
+  .metric-label {
+    font-size: 2.5vw;
+  }
+
+  .view-toggle {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .view-pill,
+  .view-pill--active {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 12px;
+    padding: 6px 6px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: 2.5vw;
+    text-overflow: ellipsis;
   }
 }

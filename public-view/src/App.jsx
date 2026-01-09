@@ -433,16 +433,21 @@ function App() {
           <span>Error: {error || "none"}</span>
         </div>
       )}
-      <div className="page-inner">
-        {/* Top header */}
-        <header className="top-header">
-          <div className="brand">
-            <img src="/gg-logo.png" alt="Grinders Guild logo" className="brand-logo" />
-            <div className="brand-text">Grinders Guild</div>
+      {/* Full-bleed header bar */}
+      <header className="site-header">
+        <div className="site-header__inner">
+          <div className="top-header">
+            <div className="brand">
+              <img src="/gg-logo.png" alt="Grinders Guild logo" className="brand-logo" />
+              <div className="brand-text">Grinders Guild</div>
+            </div>
+            <div className="page-title">Battle of Platoons</div>
+            <div className="page-date">{today}</div>
           </div>
-          <div className="page-title">Battle of Platoons</div>
-          <div className="page-date">{today}</div>
-        </header>
+        </div>
+      </header>
+
+      <div className="page-inner">
 
         {statusBlocks}
 
