@@ -698,7 +698,7 @@ button {
   background: #ffffff;
   border-radius: 18px;
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .leader-table {
