@@ -588,17 +588,12 @@ button {
 
 @media (max-width: 820px) {
   .podium {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
   }
 
   .podium-card {
     width: min(100%, 320px);
-  }
-
-  .podium-item--rank-1 {
-    grid-column: 1 / -1;
-    order: 0;
   }
 
   .podium-rank-badge {
