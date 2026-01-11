@@ -394,6 +394,40 @@ button {
   font-weight: 600;
 }
 
+.formula-text {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.formula-text__title {
+  font-weight: 700;
+}
+
+.formula-text__line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.formula-pill__main {
+  font-weight: 600;
+}
+
+.formula-pill__example {
+  font-size: 12px;
+  color: #475569;
+}
+
+.formula-text__empty {
+  font-size: 13px;
+  color: #9a3412;
+  font-weight: 600;
+}
+
 /* FAQ widget */
 .faq-fab{
   position: fixed;

@@ -350,7 +350,7 @@ function App() {
   const activeFormula = data?.formula?.data || null;
   const selectedWeekKey = data?.formula?.weekKey || null;
   const formulaMetrics = normalizeFormulaMetrics(activeFormula);
-  const formulaVersion = activeFormula?.version ?? activeFormula?.revision ?? "—";
+  const formulaVersion = activeFormula?.version ?? activeFormula?.revision ?? "?";
   const formulaTitle = `${activeFormula?.label ?? "Not published"} (v${formulaVersion})`;
   const top3 = rows.slice(0, 3);
   const entitiesLabel =
@@ -391,6 +391,38 @@ function App() {
       console.warn("Active formula week mismatch", { selectedWeekKey, activeFormula });
     }
   }, [activeFormula, selectedWeekKey]);
+
+  const renderFormulaBlock = () => {
+    if (!activeFormula) {
+      return <div className="formula-text__empty">No published formula for this week.</div>;
+    }
+
+    return (
+      <div className="formula-text">
+        <div className="formula-text__title">Published: {formulaTitle}</div>
+        <div className="formula-text__metrics">
+          {formulaMetrics.length ? (
+            formulaMetrics.map((m) => {
+              const label = formatMetricLabel(m.key);
+              const divisorText = formatNumber(m.divisor);
+              const maxPointsText = formatNumber(m.maxPoints);
+              const exampleText = getFormulaExample(m.divisor);
+              return (
+                <div key={m.key || m.divisor} className="formula-text__line">
+                  <div className="formula-pill__main">
+                    {label}: Divide by {divisorText} (Max {maxPointsText} pts)
+                  </div>
+                  {exampleText && <div className="formula-pill__example">{exampleText}</div>}
+                </div>
+              );
+            })
+          ) : (
+            <div className="formula-text__empty">Formula metrics are not configured.</div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const openFaq = () => {
     setIsFaqOpen(true);
@@ -658,58 +690,23 @@ function App() {
                 <summary className="faq-acc__summary">Formulas</summary>
 
                 <details className="faq-acc faq-acc--nested" open>
-                  <summary className="faq-acc__summary">Current Formula</summary>
-                  <div className="formula-summary formula-summary--modal">
-                    <div className="formula-title">
-                      Formula: {formulaTitle}
-                    </div>
-                    <div className="formula-details">
-                      {activeFormula ? (
-                        formulaMetrics.length ? (
-                          formulaMetrics.map((m) => {
-                            const label = formatMetricLabel(m.key);
-                            const divisorText = formatNumber(m.divisor);
-                            const maxPointsText = formatNumber(m.maxPoints);
-                            const exampleText = getFormulaExample(m.divisor);
-                            return (
-                              <span key={m.key || m.divisor} className="formula-pill">
-                                <div className="formula-pill__main">
-                                  {label}: Divide by {divisorText} (Max {maxPointsText} pts)
-                                </div>
-                                {exampleText && (
-                                  <div className="formula-pill__example">{exampleText}</div>
-                                )}
-                              </span>
-                            );
-                          })
-                        ) : (
-                          <span className="formula-warning">Formula metrics are not configured.</span>
-                        )
-                      ) : (
-                        <span className="formula-warning">No published formula for this week.</span>
-                      )}
-                    </div>
-                  </div>
-                </details>
-
-                <details className="faq-acc faq-acc--nested">
                   <summary className="faq-acc__summary">Depots</summary>
-                  <div className="faq-acc__content">Placeholder text</div>
+                  {renderFormulaBlock()}
                 </details>
 
                 <details className="faq-acc faq-acc--nested">
                   <summary className="faq-acc__summary">Leaders</summary>
-                  <div className="faq-acc__content">Placeholder text</div>
+                  {renderFormulaBlock()}
                 </details>
 
                 <details className="faq-acc faq-acc--nested">
                   <summary className="faq-acc__summary">Commanders</summary>
-                  <div className="faq-acc__content">Placeholder text</div>
+                  {renderFormulaBlock()}
                 </details>
 
                 <details className="faq-acc faq-acc--nested">
                   <summary className="faq-acc__summary">Companies</summary>
-                  <div className="faq-acc__content">Placeholder text</div>
+                  {renderFormulaBlock()}
                 </details>
               </details>
 
@@ -847,7 +844,7 @@ function LeaderboardTable({ rows, view, roleFilter }) {
                   </div>
                 </div>
               </td>
-              {showUpline && <td>{r.uplineName || "—"}</td>}
+              {showUpline && <td>{r.uplineName || "-"}</td>}
               <td>{r.leads}</td>
               <td>{r.payins}</td>
               <td>{formatCurrencyPHP(r.sales)}</td>
