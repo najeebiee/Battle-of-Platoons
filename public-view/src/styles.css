@@ -456,6 +456,7 @@ button {
   width: 24px;
   height: 24px;
   border-radius: 999px;
+  background: rgba(255,255,255,0.14);
   display: grid;
   place-items: center;
   font-weight: 900;
@@ -565,7 +566,6 @@ button {
   width: 30px;
   height: 30px;
   border-radius: 10px;
-  background: #eef2ff;
   display: grid;
   place-items: center;
 }
