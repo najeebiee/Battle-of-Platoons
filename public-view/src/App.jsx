@@ -218,7 +218,7 @@ function getBattleTypeForView(viewKey, roleFilter) {
   if (viewKey === "depots") return "depots";
   if (viewKey === "companies") return "companies";
   if (viewKey === "teams") return "companies";
-  if (viewKey === "commanders") return "companies";
+  if (viewKey === "commanders") return "commanders";
   if (viewKey === "platoon") return "platoons";
   if (viewKey === "leaders" && roleFilter === "platoon") return "platoons";
   if (viewKey === "leaders" && roleFilter === "squad") return "squads";

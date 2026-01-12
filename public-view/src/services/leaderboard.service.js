@@ -142,7 +142,31 @@ export async function getLeaderboard({
   const { data: activeFormula, error: formulaError } = await formulaPromise;
   if (formulaError) throw formulaError;
 
-  const scoringConfig = activeFormula?.config ?? null;
+  let resolvedFormula = activeFormula ?? null;
+  let formulaFallback = null;
+  if (!resolvedFormula && resolvedBattleType === "commanders") {
+    const { data: fallbackFormula, error: fallbackError } = await getActiveFormula(
+      "companies",
+      resolvedWeekKey
+    );
+    if (fallbackError) throw fallbackError;
+    if (fallbackFormula) {
+      resolvedFormula = fallbackFormula;
+      formulaFallback = "companies";
+    }
+  } else if (!resolvedFormula && resolvedBattleType === "teams") {
+    const { data: fallbackFormula, error: fallbackError } = await getActiveFormula(
+      "squads",
+      resolvedWeekKey
+    );
+    if (fallbackError) throw fallbackError;
+    if (fallbackFormula) {
+      resolvedFormula = fallbackFormula;
+      formulaFallback = "squads";
+    }
+  }
+
+  const scoringConfig = resolvedFormula?.config ?? null;
   const scoringFn = (row) => computeTotalScore(resolvedBattleType, row, scoringConfig);
 
   // 4) Aggregate
@@ -168,10 +192,11 @@ export async function getLeaderboard({
     metrics,
     rows,
     formula: {
-      data: activeFormula ?? null,
+      data: resolvedFormula ?? null,
       battleType: resolvedBattleType,
       weekKey: resolvedWeekKey,
-      missing: !activeFormula,
+      missing: !resolvedFormula,
+      fallback: formulaFallback,
     },
     debug: {
       companyRowsFetched,
@@ -184,7 +209,7 @@ export async function getLeaderboard({
       roleFilter,
       battleType: resolvedBattleType,
       weekKey: resolvedWeekKey,
-      formulaMissing: !activeFormula,
+      formulaMissing: !resolvedFormula,
     },
   };
 }
@@ -441,8 +466,8 @@ function normalizeBattleType(input) {
   const key = String(input || "").toLowerCase();
   if (key === "depots") return "depots";
   if (key === "companies") return "companies";
-  if (key === "teams") return "companies";
-  if (key === "commanders") return "companies";
+  if (key === "teams") return "teams";
+  if (key === "commanders") return "commanders";
   if (key === "platoon" || key === "platoons") return "platoons";
   if (key === "leaders") return "leaders";
   return key || "leaders";

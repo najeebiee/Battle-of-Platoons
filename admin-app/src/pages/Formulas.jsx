@@ -703,9 +703,11 @@ export default function ScoringFormulas() {
 
   const sections = [
     { key: "depots", title: "Depots" },
+    { key: "commanders", title: "Commanders" },
     { key: "companies", title: "Companies" },
     { key: "platoons", title: "Platoons" },
     { key: "squads", title: "Squads" },
+    { key: "teams", title: "Teams" },
   ];
 
   const grouped = sections.map(section => ({
