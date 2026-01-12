@@ -10,6 +10,7 @@ import {
   User,
   BadgeCheck,
   Factory,
+  ChevronDown,
 } from "lucide-react";
 import { getLeaderboard, probeRawDataVisibility } from "./services/leaderboard.service";
 import { getActiveFormula } from "./services/scoringFormula.service";
@@ -263,6 +264,7 @@ function App() {
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [faqOpenKey, setFaqOpenKey] = useState("formulas");
   const [formulaOpenKey, setFormulaOpenKey] = useState("depots");
+  const [leadersOpenKey, setLeadersOpenKey] = useState("platoon");
   const [formulasByType, setFormulasByType] = useState({});
   const faqButtonRef = useRef(null);
   const faqCloseRef = useRef(null);
@@ -510,6 +512,69 @@ function App() {
     );
   };
 
+  const renderFormulaBlockForLeaderSubType = (subKey) => {
+    const leaderMap = {
+      platoon: resolvedFormulas.platoons,
+      squad: resolvedFormulas.squads,
+      team: resolvedFormulas.teams,
+    };
+    return renderFormulaBlock(leaderMap[subKey]);
+  };
+
+  const leaderSublist = [
+    { key: "platoon", label: "Platoon", Icon: Building2 },
+    { key: "squad", label: "Squad", Icon: User },
+    { key: "team", label: "Team", Icon: BadgeCheck },
+  ];
+
+  const leadersSubContent =
+    formulaOpenKey === "leaders" ? (
+      <div className="faq-subcontent">
+        <div className="faq-sublist faq-sublist--leaders">
+          {leaderSublist.map((sub) => {
+            const isOpen = leadersOpenKey === sub.key;
+            const Icon = sub.Icon;
+            return (
+              <div className="faq-subitem" key={sub.key}>
+                <button
+                  type="button"
+                  className="faq-subrow faq-subrow--leaders"
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-panel-leaders-${sub.key}`}
+                  onClick={() => setLeadersOpenKey(isOpen ? null : sub.key)}
+                >
+                  <span className="faq-row__left">
+                    <span className="faq-subrow__icon" aria-hidden="true">
+                      {Icon ? (
+                        <Icon size={16} className="faq-subrow__icon-svg" />
+                      ) : (
+                        <User size={16} className="faq-subrow__icon-svg" />
+                      )}
+                    </span>
+                    <span className="faq-row__label">{sub.label}</span>
+                  </span>
+                  <ChevronDown
+                    className={`faq-row__chev ${isOpen ? "is-open" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                <div
+                  id={`faq-panel-leaders-${sub.key}`}
+                  className={`faq-content ${isOpen ? "is-open" : ""}`}
+                  aria-hidden={!isOpen}
+                >
+                  <div className="faq-subcontent">
+                    {renderFormulaBlockForLeaderSubType(sub.key)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ) : null;
+
   const formulaAccordionItems = [
     {
       key: "depots",
@@ -519,22 +584,7 @@ function App() {
     {
       key: "leaders",
       label: "Leaders",
-      content: (
-        <div className="faq-subsections">
-          <div className="faq-subsection">
-            <div className="faq-subsection__title">Platoon</div>
-            {renderFormulaBlock(resolvedFormulas.platoons)}
-          </div>
-          <div className="faq-subsection">
-            <div className="faq-subsection__title">Squad</div>
-            {renderFormulaBlock(resolvedFormulas.squads)}
-          </div>
-          <div className="faq-subsection">
-            <div className="faq-subsection__title">Team</div>
-            {renderFormulaBlock(resolvedFormulas.teams)}
-          </div>
-        </div>
-      ),
+      content: leadersSubContent,
     },
     {
       key: "commanders",
@@ -827,12 +877,10 @@ function App() {
                       </span>
                       <span className="faq-row__label">Formulas</span>
                     </span>
-                    <span
+                    <ChevronDown
                       className={`faq-row__chev ${faqOpenKey === "formulas" ? "is-open" : ""}`}
                       aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
+                    />
                   </button>
 
                   <div
@@ -866,14 +914,12 @@ function App() {
                               </span>
                               <span className="faq-row__label">{item.label}</span>
                             </span>
-                            <span
+                            <ChevronDown
                               className={`faq-row__chev ${
                                 formulaOpenKey === item.key ? "is-open" : ""
                               }`}
                               aria-hidden="true"
-                            >
-                              ⌄
-                            </span>
+                            />
                           </button>
 
                           <div
@@ -905,12 +951,10 @@ function App() {
                       </span>
                       <span className="faq-row__label">Scoring</span>
                     </span>
-                    <span
+                    <ChevronDown
                       className={`faq-row__chev ${faqOpenKey === "scoring" ? "is-open" : ""}`}
                       aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
+                    />
                   </button>
                   <div
                     id="faq-panel-scoring"
@@ -937,12 +981,10 @@ function App() {
                       </span>
                       <span className="faq-row__label">Data Rules</span>
                     </span>
-                    <span
+                    <ChevronDown
                       className={`faq-row__chev ${faqOpenKey === "data-rules" ? "is-open" : ""}`}
                       aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
+                    />
                   </button>
                   <div
                     id="faq-panel-data-rules"
@@ -971,14 +1013,12 @@ function App() {
                       </span>
                       <span className="faq-row__label">Troubleshooting</span>
                     </span>
-                    <span
+                    <ChevronDown
                       className={`faq-row__chev ${
                         faqOpenKey === "troubleshooting" ? "is-open" : ""
                       }`}
                       aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
+                    />
                   </button>
                   <div
                     id="faq-panel-troubleshooting"

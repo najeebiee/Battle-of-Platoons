@@ -332,6 +332,12 @@ button {
     padding: 8px 8px;
     font-size: 13px;
   }
+
+  .faq-row__chev{
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
+  }
 }
 
 @media (max-width: 380px) {
@@ -440,7 +446,7 @@ button {
   padding: 10px;
   border: none;
   border-radius: 999px;
-  background: var(--navy);
+  background: var(--blue-card);
   color: #fff;
   box-shadow: 0 12px 26px rgba(0,0,0,0.18);
   cursor: pointer;
@@ -450,7 +456,6 @@ button {
   width: 24px;
   height: 24px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.14);
   display: grid;
   place-items: center;
   font-weight: 900;
@@ -522,11 +527,15 @@ button {
   gap: 10px;
 }
 
-.faq-row{
-  width: 100%;
+.faq-row,
+.faq-subrow{
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.faq-row{
+  width: 100%;
   padding: 12px 12px;
   border: 1px solid #e6eaf5;
   background: #ffffff;
@@ -563,8 +572,13 @@ button {
 
 .faq-row__icon svg,
 .faq-subrow__icon svg{
-  stroke-width: 1.8;
   display: block;
+}
+
+.faq-row__chev,
+.faq-row__icon svg,
+.faq-subrow__icon svg{
+  stroke-width: 2;
 }
 
 .faq-row__label{
@@ -573,15 +587,17 @@ button {
 }
 
 .faq-row__chev{
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  display: block;
+  opacity: 0.75;
   transition: transform 0.18s ease, opacity 0.18s ease;
-  opacity: 0.65;
-  font-size: 18px;
-  line-height: 1;
 }
 
 .faq-row__chev.is-open{
   transform: rotate(180deg);
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .faq-content{
@@ -611,11 +627,14 @@ button {
   margin-top: 8px;
 }
 
+.faq-sublist--leaders{
+  margin-top: 6px;
+  padding-left: 6px;
+  gap: 8px;
+}
+
 .faq-subrow{
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 10px 10px;
   border: 1px solid #edf2ff;
   background: #fbfdff;
@@ -628,6 +647,10 @@ button {
 
 .faq-subrow:hover{
   background: #f8fafc;
+}
+
+.faq-subrow--leaders{
+  background: #fbfdff;
 }
 
 .faq-subrow__icon{
@@ -757,7 +780,7 @@ button {
 .podium-card {
   position: relative;
   width: 320px;
-  background: #0b1770;
+  background: var(--blue-card);
   border-radius: 24px;
   padding: 18px 16px 20px;
   color: #fff;
