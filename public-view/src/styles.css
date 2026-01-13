@@ -757,6 +757,7 @@ button {
   display: grid;
   grid-template-columns: repeat(3, max-content);
   justify-content: center;   /* centers the 3 cards as a group */
+  justify-items: center;
   align-items: flex-end;
   column-gap: 30px;          /* EXACT spacing between cards */
   row-gap: 24px;
@@ -773,7 +774,8 @@ button {
 
 .podium-card {
   position: relative;
-  width: 320px;
+  width: clamp(200px, 22vw, 360px);
+  max-width: 360px;
   background: var(--blue-card);
   border-radius: 24px;
   padding: 18px 16px 20px;
@@ -800,15 +802,15 @@ button {
 
 /* Rank heights that scale with viewport height */
 .podium-item--rank-1 .podium-card {
-  min-height: clamp(250px, 52vh, 380px);
+  min-height: clamp(280px, 52vh, 380px);
 }
 
 .podium-item--rank-2 .podium-card {
-  min-height: clamp(220px, 42vh, 300px);
+  min-height: clamp(240px, 42vh, 300px);
 }
 
 .podium-item--rank-3 .podium-card {
-  min-height: clamp(200px, 34vh, 250px);
+  min-height: clamp(220px, 34vh, 250px);
 }
 
 /* keep transforms off (aligned baseline) */
@@ -820,7 +822,7 @@ button {
 
 .podium-rank-badge {
   position: absolute;
-  top: -14px;
+  top: -16px;
   left: 50%;
   transform: translateX(-50%);
   width: 34px;
@@ -837,8 +839,10 @@ button {
 }
 
 .podium-avatar-wrapper {
-  margin-top: 10px;
+  margin-top: 6px;
   margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
 }
 
 .podium-avatar, .row-avatar{
@@ -898,33 +902,31 @@ button {
 
 @media (max-width: 1100px) {
   .podium {
-    gap: 20px;
+    column-gap: 22px;
   }
 
   .podium-card {
-    width: clamp(230px, 28vw, 330px);
+    width: clamp(190px, 24vw, 320px);
   }
 }
 
 @media (max-width: 980px) {
   .podium {
-    grid-template-columns: repeat(3, minmax(200px, 1fr));
-    gap: 18px;
+    column-gap: 18px;
   }
 
   .podium-card {
-    width: clamp(210px, 30vw, 300px);
+    width: clamp(175px, 26vw, 280px);
   }
 }
 
 @media (max-width: 820px) {
   .podium {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    column-gap: 14px;
   }
 
   .podium-card {
-    width: min(100%, 320px);
+    width: clamp(160px, 28vw, 240px);
   }
 
   .podium-rank-badge {
@@ -942,7 +944,8 @@ button {
 @media (max-width: 640px) {
   .podium {
     grid-template-columns: repeat(3, minmax(0, 1fr)); /* keep 3 across */
-    column-gap: 12px;
+    justify-content: center;
+    column-gap: 10px;
     row-gap: 0;
     justify-items: center;
     align-items: end;
@@ -958,15 +961,15 @@ button {
   .podium-card {
     width: 100%;
     max-width: none;
-    padding: 14px 12px 16px;
+    padding: 12px 10px 14px;
     border-radius: 18px;
     gap: 6px;
   }
 
   /* heights scale down but keep podium hierarchy */
-  .podium-item--rank-1 .podium-card { min-height: clamp(220px, 34vh, 280px); }
-  .podium-item--rank-2 .podium-card { min-height: clamp(200px, 32vh, 260px); }
-  .podium-item--rank-3 .podium-card { min-height: clamp(190px, 30vh, 250px); }
+  .podium-item--rank-1 .podium-card { min-height: clamp(210px, 34vh, 260px); }
+  .podium-item--rank-2 .podium-card { min-height: clamp(190px, 30vh, 240px); }
+  .podium-item--rank-3 .podium-card { min-height: clamp(180px, 28vh, 230px); }
 
   /* aligned baseline */
   .podium-item--rank-1,
@@ -1006,7 +1009,7 @@ button {
 @media (max-width: 400px) {
   /* smallest supported width: tighten spacing */
   .podium {
-    column-gap: 10px;
+    column-gap: 8px;
     margin: 14px 0 16px;
   }
 
@@ -1035,6 +1038,9 @@ button {
 
   .podium-name {
     font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .podium-subtext,
