@@ -27,6 +27,9 @@ function mapWeekFinalizedMessage(message = "") {
   if (message.toLowerCase().includes("week is finalized")) {
     return WEEK_FINALIZED_MESSAGE;
   }
+  if (message.toLowerCase().includes("raw_data_unique_triplet")) {
+    return "Database uniqueness is still (date_real, agent_id, source). Apply migration to include depot columns.";
+  }
   return message;
 }
 
@@ -587,6 +590,13 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
       .slice(i, i + batchSize)
       .map(row => {
         const rowSource = row.source === "depot" || row.source === "company" ? row.source : normalizedSource;
+        if (!row.leads_depot_id || !row.sales_depot_id) {
+          row.status = "invalid";
+          row.errors = Array.from(
+            new Set([...(row.errors ?? []), "Missing depot attribution for leads or sales."])
+          );
+          return null;
+        }
         const id =
           row.computedId ||
           computeRawDataId({
@@ -611,7 +621,7 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
           updatedAt: { iso: now },
         };
       })
-      .filter(item => item.id);
+      .filter(item => item?.id);
 
     if (isInsertOnly) {
       const { error } = await supabase.from("raw_data").insert(batch, { returning: "minimal" });
