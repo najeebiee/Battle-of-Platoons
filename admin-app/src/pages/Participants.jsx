@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ModalForm } from "../components/ModalForm";
 import { listAgents, upsertAgent } from "../services/agents.service";
 import { listDepots, upsertDepot } from "../services/depots.service";
 import { listCompanies, upsertCompany } from "../services/companies.service";
@@ -44,6 +45,12 @@ function useFilePreview(file) {
 export default function Participants() {
   const [tab, setTab] = useState("leaders"); // leaders | companies | depots | platoons
   const [status, setStatus] = useState({ type: "", msg: "" });
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [pendingTab, setPendingTab] = useState("");
+  const [panelMinHeight, setPanelMinHeight] = useState(null);
+
+  const animationTimerRef = useRef(null);
+  const panelRef = useRef(null);
 
   const [agents, setAgents] = useState([]);
   const [depots, setDepots] = useState([]);
@@ -73,6 +80,10 @@ export default function Participants() {
   const [leaderUploading, setLeaderUploading] = useState(false);
   const [simpleUploading, setSimpleUploading] = useState(false);
   const [platoonUploading, setPlatoonUploading] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isAddCommanderOpen, setIsAddCommanderOpen] = useState(false);
+  const [isAddDepotOpen, setIsAddDepotOpen] = useState(false);
+  const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false);
 
   const leaderFilePreview = useFilePreview(leaderPhotoFile);
   const simpleFilePreview = useFilePreview(simplePhotoFile);
@@ -244,6 +255,11 @@ export default function Participants() {
     setStatus({ type: "", msg: "" });
   }
 
+  function handleLeaderClear() {
+    clearLeader();
+    setIsFormOpen(false);
+  }
+
   async function saveLeader(e) {
     e.preventDefault();
     setStatus({ type: "", msg: "" });
@@ -336,6 +352,7 @@ export default function Participants() {
     setLeaderPhotoUrlInput(a.photoURL || "");
     setLeaderPhotoError("");
     setStatus({ type: "", msg: "" });
+    setIsFormOpen(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -373,6 +390,16 @@ export default function Participants() {
     setSimplePhotoUrlInput("");
     setSimplePhotoError("");
     setStatus({ type: "", msg: "" });
+  }
+
+  function handleCommanderClear() {
+    clearSimple();
+    setIsAddCommanderOpen(false);
+  }
+
+  function handleDepotClear() {
+    clearSimple();
+    setIsAddDepotOpen(false);
   }
 
   async function saveSimple(e) {
@@ -485,6 +512,11 @@ export default function Participants() {
     setStatus({ type: "", msg: "" });
   }
 
+  function handleCompanyClear() {
+    clearPlatoon();
+    setIsAddCompanyOpen(false);
+  }
+
   async function savePlatoon(e) {
     e.preventDefault();
     setStatus({ type: "", msg: "" });
@@ -548,28 +580,119 @@ export default function Participants() {
     setPlatoonPhotoUrlInput(row.photoURL || "");
     setPlatoonPhotoError("");
     setStatus({ type: "", msg: "" });
+    setIsAddCompanyOpen(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   const leaderPhotoPreviewUrl = leaderFilePreview || leaderPhotoUrlInput.trim() || leaderForm.photoURL.trim();
   const simplePhotoPreviewUrl = simpleFilePreview || simplePhotoUrlInput.trim() || simpleForm.photoURL.trim();
   const platoonPhotoPreviewUrl = platoonFilePreview || platoonPhotoUrlInput.trim() || platoonForm.photoURL.trim();
+  const activeModal = isFormOpen
+    ? "leader"
+    : isAddCommanderOpen
+      ? "commander"
+      : isAddDepotOpen
+        ? "depot"
+        : isAddCompanyOpen
+          ? "company"
+          : "";
+  const isModalOpen = !!activeModal;
+  const simpleModalType = activeModal === "commander" ? "companies" : activeModal === "depot" ? "depots" : "";
+  const simpleModalTitle = simpleModalType
+    ? simpleForm.id
+      ? `Edit ${simpleModalType === "companies" ? "Commander" : "Depot"}`
+      : `Add ${simpleModalType === "companies" ? "Commander" : "Depot"}`
+    : "";
+
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (isAnimating) return;
+    const panelEl = panelRef.current;
+    if (!panelEl) return;
+    setPanelMinHeight(panelEl.offsetHeight);
+  }, [tab, isAnimating]);
+
+  function handleTabChange(nextTab) {
+    if (nextTab === tab && !pendingTab) return;
+    if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+
+    const panelEl = panelRef.current;
+    if (panelEl) setPanelMinHeight(panelEl.offsetHeight);
+
+    setPendingTab(nextTab);
+    setIsAnimating(true);
+
+    animationTimerRef.current = setTimeout(() => {
+      setTab(nextTab);
+      setIsAnimating(false);
+      setPendingTab("");
+      if (nextTab !== "leaders") setIsFormOpen(false);
+      if (nextTab !== "companies") setIsAddCommanderOpen(false);
+      if (nextTab !== "depots") setIsAddDepotOpen(false);
+      if (nextTab !== "platoons") setIsAddCompanyOpen(false);
+    }, 100);
+  }
+
+  function handleModalOverlayClose(e) {
+    if (e.target === e.currentTarget) closeAllModals();
+  }
+
+  function closeAllModals() {
+    setIsFormOpen(false);
+    setIsAddCommanderOpen(false);
+    setIsAddDepotOpen(false);
+    setIsAddCompanyOpen(false);
+  }
+
+  const isAnyModalOpen = isFormOpen || isAddCommanderOpen || isAddDepotOpen || isAddCompanyOpen;
+
+  useEffect(() => {
+    if (!isAnyModalOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") closeAllModals();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAnyModalOpen]);
+
+  useEffect(() => {
+    return undefined;
+  }, []);
 
   // ---- UI
   return (
     <div className="p-page">
       <div className="p-head">
-        <div className="p-tabs">
-          <button className={`p-tab ${tab === "leaders" ? "active" : ""}`} onClick={() => { setTab("leaders"); setStatus({type:"",msg:""}); }}>
+        <div className="tabs">
+          <button
+            className={`tab-button${tab === "leaders" ? " active" : ""}`}
+            onClick={() => { handleTabChange("leaders"); setStatus({type:"",msg:""}); }}
+          >
             Leaders
           </button>
-          <button className={`p-tab ${tab === "companies" ? "active" : ""}`} onClick={() => { setTab("companies"); clearSimple(); }}>
+          <button
+            className={`tab-button${tab === "companies" ? " active" : ""}`}
+            onClick={() => { handleTabChange("companies"); clearSimple(); }}
+          >
             Commanders
           </button>
-          <button className={`p-tab ${tab === "depots" ? "active" : ""}`} onClick={() => { setTab("depots"); clearSimple(); }}>
+          <button
+            className={`tab-button${tab === "depots" ? " active" : ""}`}
+            onClick={() => { handleTabChange("depots"); clearSimple(); }}
+          >
             Depots
           </button>
-          <button className={`p-tab ${tab === "platoons" ? "active" : ""}`} onClick={() => { setTab("platoons"); clearPlatoon(); }}>
+          <button
+            className={`tab-button${tab === "platoons" ? " active" : ""}`}
+            onClick={() => { handleTabChange("platoons"); clearPlatoon(); }}
+          >
             Companies
           </button>
         </div>
@@ -579,9 +702,25 @@ export default function Participants() {
           <button
             className="btn-primary"
             onClick={() => {
-              if (tab === "leaders") clearLeader();
-              if (tab === "companies" || tab === "depots") clearSimple();
-              if (tab === "platoons") clearPlatoon();
+              if (tab === "leaders") {
+                clearLeader();
+                setIsFormOpen(true);
+                return;
+              }
+              if (tab === "companies") {
+                clearSimple();
+                setIsAddCommanderOpen(true);
+                return;
+              }
+              if (tab === "depots") {
+                clearSimple();
+                setIsAddDepotOpen(true);
+                return;
+              }
+              if (tab === "platoons") {
+                clearPlatoon();
+                setIsAddCompanyOpen(true);
+              }
             }}
           >
             Add +
@@ -595,12 +734,61 @@ export default function Participants() {
         )}
       </div>
 
+      <div
+        className="tab-panel"
+        data-state={isAnimating ? "out" : "in"}
+        ref={panelRef}
+        style={panelMinHeight ? { minHeight: panelMinHeight } : undefined}
+      >
       {/* FORM AREA */}
-      {tab === "leaders" && (
-        <div className="card">
-          <div className="card-title">{leaderForm.id ? "Edit Leader" : "Add Leader"}</div>
-
-          <form className="form" onSubmit={saveLeader}>
+      <ModalForm
+        isOpen={isModalOpen}
+        onOverlayClose={handleModalOverlayClose}
+        onSubmit={
+          activeModal === "leader"
+            ? saveLeader
+            : activeModal === "company"
+              ? savePlatoon
+              : saveSimple
+        }
+        title={
+          activeModal === "leader"
+            ? (leaderForm.id ? "Edit Leader" : "Add Leader")
+            : activeModal === "company"
+              ? (platoonForm.id ? "Edit Company" : "Add Company")
+              : simpleModalTitle
+        }
+        onClose={closeAllModals}
+        footer={
+          activeModal === "leader" ? (
+            <>
+              <button className="btn-primary" type="submit" disabled={leaderUploading || leaderIdConflict}>{isEditingLeader ? "Save Changes" : "Save"}</button>
+              <button className="btn" type="button" onClick={handleLeaderClear}>Clear</button>
+            </>
+          ) : activeModal === "company" ? (
+            <>
+              <button className="btn-primary" type="submit" disabled={platoonUploading}>{platoonForm.id ? "Save Changes" : "Save"}</button>
+              <button className="btn" type="button" onClick={handleCompanyClear}>Clear</button>
+            </>
+          ) : (
+            <>
+              <button className="btn-primary" type="submit" disabled={simpleUploading}>{simpleForm.id ? "Save Changes" : "Save"}</button>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  if (simpleModalType === "companies") handleCommanderClear();
+                  if (simpleModalType === "depots") handleDepotClear();
+                }}
+              >
+                Clear
+              </button>
+            </>
+          )
+        }
+      >
+        {activeModal === "leader" && (
+          <>
             <div className="grid">
               <div className="field">
                 <label>Leader Name</label>
@@ -620,7 +808,7 @@ export default function Participants() {
               <div className="field">
                 <label>Depot</label>
                 <select value={leaderForm.depotId} onChange={(e) => handleDepotChange(e.target.value)}>
-                  <option value="">Select depot…</option>
+                  <option value="">Select depot</option>
                   {depots.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
@@ -628,7 +816,7 @@ export default function Participants() {
               <div className="field">
                 <label>Commander</label>
                 <select value={leaderForm.companyId} onChange={(e) => setLeaderForm(s => ({ ...s, companyId: e.target.value }))}>
-                  <option value="">Select commander…</option>
+                  <option value="">Select commander</option>
                   {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
@@ -636,7 +824,7 @@ export default function Participants() {
               <div className="field">
                 <label>Company</label>
                 <select value={leaderForm.platoonId} onChange={(e) => setLeaderForm(s => ({ ...s, platoonId: e.target.value }))}>
-                  <option value="">Select company…</option>
+                  <option value="">Select company</option>
                   {platoons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
@@ -649,7 +837,7 @@ export default function Participants() {
                   disabled={availableUplineLeaders.length === 0}
                 >
                   <option value="">
-                    {availableUplineLeaders.length === 0 ? "No leaders available" : "Select upline…"}
+                    {availableUplineLeaders.length === 0 ? "No leaders available" : "Select upline"}
                   </option>
                   {availableUplineLeaders.map(l => (
                     <option key={l.id} value={l.id}>
@@ -744,7 +932,7 @@ export default function Participants() {
 
                 <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
                 {leaderPhotoError && <div className="photo-error">{leaderPhotoError}</div>}
-                {leaderUploading && <div className="hint">Uploading…</div>}
+                {leaderUploading && <div className="hint">Uploading...</div>}
               </div>
             </div>
 
@@ -753,20 +941,11 @@ export default function Participants() {
             ) : leaderNameConflict ? (
               <div className="p-status warn">Another leader with the same name exists. Use agent_id in uploads to avoid ambiguity.</div>
             ) : null}
+          </>
+        )}
 
-            <div className="actions">
-              <button className="btn-primary" type="submit" disabled={leaderUploading || leaderIdConflict}>{isEditingLeader ? "Save Changes" : "Save"}</button>
-              <button className="btn" type="button" onClick={clearLeader}>Clear</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {(tab === "companies" || tab === "depots") && (
-        <div className="card">
-          <div className="card-title">{simpleForm.id ? `Edit ${tab === "companies" ? "Commander" : "Depot"}` : `Add ${tab === "companies" ? "Commander" : "Depot"}`}</div>
-
-          <form className="form" onSubmit={saveSimple}>
+        {(activeModal === "commander" || activeModal === "depot") && (
+          <>
             <div className="grid">
               <div className="field">
                 <label>Name</label>
@@ -849,25 +1028,16 @@ export default function Participants() {
 
                 <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
                 {simplePhotoError && <div className="photo-error">{simplePhotoError}</div>}
-                {simpleUploading && <div className="hint">Uploading…</div>}
+                {simpleUploading && <div className="hint">Uploading...</div>}
               </div>
             </div>
 
             <div className="hint">ID: <b>{simpleIdPreview || "(auto)"}</b></div>
+          </>
+        )}
 
-            <div className="actions">
-              <button className="btn-primary" type="submit" disabled={simpleUploading}>{simpleForm.id ? "Save Changes" : "Save"}</button>
-              <button className="btn" type="button" onClick={clearSimple}>Clear</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {tab === "platoons" && (
-        <div className="card">
-          <div className="card-title">{platoonForm.id ? "Edit Company" : "Add Company"}</div>
-
-          <form className="form" onSubmit={savePlatoon}>
+        {activeModal === "company" && (
+          <>
             <div className="grid">
               <div className="field">
                 <label>Name</label>
@@ -950,46 +1120,42 @@ export default function Participants() {
 
                 <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
                 {platoonPhotoError && <div className="photo-error">{platoonPhotoError}</div>}
-                {platoonUploading && <div className="hint">Uploading…</div>}
+                {platoonUploading && <div className="hint">Uploading...</div>}
               </div>
             </div>
 
             <div className="hint">ID: <b>{platoonIdPreview || "(auto)"}</b></div>
-
-            <div className="actions">
-              <button className="btn-primary" type="submit" disabled={platoonUploading}>{platoonForm.id ? "Save Changes" : "Save"}</button>
-              <button className="btn" type="button" onClick={clearPlatoon}>Clear</button>
-            </div>
-          </form>
-        </div>
-      )}
-
+          </>
+        )}
+      </ModalForm>
       {/* LIST AREA */}
       {tab === "leaders" && (
         <div className="card">
           <div className="card-title">Leaders List</div>
-          <div className="table">
-            <div className="t-head">
-              <div>Leader</div><div>Depot</div><div>Commander</div><div>Company</div><div>Upline</div><div className="t-right">Actions</div>
-            </div>
-
-            {agents.map(a => (
-              <div className="t-row" key={a.id}>
-                <div className="t-leader">
-                  <div className="avatar">
-                    {a.photoURL ? <img src={a.photoURL} alt={a.name} /> : <span className="initials">{getInitials(a.name)}</span>}
-                  </div>
-                  <div className="t-name">{a.name}</div>
-                </div>
-                <div>{depotById[a.depotId]?.name || a.depotId || "-"}</div>
-                <div>{companyById[a.companyId]?.name || a.companyId || "-"}</div>
-                <div>{platoonById[a.platoonId]?.name || a.platoonId || "-"}</div>
-                <div>{a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-"}</div>
-                <div className="t-right">
-                  <button className="btn-link" onClick={() => editLeader(a)}>Edit</button>
-                </div>
+          <div className="table-scroll-y">
+            <div className="table">
+              <div className="t-head">
+                <div>Leader</div><div>Depot</div><div>Commander</div><div>Company</div><div>Upline</div><div className="t-right">Actions</div>
               </div>
-            ))}
+
+              {agents.map(a => (
+                <div className="t-row" key={a.id}>
+                  <div className="t-leader">
+                    <div className="avatar">
+                      {a.photoURL ? <img src={a.photoURL} alt={a.name} /> : <span className="initials">{getInitials(a.name)}</span>}
+                    </div>
+                    <div className="t-name">{a.name}</div>
+                  </div>
+                  <div>{depotById[a.depotId]?.name || a.depotId || "-"}</div>
+                  <div>{companyById[a.companyId]?.name || a.companyId || "-"}</div>
+                  <div>{platoonById[a.platoonId]?.name || a.platoonId || "-"}</div>
+                  <div>{a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-"}</div>
+                  <div className="t-right">
+                    <button className="btn-link" onClick={() => editLeader(a)}>Edit</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1013,7 +1179,7 @@ export default function Participants() {
                 <div className="muted">{d.photoURL ? "Has photoURL" : "-"}</div>
                 <div></div><div></div>
                 <div className="t-right">
-                  <button className="btn-link" onClick={() => { setTab("depots"); editSimple(d); }}>Edit</button>
+                  <button className="btn-link" onClick={() => { setTab("depots"); editSimple(d); setIsAddDepotOpen(true); }}>Edit</button>
                 </div>
               </div>
             ))}
@@ -1040,7 +1206,7 @@ export default function Participants() {
                 <div className="muted">{c.photoURL ? "Has photoURL" : "-"}</div>
                 <div></div><div></div>
                 <div className="t-right">
-                  <button className="btn-link" onClick={() => { setTab("companies"); editSimple(c); }}>Edit</button>
+                  <button className="btn-link" onClick={() => { setTab("companies"); editSimple(c); setIsAddCommanderOpen(true); }}>Edit</button>
                 </div>
               </div>
             ))}
@@ -1073,6 +1239,13 @@ export default function Participants() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
+
+
+
+
+
+

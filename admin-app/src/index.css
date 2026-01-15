@@ -130,6 +130,97 @@ body{
 
 .form{ display:flex; flex-direction:column; gap: 10px; }
 
+<<<<<<< HEAD
+=======
+.modal-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal-form{
+  width: min(980px, 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  transform: translateY(6px);
+  opacity: 0;
+  animation: modalIn 160ms ease forwards;
+}
+
+@keyframes modalIn{
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  padding: 14px 18px;
+  z-index: 3;
+}
+
+.modal-body{
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 18px 14px;
+}
+
+.modal-body .form{
+  margin: 0;
+}
+
+.modal-body .grid{
+  gap: 10px;
+}
+
+.modal-footer{
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: #fff;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+@media (max-width: 720px){
+  .modal-body .grid{
+    grid-template-columns: 1fr;
+  }
+}
+
+.modal-close{
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.modal-close:hover{
+  background: rgba(0,0,0,0.06);
+}
+
+>>>>>>> c711e99a (participants)
 .grid{
   display:grid;
   grid-template-columns: repeat(2, minmax(0,1fr));
