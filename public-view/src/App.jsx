@@ -228,7 +228,7 @@ function isWeekKeyInRange(weekKey, startKey, endKey) {
 function getBattleTypeForView(viewKey, roleFilter) {
   if (viewKey === "depots") return "depots";
   if (viewKey === "companies") return "companies";
-  if (viewKey === "teams") return "companies";
+  if (viewKey === "teams") return "teams";
   if (viewKey === "commanders") return "commanders";
   if (viewKey === "platoon") return "platoons";
   if (viewKey === "leaders" && roleFilter === "platoon") return "platoons";
@@ -243,7 +243,7 @@ function getFaqBattleType(entityKey) {
 
 function getGroupByForView(viewKey, roleFilter) {
   if (viewKey === "commanders") return "commanders";
-  if (viewKey === "companies") return "teams";
+  if (viewKey === "companies") return "companies";
   if (viewKey === "leaders" && roleFilter === "platoon") return "platoon";
   return viewKey;
 }
@@ -292,7 +292,7 @@ function App() {
         const range = week?.range;
         const leadersPlatoonView = activeView === "leaders" && leaderRoleFilter === "platoon";
         const groupByView = getGroupByForView(activeView, leaderRoleFilter);
-        const battleTypeKey = getBattleTypeForView(groupByView, leaderRoleFilter);
+        const battleTypeKey = getBattleTypeForView(activeView, leaderRoleFilter);
         const weekKey = range?.end ? toIsoWeekKey(range.end) : null;
 
         const result = await getLeaderboard({
@@ -413,23 +413,18 @@ function App() {
     }
   }, [activeFormula, selectedWeekKey]);
 
-  function pickFormulaWithFallback(map, primaryKey, fallbackKey) {
-    return map?.[primaryKey] ?? map?.[fallbackKey] ?? null;
-  }
-
-  // Reviewed formula types: depots, companies, platoons, squads are present; commanders, teams missing today.
   const resolvedFormulas = {
     depots: { formula: formulasByType.depots, fallbackLabel: null },
     companies: { formula: formulasByType.companies, fallbackLabel: null },
     commanders: {
-      formula: pickFormulaWithFallback(formulasByType, "commanders", "companies"),
-      fallbackLabel: formulasByType.commanders ? null : formulasByType.companies ? "Companies" : null,
+      formula: formulasByType.commanders,
+      fallbackLabel: null,
     },
     platoons: { formula: formulasByType.platoons, fallbackLabel: null },
     squads: { formula: formulasByType.squads, fallbackLabel: null },
     teams: {
-      formula: pickFormulaWithFallback(formulasByType, "teams", "squads"),
-      fallbackLabel: formulasByType.teams ? null : formulasByType.squads ? "Squads" : null,
+      formula: formulasByType.teams,
+      fallbackLabel: null,
     },
   };
 

@@ -1,4 +1,5 @@
 import { listAgents } from "./agents.service";
+import { listDepots } from "./depots.service";
 import { isPublishable } from "./rawData.service";
 import { supabase } from "./supabase";
 
@@ -17,17 +18,29 @@ function computeStatus(entry) {
 
 function computeDelta(company, depot) {
   if (!company || !depot) return null;
+  const leadsDepotMismatch =
+    company.leads_depot_id && depot.leads_depot_id
+      ? String(company.leads_depot_id) !== String(depot.leads_depot_id)
+      : false;
+  const salesDepotMismatch =
+    company.sales_depot_id && depot.sales_depot_id
+      ? String(company.sales_depot_id) !== String(depot.sales_depot_id)
+      : false;
   return {
     leadsDiff: (company.leads ?? 0) - (depot.leads ?? 0),
     payinsDiff: (company.payins ?? 0) - (depot.payins ?? 0),
     salesDiff: (company.sales ?? 0) - (depot.sales ?? 0),
+    leadsDepotMismatch,
+    salesDepotMismatch,
   };
 }
 
 export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}) {
   let query = supabase
     .from("raw_data")
-    .select("id,agent_id,date_real,leads,payins,sales,source,voided,approved")
+    .select(
+      "id,agent_id,date_real,leads,payins,sales,leads_depot_id,sales_depot_id,source,voided,approved"
+    )
     .eq("voided", false)
     .in("source", ["company", "depot"]);
 
@@ -37,6 +50,9 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
 
   const { data, error } = await query.order("date_real", { ascending: false });
   if (error) throw error;
+
+  const depots = await listDepots();
+  const depotNames = new Map((depots ?? []).map(depot => [String(depot.id), depot.name]));
 
   const entries = new Map();
   (data ?? []).forEach(row => {
@@ -57,6 +73,10 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
       leads: Number(row.leads ?? 0) || 0,
       payins: Number(row.payins ?? 0) || 0,
       sales: Number(row.sales ?? 0) || 0,
+      leads_depot_id: row.leads_depot_id ?? null,
+      sales_depot_id: row.sales_depot_id ?? null,
+      leadsDepotName: row.leads_depot_id ? depotNames.get(String(row.leads_depot_id)) ?? "" : "",
+      salesDepotName: row.sales_depot_id ? depotNames.get(String(row.sales_depot_id)) ?? "" : "",
       approved: Boolean(row.approved),
       source: row.source,
       voided: Boolean(row.voided),

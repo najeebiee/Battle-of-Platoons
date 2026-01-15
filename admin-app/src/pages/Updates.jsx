@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { listAgents } from "../services/agents.service";
+import { listDepots } from "../services/depots.service";
 import {
   canEditRow,
   listRawData,
@@ -80,6 +81,9 @@ const initialFilters = {
   depots: "",
   companies: "",
   platoons: "",
+  leadsDepotId: "",
+  salesDepotId: "",
+  source: "",
 };
 
 function canVoidRow(row, profile, agent) {
@@ -100,8 +104,10 @@ const PERMISSION_TOOLTIP = role => {
 
 export default function Updates() {
   const [activeTab, setActiveTab] = useState("leaders");
+  const [depotsSubview, setDepotsSubview] = useState("leads");
 
   const [agents, setAgents] = useState([]);
+  const [depots, setDepots] = useState([]);
   const [rows, setRows] = useState([]);
 
   const [loading, setLoading] = useState(false);
@@ -118,7 +124,13 @@ export default function Updates() {
 
   // Editing (Leaders only)
   const [editingId, setEditingId] = useState("");
-  const [editValues, setEditValues] = useState({ leads: "", payins: "", sales: "" });
+  const [editValues, setEditValues] = useState({
+    leads: "",
+    payins: "",
+    sales: "",
+    leads_depot_id: "",
+    sales_depot_id: "",
+  });
   const [editReason, setEditReason] = useState("");
 
   // Auth / session
@@ -135,6 +147,11 @@ export default function Updates() {
     for (const a of agents) map[a.id] = a;
     return map;
   }, [agents]);
+  const depotMap = useMemo(() => {
+    const map = {};
+    for (const depot of depots) map[depot.id] = depot;
+    return map;
+  }, [depots]);
 
   // Load agents once
   useEffect(() => {
@@ -142,6 +159,17 @@ export default function Updates() {
       try {
         const data = await listAgents();
         setAgents(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await listDepots();
+        setDepots(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       }
@@ -193,6 +221,11 @@ export default function Updates() {
     if (activeTab !== "leaders" && editingId) cancelEdit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+  useEffect(() => {
+    if (activeTab !== "depots") return;
+    setFiltersInput(prev => ({ ...prev, depots: "" }));
+    setFiltersApplied(prev => ({ ...prev, depots: "" }));
+  }, [activeTab, depotsSubview]);
 
   // ----------------------
   // Apply/Clear filters
@@ -250,8 +283,12 @@ export default function Updates() {
         value = r.agent_id || "";
         label = a?.name ? `${a.name} (${r.agent_id})` : r.agent_id || "Unknown leader";
       } else if (activeTab === "depots") {
-        value = a?.depotId || "";
-        label = r.depotName || a?.depot?.name || a?.depotId || "Unknown depot";
+        if (depotsSubview === "sales") {
+          value = r.sales_depot_id || "";
+        } else {
+          value = r.leads_depot_id || "";
+        }
+        label = depotMap[value]?.name || r.depotName || "Unknown depot";
       } else if (activeTab === "companies") {
         value = a?.companyId || "";
         label = r.companyName || a?.company?.name || a?.companyId || "Unknown commander";
@@ -267,7 +304,7 @@ export default function Updates() {
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((x, y) => x.label.localeCompare(y.label));
-  }, [activeTab, agentMap, rows]);
+  }, [activeTab, agentMap, depotMap, depotsSubview, rows]);
 
   // ----------------------
   // Filtered rows shown in table
@@ -275,19 +312,35 @@ export default function Updates() {
   const visibleRows = useMemo(() => {
     const fromTs = toTsYmd(filtersApplied.dateFrom);
     const toTs = toTsYmd(filtersApplied.dateTo);
-    const selected = filtersApplied[activeTab];
+    const selected = activeTab === "depots" ? "" : filtersApplied[activeTab];
+    const filteredSource = filtersApplied.source;
+    const filteredLeadsDepotId = filtersApplied.leadsDepotId;
+    const filteredSalesDepotId = filtersApplied.salesDepotId;
+    const depotsFilterId = filtersApplied.depots;
 
     const filtered = rows.filter(r => {
       const rowTs = toTsYmd(r.date_real); // row date_real should be YYYY-MM-DD
       if ((fromTs !== null || toTs !== null) && rowTs === null) return false;
       if (fromTs !== null && rowTs < fromTs) return false;
       if (toTs !== null && rowTs > toTs) return false;
+      if (filteredSource && r.source !== filteredSource) return false;
+      if (filteredLeadsDepotId && String(r.leads_depot_id || "") !== String(filteredLeadsDepotId)) return false;
+      if (filteredSalesDepotId && String(r.sales_depot_id || "") !== String(filteredSalesDepotId)) return false;
+      if (activeTab === "depots") {
+        if (depotsSubview === "sales") {
+          if (Number(r.payins ?? 0) <= 0 && Number(r.sales ?? 0) <= 0) return false;
+          if (depotsFilterId && String(r.sales_depot_id || "") !== String(depotsFilterId)) return false;
+        } else {
+          if (Number(r.leads ?? 0) <= 0) return false;
+          if (depotsFilterId && String(r.leads_depot_id || "") !== String(depotsFilterId)) return false;
+        }
+      }
 
       if (!selected) return true;
 
       const a = agentMap[r.agent_id];
       if (activeTab === "leaders") return (r.agent_id || "") === selected;
-      if (activeTab === "depots") return (a?.depotId || "") === selected;
+      if (activeTab === "depots") return false;
       if (activeTab === "companies") return (a?.companyId || "") === selected;
       if (activeTab === "platoons") return (a?.platoonId || "") === selected;
 
@@ -303,7 +356,7 @@ export default function Updates() {
     });
 
   return filtered;
-  }, [activeTab, agentMap, filtersApplied, rows]);
+  }, [activeTab, agentMap, depotsSubview, filtersApplied, rows]);
 
   // ----------------------
   // Editing (Leaders only)
@@ -321,6 +374,8 @@ export default function Updates() {
       leads: row.leads ?? "",
       payins: row.payins ?? "",
       sales: row.sales ?? "",
+      leads_depot_id: row.leads_depot_id ?? "",
+      sales_depot_id: row.sales_depot_id ?? "",
     });
     setEditReason("");
     setError("");
@@ -329,7 +384,7 @@ export default function Updates() {
 
   function cancelEdit() {
     setEditingId("");
-    setEditValues({ leads: "", payins: "", sales: "" });
+    setEditValues({ leads: "", payins: "", sales: "", leads_depot_id: "", sales_depot_id: "" });
     setEditReason("");
   }
 
@@ -342,6 +397,8 @@ export default function Updates() {
     const payinsNum = Number(editValues.payins);
     const salesNum = Number(editValues.sales);
     const reason = editReason.trim();
+    const leadsDepotId = editValues.leads_depot_id;
+    const salesDepotId = editValues.sales_depot_id;
 
     if ([leadsNum, payinsNum, salesNum].some(n => Number.isNaN(n))) {
       setError("Please enter valid numbers for leads, payins, and sales.");
@@ -349,6 +406,10 @@ export default function Updates() {
     }
     if (reason.length < 5) {
       setError("Reason must be at least 5 characters.");
+      return;
+    }
+    if (!leadsDepotId || !salesDepotId) {
+      setError("Leads depot and sales depot are required.");
       return;
     }
     if (!sessionUser) {
@@ -374,6 +435,8 @@ export default function Updates() {
           leads: leadsNum,
           payins: payinsNum,
           sales: salesNum,
+          leads_depot_id: leadsDepotId,
+          sales_depot_id: salesDepotId,
         },
         reason,
         sessionUser
@@ -471,7 +534,12 @@ export default function Updates() {
       );
     }
 
-    if (activeTab === "depots") return row.depotName || a?.depot?.name || a?.depotId || "N/A";
+    if (activeTab === "depots") {
+      if (depotsSubview === "sales") {
+        return row.salesDepotName || depotMap[row.sales_depot_id]?.name || "N/A";
+      }
+      return row.leadsDepotName || depotMap[row.leads_depot_id]?.name || "N/A";
+    }
     if (activeTab === "companies") return row.companyName || a?.company?.name || a?.companyId || "N/A";
     if (activeTab === "platoons") return row.platoonName || a?.platoon?.name || a?.platoonId || "N/A";
 
@@ -482,7 +550,9 @@ export default function Updates() {
     activeTab === "leaders"
       ? "Leader"
       : activeTab === "depots"
-      ? "Depot"
+      ? depotsSubview === "sales"
+        ? "Sales Depot"
+        : "Leads Depot"
       : activeTab === "companies"
       ? "Commander"
       : "Company";
@@ -513,7 +583,9 @@ export default function Updates() {
     activeTab === "leaders"
       ? "Leader"
       : activeTab === "depots"
-      ? "Depot"
+      ? depotsSubview === "sales"
+        ? "Sales Depot"
+        : "Leads Depot"
       : activeTab === "companies"
       ? "Commander"
       : "Company";
@@ -554,6 +626,19 @@ export default function Updates() {
     );
   }
 
+  const showLeadsDepotColumns = activeTab === "leaders";
+  const showSalesDepotColumns = activeTab === "leaders";
+  const showLeadsMetric = activeTab !== "depots" || depotsSubview === "leads";
+  const showPayinsMetric = activeTab !== "depots" ? true : depotsSubview === "sales";
+  const showSalesMetric = activeTab !== "depots" ? true : depotsSubview === "sales";
+  const tableColumnCount =
+    6 +
+    (showLeadsDepotColumns ? 1 : 0) +
+    (showSalesDepotColumns ? 1 : 0) +
+    (showLeadsMetric ? 1 : 0) +
+    (showPayinsMetric ? 1 : 0) +
+    (showSalesMetric ? 1 : 0);
+
   return (
     <div className="card">
       <div className="card-title">Updates History</div>
@@ -573,6 +658,26 @@ export default function Updates() {
           </button>
         ))}
       </div>
+      {activeTab === "depots" ? (
+        <div className="tabs" style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className={`tab-button${depotsSubview === "leads" ? " active" : ""}`}
+            onClick={() => setDepotsSubview("leads")}
+            disabled={loading}
+          >
+            Leads
+          </button>
+          <button
+            type="button"
+            className={`tab-button${depotsSubview === "sales" ? " active" : ""}`}
+            onClick={() => setDepotsSubview("sales")}
+            disabled={loading}
+          >
+            Sales/Payins
+          </button>
+        </div>
+      ) : null}
 
       {/* Filters */}
       <div
@@ -619,6 +724,55 @@ export default function Updates() {
             ))}
           </select>
         </div>
+
+        {activeTab === "leaders" ? (
+          <>
+            <div>
+              <label className="input-label">Leads Depot</label>
+              <select
+                className="input"
+                value={filtersInput.leadsDepotId}
+                onChange={e => setFiltersInput(p => ({ ...p, leadsDepotId: e.target.value }))}
+              >
+                <option value="">All depots</option>
+                {depots.map(d => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="input-label">Sales Depot</label>
+              <select
+                className="input"
+                value={filtersInput.salesDepotId}
+                onChange={e => setFiltersInput(p => ({ ...p, salesDepotId: e.target.value }))}
+              >
+                <option value="">All depots</option>
+                {depots.map(d => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="input-label">Source</label>
+              <select
+                className="input"
+                value={filtersInput.source}
+                onChange={e => setFiltersInput(p => ({ ...p, source: e.target.value }))}
+              >
+                <option value="">All sources</option>
+                <option value="company">Company</option>
+                <option value="depot">Depot</option>
+              </select>
+            </div>
+          </>
+        ) : null}
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {/* IMPORTANT: do NOT pass applyFilters directly (it would receive click event) */}
@@ -669,10 +823,11 @@ export default function Updates() {
               <th>Date</th>
               <th>{identityHeader}</th>
               <th>Source</th>
-              <th>Leads</th>
-              <th>Payins</th>
-              <th>Sales</th>
-              <th>Computed ID</th>
+              {showLeadsDepotColumns ? <th>Leads Depot</th> : null}
+              {showSalesDepotColumns ? <th>Sales Depot</th> : null}
+              {showLeadsMetric ? <th>Leads</th> : null}
+              {showPayinsMetric ? <th>Payins</th> : null}
+              {showSalesMetric ? <th>Sales</th> : null}
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -701,53 +856,95 @@ export default function Updates() {
                   <td>{renderIdentityCell(row)}</td>
                   <td>{renderSourcePill(row)}</td>
 
-                  <td>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        className="input"
-                        style={{ maxWidth: 120 }}
-                        value={editValues.leads}
-                        onChange={e => onEditChange("leads", e.target.value)}
-                      />
-                    ) : (
-                      formatNumber(row.leads)
-                    )}
-                  </td>
+                  {showLeadsDepotColumns ? (
+                    <td>
+                      {isEditing ? (
+                        <select
+                          className="input"
+                          value={editValues.leads_depot_id}
+                          onChange={e => onEditChange("leads_depot_id", e.target.value)}
+                        >
+                          <option value="">Select depot</option>
+                          {depots.map(d => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        row.leadsDepotName || depotMap[row.leads_depot_id]?.name || "—"
+                      )}
+                    </td>
+                  ) : null}
 
-                  <td>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        className="input"
-                        style={{ maxWidth: 120 }}
-                        value={editValues.payins}
-                        onChange={e => onEditChange("payins", e.target.value)}
-                      />
-                    ) : (
-                      formatNumber(row.payins)
-                    )}
-                  </td>
+                  {showSalesDepotColumns ? (
+                    <td>
+                      {isEditing ? (
+                        <select
+                          className="input"
+                          value={editValues.sales_depot_id}
+                          onChange={e => onEditChange("sales_depot_id", e.target.value)}
+                        >
+                          <option value="">Select depot</option>
+                          {depots.map(d => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        row.salesDepotName || depotMap[row.sales_depot_id]?.name || "—"
+                      )}
+                    </td>
+                  ) : null}
 
-                  <td>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        className="input"
-                        style={{ maxWidth: 140 }}
-                        value={editValues.sales}
-                        onChange={e => onEditChange("sales", e.target.value)}
-                      />
-                    ) : (
-                      formatCurrency(row.sales)
-                    )}
-                  </td>
+                  {showLeadsMetric ? (
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="input"
+                          style={{ maxWidth: 120 }}
+                          value={editValues.leads}
+                          onChange={e => onEditChange("leads", e.target.value)}
+                        />
+                      ) : (
+                        formatNumber(row.leads)
+                      )}
+                    </td>
+                  ) : null}
 
-                  <td>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      {row.id}
-                    </div>
-                  </td>
+                  {showPayinsMetric ? (
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="input"
+                          style={{ maxWidth: 120 }}
+                          value={editValues.payins}
+                          onChange={e => onEditChange("payins", e.target.value)}
+                        />
+                      ) : (
+                        formatNumber(row.payins)
+                      )}
+                    </td>
+                  ) : null}
+
+                  {showSalesMetric ? (
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="input"
+                          style={{ maxWidth: 140 }}
+                          value={editValues.sales}
+                          onChange={e => onEditChange("sales", e.target.value)}
+                        />
+                      ) : (
+                        formatCurrency(row.sales)
+                      )}
+                    </td>
+                  ) : null}
 
                   <td>{renderStatus(row)}</td>
 
@@ -850,7 +1047,7 @@ export default function Updates() {
 
             {!visibleRows.length && !loading ? (
               <tr>
-                <td colSpan={10} className="muted" style={{ textAlign: "center", padding: 16 }}>
+                <td colSpan={tableColumnCount} className="muted" style={{ textAlign: "center", padding: 16 }}>
                   No data to display.
                 </td>
               </tr>

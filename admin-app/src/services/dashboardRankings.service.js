@@ -1,6 +1,6 @@
 import { listAgents } from "./agents.service";
 import { listCompanies } from "./companies.service";
-import { listDepots } from "./depots.service";
+import { listDepotsDetailed } from "./depots.service";
 import { supabase } from "./supabase";
 
 function normalizeMode(mode) {
@@ -44,7 +44,7 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo } = {}) {
   const resolvedMode = normalizeMode(mode);
   const [agents, depots, companies, rawResult] = await Promise.all([
     listAgents(),
-    listDepots(),
+    listDepotsDetailed(),
     listCompanies(),
     supabase
       .from("raw_data")

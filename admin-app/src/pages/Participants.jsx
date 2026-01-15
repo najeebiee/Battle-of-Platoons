@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ModalForm } from "../components/ModalForm";
 import { listAgents, upsertAgent } from "../services/agents.service";
-import { listDepots, upsertDepot } from "../services/depots.service";
+import { listDepotsDetailed, upsertDepot } from "../services/depots.service";
 import { listCompanies, upsertCompany } from "../services/companies.service";
 import { listPlatoons, upsertPlatoon } from "../services/platoons.service";
 import { uploadAvatar } from "../services/storage.service";
@@ -125,7 +125,7 @@ export default function Participants() {
 
   async function fetchDepots() {
     try {
-      const rows = await listDepots();
+      const rows = await listDepotsDetailed();
       setDepots(rows);
     } catch (e) {
       console.error("Failed to load depots", e);
@@ -158,7 +158,6 @@ export default function Participants() {
     fetchPlatoons();
   }, []);
 
-  const depotById = useMemo(() => Object.fromEntries(depots.map(d => [d.id, d])), [depots]);
   const companyById = useMemo(() => Object.fromEntries(companies.map(c => [c.id, c])), [companies]);
   const platoonById = useMemo(() => Object.fromEntries(platoons.map(p => [p.id, p])), [platoons]);
   const agentById = useMemo(() => Object.fromEntries(agents.map(a => [a.id, a])), [agents]);
@@ -267,7 +266,6 @@ export default function Participants() {
 
     const name = leaderForm.name.trim();
     if (!name) return err("Leader name required.");
-    if (!leaderForm.depotId) return err("Select a depot.");
     if (!leaderForm.companyId) return err("Select a commander.");
     if (!leaderForm.platoonId) return err("Select a company.");
 
@@ -806,11 +804,12 @@ export default function Participants() {
               </div>
 
               <div className="field">
-                <label>Depot</label>
+                <label>Depot (legacy, optional)</label>
                 <select value={leaderForm.depotId} onChange={(e) => handleDepotChange(e.target.value)}>
-                  <option value="">Select depot</option>
+                  <option value="">No depot</option>
                   {depots.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
+                <div className="hint">This field is for legacy grouping only and does not affect permissions.</div>
               </div>
 
               <div className="field">
@@ -1135,7 +1134,7 @@ export default function Participants() {
           <div className="table-scroll-y">
             <div className="table">
               <div className="t-head">
-                <div>Leader</div><div>Depot</div><div>Commander</div><div>Company</div><div>Upline</div><div className="t-right">Actions</div>
+                <div>Leader</div><div>Commander</div><div>Company</div><div>Upline</div><div className="t-right">Actions</div>
               </div>
 
               {agents.map(a => (
@@ -1146,7 +1145,6 @@ export default function Participants() {
                     </div>
                     <div className="t-name">{a.name}</div>
                   </div>
-                  <div>{depotById[a.depotId]?.name || a.depotId || "-"}</div>
                   <div>{companyById[a.companyId]?.name || a.companyId || "-"}</div>
                   <div>{platoonById[a.platoonId]?.name || a.platoonId || "-"}</div>
                   <div>{a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-"}</div>
@@ -1243,9 +1241,5 @@ export default function Participants() {
     </div>
   );
 }
-
-
-
-
 
 

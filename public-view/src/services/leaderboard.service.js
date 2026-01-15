@@ -17,7 +17,7 @@ import { computeTotalScore } from "./scoringEngine";
  * - Public visibility is governed by Supabase RLS; do not add publishable logic in the frontend.
  * - We intentionally DO NOT rely on PostgREST nested joins for depots/companies/platoons
  *   because those return null unless FK relationships are properly defined in Postgres.
- * - Instead: fetch lookups separately and attach by depot_id/company_id/platoon_id.
+ * - Instead: fetch lookups separately and attach by company_id/platoon_id.
  */
 
 export async function listTeams() {
@@ -45,7 +45,7 @@ export async function getLeaderboard({
   const formulaPromise = getActiveFormula(resolvedBattleType, resolvedWeekKey);
   const agentsPromise = supabase
     .from("agents")
-    .select("id,name,upline_agent_id,depot_id,company_id,platoon_id,role,photo_url,photoURL");
+    .select("id,name,upline_agent_id,company_id,platoon_id,role,photo_url,photoURL");
 
   // 1) Fetch raw_data + agents (basic fields only) - rely on RLS for publishability
   const { data: companyRows, error: companyError } = await supabase
@@ -59,6 +59,8 @@ export async function getLeaderboard({
       leads,
       payins,
       sales,
+      leads_depot_id,
+      sales_depot_id,
       date_real,
       date,
       agent_id,
@@ -67,7 +69,6 @@ export async function getLeaderboard({
         name,
         photoURL,
         photo_url,
-        depot_id,
         company_id,
         platoon_id,
         role,
@@ -142,29 +143,7 @@ export async function getLeaderboard({
   const { data: activeFormula, error: formulaError } = await formulaPromise;
   if (formulaError) throw formulaError;
 
-  let resolvedFormula = activeFormula ?? null;
-  let formulaFallback = null;
-  if (!resolvedFormula && resolvedBattleType === "commanders") {
-    const { data: fallbackFormula, error: fallbackError } = await getActiveFormula(
-      "companies",
-      resolvedWeekKey
-    );
-    if (fallbackError) throw fallbackError;
-    if (fallbackFormula) {
-      resolvedFormula = fallbackFormula;
-      formulaFallback = "companies";
-    }
-  } else if (!resolvedFormula && resolvedBattleType === "teams") {
-    const { data: fallbackFormula, error: fallbackError } = await getActiveFormula(
-      "squads",
-      resolvedWeekKey
-    );
-    if (fallbackError) throw fallbackError;
-    if (fallbackFormula) {
-      resolvedFormula = fallbackFormula;
-      formulaFallback = "squads";
-    }
-  }
+  const resolvedFormula = activeFormula ?? null;
 
   const scoringConfig = resolvedFormula?.config ?? null;
   const scoringFn = (row) => computeTotalScore(resolvedBattleType, row, scoringConfig);
@@ -196,7 +175,7 @@ export async function getLeaderboard({
       battleType: resolvedBattleType,
       weekKey: resolvedWeekKey,
       missing: !resolvedFormula,
-      fallback: formulaFallback,
+      fallback: null,
     },
     debug: {
       companyRowsFetched,
@@ -257,12 +236,11 @@ function aggregateLeaderboard({
     const mappedAgent = agentId && agentsMap ? agentsMap.get(agentId) : null;
     const agentData = { ...mappedAgent, ...joinedAgent };
 
-    // Resolve lookup entities
-    const depotId = agentData.depot_id ?? agentData.depotId ?? null;
+    const leadsDepotId = r.leads_depot_id ?? null;
+    const salesDepotId = r.sales_depot_id ?? null;
     const companyId = agentData.company_id ?? agentData.companyId ?? null;
     const platoonId = agentData.platoon_id ?? agentData.platoonId ?? null;
 
-    const depot = depotId ? depotsMap.get(String(depotId)) : null;
     const company = companyId ? commandersMap.get(String(companyId)) : null;
     const platoon = platoonId ? teamsMap.get(String(platoonId)) : null;
     const uplineId = agentData.uplineId ?? agentData.upline_agent_id ?? "";
@@ -280,10 +258,6 @@ function aggregateLeaderboard({
       name = agentData.name ?? "(Unnamed)";
       avatarUrl = agentData.photoURL ?? agentData.photo_url ?? "";
       platoonName = platoon?.name ?? ""; // show platoon label in UI for leaders
-    } else if (mode === "depots") {
-      key = String(depotId ?? "");
-      name = (depot?.name ?? key) || "(No Depot)";
-      avatarUrl = depot?.photoURL ?? "";
     } else if (mode === "commanders") {
       key = String(companyId ?? "");
       name = (company?.name ?? key) || "(No Company)";
@@ -300,7 +274,45 @@ function aggregateLeaderboard({
       platoonName = platoon?.name ?? "";
     }
 
-    // Skip rows that can't be grouped (e.g., missing depot_id when mode=depots)
+    if (mode === "depots") {
+      const ensureDepotBucket = (depotKey) => {
+        if (!depotKey) return null;
+        if (map.has(depotKey)) return map.get(depotKey);
+        const depot = depotsMap.get(depotKey) ?? null;
+        const depotName = depot?.name || (depotKey === "unassigned" ? "Unassigned" : depotKey);
+        const bucket = {
+          key: depotKey,
+          name: depotName,
+          avatarUrl: depot?.photoURL ?? depot?.photo_url ?? "",
+          platoon: "",
+          leads: 0,
+          payins: 0,
+          sales: 0,
+          points: 0,
+          rank: 0,
+          uplineName: "",
+        };
+        map.set(depotKey, bucket);
+        return bucket;
+      };
+
+      const leadsKey = leadsDepotId ? String(leadsDepotId) : "unassigned";
+      const salesKey = salesDepotId ? String(salesDepotId) : "unassigned";
+
+      const leadsBucket = ensureDepotBucket(leadsKey);
+      const salesBucket = ensureDepotBucket(salesKey);
+
+      if (leadsBucket) {
+        leadsBucket.leads += leads;
+      }
+      if (salesBucket) {
+        salesBucket.payins += payins;
+        salesBucket.sales += sales;
+      }
+
+      continue;
+    }
+
     if (!key) continue;
 
     if (!map.has(key)) {
@@ -415,7 +427,6 @@ function normalizeAgent(a) {
     id: a?.id ?? "",
     name: a?.name ?? "",
     uplineId: a?.uplineId ?? a?.upline_agent_id ?? "",
-    depot_id: a?.depot_id ?? null,
     company_id: a?.company_id ?? null,
     platoon_id: a?.platoon_id ?? null,
     role: a?.role ?? "platoon",
