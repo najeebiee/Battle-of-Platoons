@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { listAgents } from "./agents.service";
 import { listCompanies } from "./companies.service";
-import { listDepots } from "./depots.service";
+import { buildDepotMaps, listDepots, resolveDepotId } from "./depots.service";
 import { listPlatoons } from "./platoons.service";
 import { supabase } from "./supabase";
 
@@ -11,9 +11,11 @@ const HEADER_ALIASES = {
   leads: ["leads"],
   payins: ["payins", "pay ins", "pay_in", "pay in"],
   sales: ["sales"],
+  leads_depot: ["leads_depot", "leads_depot_id", "leads_depot_name", "leads depot"],
+  sales_depot: ["sales_depot", "sales_depot_id", "sales_depot_name", "sales depot"],
 };
 
-const REQUIRED_FIELDS = ["date", "leader_name", "leads", "payins", "sales"];
+const REQUIRED_FIELDS = ["date", "leader_name", "leads", "payins", "sales", "leads_depot", "sales_depot"];
 
 const WEEK_FINALIZED_MESSAGE =
   "This week has been finalized. Only Super Admins can modify or audit rows until it is reopened.";
@@ -128,6 +130,11 @@ function parseNumber(value, field, errors) {
 
 function normalizeSourceValue(source) {
   return (source || "").toString().toLowerCase();
+}
+
+export function computeRawDataId(date_real, agent_id, source) {
+  if (!date_real || !agent_id || !source) return "";
+  return `${date_real}_${agent_id}_${source}`;
 }
 
 export function isPublishable(companyRow, depotRow) {
@@ -285,6 +292,8 @@ async function enrichRawDataRows(rows = []) {
     const depotName = depotNames[agent.depotId] ?? "";
     const companyName = companyNames[agent.companyId] ?? "";
     const platoonName = platoonNames[agent.platoonId] ?? "";
+    const leadsDepotName = depotNames[row.leads_depot_id] ?? "";
+    const salesDepotName = depotNames[row.sales_depot_id] ?? "";
 
     return {
       id: row.id,
@@ -293,6 +302,8 @@ async function enrichRawDataRows(rows = []) {
       leads: row.leads ?? 0,
       payins: row.payins ?? 0,
       sales: row.sales ?? 0,
+      leads_depot_id: row.leads_depot_id ?? null,
+      sales_depot_id: row.sales_depot_id ?? null,
       source: row.source ?? "",
       voided: Boolean(row.voided),
       void_reason: row.void_reason ?? null,
@@ -302,6 +313,8 @@ async function enrichRawDataRows(rows = []) {
       depotName,
       companyName,
       platoonName,
+      leadsDepotName,
+      salesDepotName,
     };
   });
 }
@@ -316,7 +329,18 @@ export async function parseRawDataWorkbook(
   const progressCb = typeof onProgress === "function" ? onProgress : () => {};
 
   const parseStart = Date.now();
-  const [lookups, lookupMaps] = await Promise.all([buildAgentLookups(), fetchLookupMaps()]);
+  const [lookups, depots, companies, platoons] = await Promise.all([
+    buildAgentLookups(),
+    listDepots(),
+    listCompanies(),
+    listPlatoons(),
+  ]);
+  const depotMaps = buildDepotMaps(depots);
+  const lookupMaps = {
+    depotNames: Object.fromEntries((depots ?? []).map(d => [d.id, d.name])),
+    companyNames: Object.fromEntries((companies ?? []).map(c => [c.id, c.name])),
+    platoonNames: Object.fromEntries((platoons ?? []).map(p => [p.id, p.name])),
+  };
 
   progressCb(0, 0, "reading");
   const buf = await file.arrayBuffer();
@@ -371,9 +395,31 @@ export async function parseRawDataWorkbook(
       errors
     );
 
+    const leadsDepotInput =
+      headerMap.leads_depot !== undefined ? rawRow[headerMap.leads_depot] : "";
+    const salesDepotInput =
+      headerMap.sales_depot !== undefined ? rawRow[headerMap.sales_depot] : "";
+
+    const leadsDepotLabel = leadsDepotInput?.toString().trim() ?? "";
+    const salesDepotLabel = salesDepotInput?.toString().trim() ?? "";
+
+    const leadsDepotResult = resolveDepotId(leadsDepotLabel, depotMaps);
+    const salesDepotResult = resolveDepotId(salesDepotLabel, depotMaps);
+
+    if (!leadsDepotLabel) {
+      errors.push("Missing Leads Depot");
+    } else if (leadsDepotResult.error) {
+      errors.push(`Unknown depot: ${leadsDepotLabel}`);
+    }
+
+    if (!salesDepotLabel) {
+      errors.push("Missing Sales Depot");
+    } else if (salesDepotResult.error) {
+      errors.push(`Unknown depot: ${salesDepotLabel}`);
+    }
+
     const date_real = dateReal ?? "";
-    const computedId =
-      date_real && resolved_agent_id ? `${date_real}_${resolved_agent_id}_${normalizedSource}` : "";
+    const computedId = computeRawDataId(date_real, resolved_agent_id, normalizedSource);
 
     rows.push({
       sourceRowIndex: idx,
@@ -383,6 +429,10 @@ export async function parseRawDataWorkbook(
       leader_name_input: leader_name_input?.toString().trim() ?? "",
       resolved_agent_id,
       computedId,
+      leads_depot_id: leadsDepotResult.depot_id,
+      sales_depot_id: salesDepotResult.depot_id,
+      leads_depot_name: lookupMaps.depotNames?.[leadsDepotResult.depot_id] ?? "",
+      sales_depot_name: lookupMaps.depotNames?.[salesDepotResult.depot_id] ?? "",
       leads,
       payins,
       sales,
@@ -409,7 +459,7 @@ export async function parseRawDataWorkbook(
     new Set(rows.filter(row => row.computedId).map(row => row.computedId))
   );
 
-  const existingIds = new Set();
+  const existingRows = new Map();
   const chunkSize = 400;
   if (!computedIds.length) {
     progressCb(totalRows, totalRows, "checking_duplicates");
@@ -422,21 +472,42 @@ export async function parseRawDataWorkbook(
       );
       progressCb(progressDone, totalRows, "checking_duplicates");
       // eslint-disable-next-line no-await-in-loop
-      const { data, error } = await supabase.from("raw_data").select("id").in("id", chunk);
+      const { data, error } = await supabase
+        .from("raw_data")
+        .select("id,leads_depot_id,sales_depot_id")
+        .in("id", chunk);
       if (error) throw error;
-      (data ?? []).forEach(item => existingIds.add(item.id));
+      (data ?? []).forEach(item => {
+        existingRows.set(item.id, {
+          leads_depot_id: item.leads_depot_id ?? null,
+          sales_depot_id: item.sales_depot_id ?? null,
+        });
+      });
       // eslint-disable-next-line no-await-in-loop
       await new Promise(resolve => setTimeout(resolve, 0));
     }
     progressCb(totalRows, totalRows, "checking_duplicates");
   }
 
+  const matchesDepotId = (left, right) => {
+    if (!left || !right) return false;
+    return String(left) === String(right);
+  };
+
   const rowsWithDuplicates = rows.map(row => {
-    const duplicate = row.computedId ? existingIds.has(row.computedId) : false;
+    const existing = row.computedId ? existingRows.get(row.computedId) : null;
+    const dup_base_row = Boolean(existing);
+    const dup_leads_same_depot = existing
+      ? matchesDepotId(existing.leads_depot_id, row.leads_depot_id)
+      : false;
+    const dup_sales_same_depot = existing
+      ? matchesDepotId(existing.sales_depot_id, row.sales_depot_id)
+      : false;
     return {
       ...row,
-      duplicate,
-      will_overwrite: duplicate,
+      dup_base_row,
+      dup_leads_same_depot,
+      dup_sales_same_depot,
     };
   });
 
@@ -467,17 +538,15 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
       .slice(i, i + batchSize)
       .map(row => {
         const rowSource = row.source === "depot" || row.source === "company" ? row.source : normalizedSource;
-        const id =
-          row.computedId ||
-          (row.date_real && row.resolved_agent_id
-            ? `${row.date_real}_${row.resolved_agent_id}_${rowSource}`
-            : "");
+        const id = row.computedId || computeRawDataId(row.date_real, row.resolved_agent_id, rowSource);
         return {
           id,
           agent_id: row.resolved_agent_id,
           leads: row.leads,
           payins: row.payins,
           sales: row.sales,
+          leads_depot_id: row.leads_depot_id ?? null,
+          sales_depot_id: row.sales_depot_id ?? null,
           date_real: row.date_real,
           source: rowSource,
           date: { source: "xlsx", original: row.date_original ?? row.date_real },
@@ -521,7 +590,7 @@ function applyRawDataFilters(query, { dateFrom, dateTo, agentId, limit = 200 }) 
 
 export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, includeVoided = false } = {}) {
   const baseSelect =
-    "id,date_real,agent_id,leads,payins,sales,source,voided,void_reason,voided_at,voided_by,agents:agents(id,name,photo_url,depot_id,company_id,platoon_id)";
+    "id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,source,voided,void_reason,voided_at,voided_by,agents:agents(id,name,photo_url,depot_id,company_id,platoon_id)";
 
   try {
     let query = supabase.from("raw_data").select(baseSelect);
@@ -537,7 +606,7 @@ export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, incl
     return enrichRawDataRows(data ?? []);
   } catch {
     let query = supabase.from("raw_data").select(
-      "id,date_real,agent_id,leads,payins,sales,source,voided,void_reason,voided_at,voided_by"
+      "id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,source,voided,void_reason,voided_at,voided_by"
     );
     if (!includeVoided) query = query.eq("voided", false);
 

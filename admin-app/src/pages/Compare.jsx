@@ -41,7 +41,12 @@ function formatDelta(delta) {
     return "0";
   };
 
-  return `L:${renderValue(delta.leadsDiff)} P:${renderValue(delta.payinsDiff)} S:${renderValue(delta.salesDiff)}`;
+  const flags = [
+    delta.leadsDepotMismatch ? "LD!" : null,
+    delta.salesDepotMismatch ? "SD!" : null,
+  ].filter(Boolean);
+  const flagText = flags.length ? ` ${flags.join(" ")}` : "";
+  return `L:${renderValue(delta.leadsDiff)} P:${renderValue(delta.payinsDiff)} S:${renderValue(delta.salesDiff)}${flagText}`;
 }
 
 export default function Compare() {
@@ -230,9 +235,13 @@ export default function Compare() {
             <tr>
               <th>Date</th>
               <th>Leader</th>
+              <th>Company Leads Depot</th>
+              <th>Company Sales Depot</th>
               <th>Company Leads</th>
               <th>Company Payins</th>
               <th>Company Sales</th>
+              <th>Depot Leads Depot</th>
+              <th>Depot Sales Depot</th>
               <th>Depot Leads</th>
               <th>Depot Payins</th>
               <th>Depot Sales</th>
@@ -252,9 +261,13 @@ export default function Compare() {
                     <div className="muted" style={{ fontSize: 12 }}>{row.restricted_agent_id}</div>
                   ) : null}
                 </td>
+                <td>{row.company ? row.company.leadsDepotName || "—" : "—"}</td>
+                <td>{row.company ? row.company.salesDepotName || "—" : "—"}</td>
                 <td>{row.company ? row.company.leads : "—"}</td>
                 <td>{row.company ? row.company.payins : "—"}</td>
                 <td>{row.company ? row.company.sales : "—"}</td>
+                <td>{row.depot ? row.depot.leadsDepotName || "—" : "—"}</td>
+                <td>{row.depot ? row.depot.salesDepotName || "—" : "—"}</td>
                 <td>{row.depot ? row.depot.leads : "—"}</td>
                 <td>{row.depot ? row.depot.payins : "—"}</td>
                 <td>{row.depot ? row.depot.sales : "—"}</td>
@@ -280,7 +293,7 @@ export default function Compare() {
             ))}
             {!rows.length && !loading ? (
               <tr>
-                <td colSpan={10} className="muted" style={{ textAlign: "center" }}>
+                <td colSpan={16} className="muted" style={{ textAlign: "center" }}>
                   No rows found for the selected filters.
                 </td>
               </tr>

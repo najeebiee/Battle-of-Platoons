@@ -37,6 +37,15 @@ const STATUS_CLASS = {
 
 const SCHEMA_MIGRATION_HINT = "Run SQL migration and reload schema.";
 
+function formatDepotMismatchFlags(delta) {
+  if (!delta) return "—";
+  const flags = [
+    delta.leadsDepotMismatch ? "LD!" : null,
+    delta.salesDepotMismatch ? "SD!" : null,
+  ].filter(Boolean);
+  return flags.length ? flags.join(" ") : "—";
+}
+
 export default function Publishing() {
   const defaults = useMemo(() => getDefaultDateRange(), []);
   const [filters, setFilters] = useState({
@@ -308,12 +317,17 @@ export default function Publishing() {
             <tr>
               <th>Date</th>
               <th>Leader</th>
+              <th>Company Leads Depot</th>
+              <th>Company Sales Depot</th>
               <th>Company Leads</th>
               <th>Company Payins</th>
               <th>Company Sales</th>
+              <th>Depot Leads Depot</th>
+              <th>Depot Sales Depot</th>
               <th>Depot Leads</th>
               <th>Depot Payins</th>
               <th>Depot Sales</th>
+              <th>Depot Mismatch</th>
               <th>Status</th>
               <th>Publishable</th>
               <th>Approved</th>
@@ -330,12 +344,17 @@ export default function Publishing() {
                     <div className="muted" style={{ fontSize: 12 }}>{row.restricted_agent_id}</div>
                   ) : null}
                 </td>
+                <td>{row.company ? row.company.leadsDepotName || "—" : "—"}</td>
+                <td>{row.company ? row.company.salesDepotName || "—" : "—"}</td>
                 <td>{row.company ? row.company.leads : "—"}</td>
                 <td>{row.company ? row.company.payins : "—"}</td>
                 <td>{row.company ? row.company.sales : "—"}</td>
+                <td>{row.depot ? row.depot.leadsDepotName || "—" : "—"}</td>
+                <td>{row.depot ? row.depot.salesDepotName || "—" : "—"}</td>
                 <td>{row.depot ? row.depot.leads : "—"}</td>
                 <td>{row.depot ? row.depot.payins : "—"}</td>
                 <td>{row.depot ? row.depot.sales : "—"}</td>
+                <td>{formatDepotMismatchFlags(row.delta)}</td>
                 <td>
                   <span className={`status-pill ${STATUS_CLASS[row.status] || ""}`}>
                     {STATUS_LABELS[row.status] || row.status}
@@ -381,7 +400,7 @@ export default function Publishing() {
             ))}
             {!rows.length && !loading ? (
               <tr>
-                <td colSpan={12} className="muted" style={{ textAlign: "center" }}>
+                <td colSpan={16} className="muted" style={{ textAlign: "center" }}>
                   No rows found for the selected filters.
                 </td>
               </tr>
