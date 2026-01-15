@@ -42,16 +42,18 @@ export default function Upload() {
       if (row.suggestions?.length) {
         displayErrors.push(`Suggestions: ${row.suggestions.join("; ")}`);
       }
+      const hasDuplicate =
+        Boolean(row.dup_base_row) || Boolean(row.dup_leads_same_depot) || Boolean(row.dup_sales_same_depot);
       let displayStatus = "Valid";
       let statusTone = "valid";
       let isValidForSave = row.status === "valid" && row.resolved_agent_id;
-      const rowWillOverwrite = row.duplicate && importMode !== "insert_only";
+      const rowWillOverwrite = hasDuplicate && importMode !== "insert_only";
 
       if (row.status === "invalid") {
         displayStatus = "Invalid";
         statusTone = "invalid";
         isValidForSave = false;
-      } else if (row.duplicate) {
+      } else if (hasDuplicate) {
         if (importMode === "insert_only") {
           displayStatus = "Invalid";
           statusTone = "invalid";
@@ -69,6 +71,7 @@ export default function Upload() {
 
       return {
         ...row,
+        hasDuplicate,
         will_overwrite: rowWillOverwrite,
         displayWarnings,
         displayErrors,
@@ -79,8 +82,8 @@ export default function Upload() {
     });
 
     const total = displayRows.length;
-    const validNew = displayRows.filter(row => row.status === "valid" && !row.duplicate).length;
-    const duplicate = displayRows.filter(row => row.duplicate).length;
+    const validNew = displayRows.filter(row => row.status === "valid" && !row.hasDuplicate).length;
+    const duplicate = displayRows.filter(row => row.hasDuplicate).length;
     const invalid = displayRows.filter(row => row.displayStatus === "Invalid").length;
     const rowsForSave = displayRows.filter(row => row.isValidForSave);
 
@@ -400,12 +403,12 @@ export default function Upload() {
                   <th>#</th>
                   <th>Date</th>
                   <th>leader_name</th>
-                  <th>Resolved ID</th>
-                  <th>Computed ID</th>
-                  <th>Overwrite?</th>
+                  <th>Leads Depot</th>
+                  <th>Sales Depot</th>
                   <th>Leads</th>
                   <th>Payins</th>
                   <th>Sales</th>
+                  <th>Duplicates</th>
                   <th>Status</th>
                   <th>Errors</th>
                 </tr>
@@ -416,6 +419,11 @@ export default function Upload() {
                     ? row.displayWarnings.map(warn => `Warning: ${warn}`)
                     : [];
                   const issueText = [...(row.displayErrors ?? []), ...warningText].join("; ");
+                  const duplicateBadges = [
+                    row.dup_base_row ? "Row exists" : null,
+                    row.dup_leads_same_depot ? "Leads depot duplicate" : null,
+                    row.dup_sales_same_depot ? "Sales depot duplicate" : null,
+                  ].filter(Boolean);
 
                   return (
                     <tr
@@ -430,15 +438,23 @@ export default function Upload() {
                       <div>{row.leader_name_input}</div>
                     </td>
                     <td>
-                      <div>{row.resolved_agent_id || ""}</div>
+                      <div>{row.leads_depot_name || "—"}</div>
                     </td>
                     <td>
-                      <div className="muted" style={{ fontSize: 12 }}>{row.computedId}</div>
+                      <div>{row.sales_depot_name || "—"}</div>
                     </td>
-                    <td>{row.computedId ? (row.will_overwrite ? "Yes" : "No") : "—"}</td>
                     <td>{row.leads}</td>
                     <td>{row.payins}</td>
                     <td>{row.sales}</td>
+                    <td>
+                      {duplicateBadges.length ? (
+                        <div className="status-pill duplicate">
+                          {duplicateBadges.join(" · ")}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td>
                       <span className={`status-pill ${row.statusTone}`}>
                         {row.displayStatus}
