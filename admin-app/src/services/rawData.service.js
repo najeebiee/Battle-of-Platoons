@@ -5,6 +5,10 @@ import { buildDepotMaps, listDepots, resolveDepotId } from "./depots.service";
 import { listPlatoons } from "./platoons.service";
 import { supabase } from "./supabase";
 
+// FINDINGS: The old raw_data id (date_agent_source) collided when depot attribution differed.
+// Depot attribution now lives per-metric, so leads_depot_id and sales_depot_id belong in the uniqueness key.
+// We also need to merge identical rows within a single upload (same full key) to prevent false duplicates.
+
 const HEADER_ALIASES = {
   leader_name: ["leader", "leader_name", "platoon_leader", "platoon leader", "name"],
   date: ["date"],
@@ -132,9 +136,50 @@ function normalizeSourceValue(source) {
   return (source || "").toString().toLowerCase();
 }
 
-export function computeRawDataId(date_real, agent_id, source) {
+function normalizeDepotKey(value) {
+  const trimmed = String(value ?? "").trim();
+  return trimmed ? trimmed : "unassigned";
+}
+
+export function computeRawDataId({ date_real, agent_id, source, leads_depot_id, sales_depot_id }) {
   if (!date_real || !agent_id || !source) return "";
-  return `${date_real}_${agent_id}_${source}`;
+  const leadsDepotKey = normalizeDepotKey(leads_depot_id);
+  const salesDepotKey = normalizeDepotKey(sales_depot_id);
+  return `${date_real}_${agent_id}_${source}_${leadsDepotKey}_${salesDepotKey}`;
+}
+
+function mergeRowsByComputedId(rows) {
+  const merged = [];
+  const map = new Map();
+
+  rows.forEach(row => {
+    const key = row.computedId || row.id;
+    if (!key) {
+      merged.push({ ...row, mergedCount: 1 });
+      return;
+    }
+
+    const existing = map.get(key);
+    if (!existing) {
+      const base = { ...row, mergedCount: 1 };
+      map.set(key, base);
+      merged.push(base);
+      return;
+    }
+
+    existing.leads = (Number(existing.leads) || 0) + (Number(row.leads) || 0);
+    existing.payins = (Number(existing.payins) || 0) + (Number(row.payins) || 0);
+    existing.sales = (Number(existing.sales) || 0) + (Number(row.sales) || 0);
+    existing.status =
+      existing.status === "invalid" || row.status === "invalid" ? "invalid" : "valid";
+    existing.errors = Array.from(new Set([...(existing.errors ?? []), ...(row.errors ?? [])]));
+    existing.suggestions = Array.from(
+      new Set([...(existing.suggestions ?? []), ...(row.suggestions ?? [])])
+    );
+    existing.mergedCount += 1;
+  });
+
+  return merged;
 }
 
 export function isPublishable(companyRow, depotRow) {
@@ -406,20 +451,22 @@ export async function parseRawDataWorkbook(
     const leadsDepotResult = resolveDepotId(leadsDepotLabel, depotMaps);
     const salesDepotResult = resolveDepotId(salesDepotLabel, depotMaps);
 
-    if (!leadsDepotLabel) {
-      errors.push("Missing Leads Depot");
-    } else if (leadsDepotResult.error) {
-      errors.push(`Unknown depot: ${leadsDepotLabel}`);
+    if (!leadsDepotLabel || leadsDepotResult.error) {
+      errors.push("Invalid leads depot");
     }
 
-    if (!salesDepotLabel) {
-      errors.push("Missing Sales Depot");
-    } else if (salesDepotResult.error) {
-      errors.push(`Unknown depot: ${salesDepotLabel}`);
+    if (!salesDepotLabel || salesDepotResult.error) {
+      errors.push("Invalid sales depot");
     }
 
     const date_real = dateReal ?? "";
-    const computedId = computeRawDataId(date_real, resolved_agent_id, normalizedSource);
+    const computedId = computeRawDataId({
+      date_real,
+      agent_id: resolved_agent_id,
+      source: normalizedSource,
+      leads_depot_id: leadsDepotResult.depot_id,
+      sales_depot_id: salesDepotResult.depot_id,
+    });
 
     rows.push({
       sourceRowIndex: idx,
@@ -454,12 +501,14 @@ export async function parseRawDataWorkbook(
     progressCb(totalRows, totalRows, "processing");
   }
 
+  const mergedRows = mergeRowsByComputedId(rows);
+
   const duplicateStart = Date.now();
   const computedIds = Array.from(
-    new Set(rows.filter(row => row.computedId).map(row => row.computedId))
+    new Set(mergedRows.filter(row => row.computedId).map(row => row.computedId))
   );
 
-  const existingRows = new Map();
+  const existingRows = new Set();
   const chunkSize = 400;
   if (!computedIds.length) {
     progressCb(totalRows, totalRows, "checking_duplicates");
@@ -472,16 +521,10 @@ export async function parseRawDataWorkbook(
       );
       progressCb(progressDone, totalRows, "checking_duplicates");
       // eslint-disable-next-line no-await-in-loop
-      const { data, error } = await supabase
-        .from("raw_data")
-        .select("id,leads_depot_id,sales_depot_id")
-        .in("id", chunk);
+      const { data, error } = await supabase.from("raw_data").select("id").in("id", chunk);
       if (error) throw error;
       (data ?? []).forEach(item => {
-        existingRows.set(item.id, {
-          leads_depot_id: item.leads_depot_id ?? null,
-          sales_depot_id: item.sales_depot_id ?? null,
-        });
+        existingRows.add(item.id);
       });
       // eslint-disable-next-line no-await-in-loop
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -489,25 +532,11 @@ export async function parseRawDataWorkbook(
     progressCb(totalRows, totalRows, "checking_duplicates");
   }
 
-  const matchesDepotId = (left, right) => {
-    if (!left || !right) return false;
-    return String(left) === String(right);
-  };
-
-  const rowsWithDuplicates = rows.map(row => {
-    const existing = row.computedId ? existingRows.get(row.computedId) : null;
-    const dup_base_row = Boolean(existing);
-    const dup_leads_same_depot = existing
-      ? matchesDepotId(existing.leads_depot_id, row.leads_depot_id)
-      : false;
-    const dup_sales_same_depot = existing
-      ? matchesDepotId(existing.sales_depot_id, row.sales_depot_id)
-      : false;
+  const rowsWithDuplicates = mergedRows.map(row => {
+    const dup_base_row = Boolean(row.computedId && existingRows.has(row.computedId));
     return {
       ...row,
       dup_base_row,
-      dup_leads_same_depot,
-      dup_sales_same_depot,
     };
   });
 
@@ -538,7 +567,15 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
       .slice(i, i + batchSize)
       .map(row => {
         const rowSource = row.source === "depot" || row.source === "company" ? row.source : normalizedSource;
-        const id = row.computedId || computeRawDataId(row.date_real, row.resolved_agent_id, rowSource);
+        const id =
+          row.computedId ||
+          computeRawDataId({
+            date_real: row.date_real,
+            agent_id: row.resolved_agent_id,
+            source: rowSource,
+            leads_depot_id: row.leads_depot_id,
+            sales_depot_id: row.sales_depot_id,
+          });
         return {
           id,
           agent_id: row.resolved_agent_id,

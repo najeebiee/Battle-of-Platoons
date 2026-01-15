@@ -42,8 +42,7 @@ export default function Upload() {
       if (row.suggestions?.length) {
         displayErrors.push(`Suggestions: ${row.suggestions.join("; ")}`);
       }
-      const hasDuplicate =
-        Boolean(row.dup_base_row) || Boolean(row.dup_leads_same_depot) || Boolean(row.dup_sales_same_depot);
+      const hasDuplicate = Boolean(row.dup_base_row);
       let displayStatus = "Valid";
       let statusTone = "valid";
       let isValidForSave = row.status === "valid" && row.resolved_agent_id;
@@ -402,13 +401,13 @@ export default function Upload() {
                 <tr>
                   <th>#</th>
                   <th>Date</th>
-                  <th>leader_name</th>
+                  <th>Leader Name</th>
                   <th>Leads Depot</th>
                   <th>Sales Depot</th>
                   <th>Leads</th>
                   <th>Payins</th>
                   <th>Sales</th>
-                  <th>Duplicates</th>
+                  <th>Duplicates / Merge</th>
                   <th>Status</th>
                   <th>Errors</th>
                 </tr>
@@ -420,9 +419,8 @@ export default function Upload() {
                     : [];
                   const issueText = [...(row.displayErrors ?? []), ...warningText].join("; ");
                   const duplicateBadges = [
+                    row.mergedCount > 1 ? `Merged (${row.mergedCount})` : null,
                     row.dup_base_row ? "Row exists" : null,
-                    row.dup_leads_same_depot ? "Leads depot duplicate" : null,
-                    row.dup_sales_same_depot ? "Sales depot duplicate" : null,
                   ].filter(Boolean);
 
                   return (
