@@ -39,6 +39,11 @@ export default function Upload() {
     const displayRows = rows.map(row => {
       const displayWarnings = [];
       const displayErrors = [...(row.errors ?? [])];
+      const mergeNotes = row.merge_notes ?? [];
+      const conflictNotes = mergeNotes.filter(note => note.toLowerCase().includes("conflicting"));
+      if (conflictNotes.length) {
+        displayWarnings.push(...conflictNotes);
+      }
       if (row.suggestions?.length) {
         displayErrors.push(`Suggestions: ${row.suggestions.join("; ")}`);
       }
@@ -70,6 +75,8 @@ export default function Upload() {
 
       return {
         ...row,
+        mergeNotes,
+        conflictNotes,
         hasDuplicate,
         will_overwrite: rowWillOverwrite,
         displayWarnings,
@@ -419,7 +426,7 @@ export default function Upload() {
                     : [];
                   const issueText = [...(row.displayErrors ?? []), ...warningText].join("; ");
                   const duplicateBadges = [
-                    row.mergedCount > 1 ? `Merged (${row.mergedCount})` : null,
+                    row.merge_count > 1 ? `Merged (${row.merge_count})` : null,
                     row.dup_base_row ? "Row exists" : null,
                   ].filter(Boolean);
 
@@ -446,8 +453,15 @@ export default function Upload() {
                     <td>{row.sales}</td>
                     <td>
                       {duplicateBadges.length ? (
-                        <div className="status-pill duplicate">
-                          {duplicateBadges.join(" · ")}
+                        <div>
+                          <div className="status-pill duplicate" title={row.mergeNotes?.join(" ")}>
+                            {duplicateBadges.join(" · ")}
+                          </div>
+                          {row.conflictNotes?.length ? (
+                            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                              {row.conflictNotes.join(" ")}
+                            </div>
+                          ) : null}
                         </div>
                       ) : (
                         "—"

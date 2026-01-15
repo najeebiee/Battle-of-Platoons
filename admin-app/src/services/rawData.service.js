@@ -5,9 +5,8 @@ import { buildDepotMaps, listDepots, resolveDepotId } from "./depots.service";
 import { listPlatoons } from "./platoons.service";
 import { supabase } from "./supabase";
 
-// FINDINGS: The old raw_data id (date_agent_source) collided when depot attribution differed.
-// Depot attribution now lives per-metric, so leads_depot_id and sales_depot_id belong in the uniqueness key.
-// We also need to merge identical rows within a single upload (same full key) to prevent false duplicates.
+// FINDINGS: raw_data is unique by (date_real, agent_id, source). Depot attribution is stored per metric.
+// The UI should align to the DB uniqueness rule, so we merge by the triplet and compute ids without depots.
 
 const HEADER_ALIASES = {
   leader_name: ["leader", "leader_name", "platoon_leader", "platoon leader", "name"],
@@ -136,47 +135,100 @@ function normalizeSourceValue(source) {
   return (source || "").toString().toLowerCase();
 }
 
-function normalizeDepotKey(value) {
-  const trimmed = String(value ?? "").trim();
-  return trimmed ? trimmed : "unassigned";
-}
-
-export function computeRawDataId({ date_real, agent_id, source, leads_depot_id, sales_depot_id }) {
+export function computeRawDataId({ date_real, agent_id, source }) {
   if (!date_real || !agent_id || !source) return "";
-  const leadsDepotKey = normalizeDepotKey(leads_depot_id);
-  const salesDepotKey = normalizeDepotKey(sales_depot_id);
-  return `${date_real}_${agent_id}_${source}_${leadsDepotKey}_${salesDepotKey}`;
+  return `${date_real}_${agent_id}_${source}`;
 }
 
-function mergeRowsByComputedId(rows) {
+function buildMergeKey({ date_real, resolved_agent_id, source }) {
+  if (!date_real || !resolved_agent_id || !source) return "";
+  // Merge by (date_real, agent_id, source) to align UI de-dup with DB unique constraint.
+  return `${date_real}__${resolved_agent_id}__${normalizeSourceValue(source)}`;
+}
+
+function parseMergeNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function mergeRowsByTriplet(rows) {
   const merged = [];
   const map = new Map();
 
   rows.forEach(row => {
-    const key = row.computedId || row.id;
+    const key = buildMergeKey(row);
     if (!key) {
-      merged.push({ ...row, mergedCount: 1 });
+      merged.push({ ...row, merge_count: 1, merge_notes: [] });
       return;
     }
 
-    const existing = map.get(key);
-    if (!existing) {
-      const base = { ...row, mergedCount: 1 };
-      map.set(key, base);
+    const existingEntry = map.get(key);
+    if (!existingEntry) {
+      const base = { ...row, merge_count: 1, merge_notes: [] };
+      const leadsDepotIds = new Map();
+      const salesDepotIds = new Map();
+      if (row.leads_depot_id) leadsDepotIds.set(String(row.leads_depot_id), row.leads_depot_name);
+      if (row.sales_depot_id) salesDepotIds.set(String(row.sales_depot_id), row.sales_depot_name);
+      map.set(key, { row: base, leadsDepotIds, salesDepotIds });
       merged.push(base);
       return;
     }
 
-    existing.leads = (Number(existing.leads) || 0) + (Number(row.leads) || 0);
-    existing.payins = (Number(existing.payins) || 0) + (Number(row.payins) || 0);
-    existing.sales = (Number(existing.sales) || 0) + (Number(row.sales) || 0);
+    const existing = existingEntry.row;
+    existing.leads = parseMergeNumber(existing.leads) + parseMergeNumber(row.leads);
+    existing.payins = parseMergeNumber(existing.payins) + parseMergeNumber(row.payins);
+    existing.sales = parseMergeNumber(existing.sales) + parseMergeNumber(row.sales);
     existing.status =
       existing.status === "invalid" || row.status === "invalid" ? "invalid" : "valid";
     existing.errors = Array.from(new Set([...(existing.errors ?? []), ...(row.errors ?? [])]));
     existing.suggestions = Array.from(
       new Set([...(existing.suggestions ?? []), ...(row.suggestions ?? [])])
     );
-    existing.mergedCount += 1;
+    if (row.leads_depot_id) {
+      existingEntry.leadsDepotIds.set(String(row.leads_depot_id), row.leads_depot_name);
+    }
+    if (row.sales_depot_id) {
+      existingEntry.salesDepotIds.set(String(row.sales_depot_id), row.sales_depot_name);
+    }
+    existing.merge_count += 1;
+  });
+
+  map.forEach(({ row, leadsDepotIds, salesDepotIds }) => {
+    if (row.merge_count > 1) {
+      row.merge_notes.push(`Merged ${row.merge_count} duplicate rows for same leader/date/source`);
+    }
+
+    const leadsDepotValues = Array.from(leadsDepotIds.keys()).filter(Boolean);
+    if (leadsDepotValues.length > 1) {
+      row.leads_depot_id = null;
+      row.leads_depot_name = "";
+      row.merge_notes.push(
+        "Conflicting leads depot attribution (multiple leads_depot_id). Set to blank."
+      );
+    } else if (leadsDepotValues.length === 1) {
+      const [id] = leadsDepotValues;
+      row.leads_depot_id = id;
+      row.leads_depot_name = leadsDepotIds.get(id) ?? "";
+    } else {
+      row.leads_depot_id = null;
+      row.leads_depot_name = "";
+    }
+
+    const salesDepotValues = Array.from(salesDepotIds.keys()).filter(Boolean);
+    if (salesDepotValues.length > 1) {
+      row.sales_depot_id = null;
+      row.sales_depot_name = "";
+      row.merge_notes.push(
+        "Conflicting sales depot attribution (multiple sales_depot_id). Set to blank."
+      );
+    } else if (salesDepotValues.length === 1) {
+      const [id] = salesDepotValues;
+      row.sales_depot_id = id;
+      row.sales_depot_name = salesDepotIds.get(id) ?? "";
+    } else {
+      row.sales_depot_id = null;
+      row.sales_depot_name = "";
+    }
   });
 
   return merged;
@@ -464,8 +516,6 @@ export async function parseRawDataWorkbook(
       date_real,
       agent_id: resolved_agent_id,
       source: normalizedSource,
-      leads_depot_id: leadsDepotResult.depot_id,
-      sales_depot_id: salesDepotResult.depot_id,
     });
 
     rows.push({
@@ -501,7 +551,7 @@ export async function parseRawDataWorkbook(
     progressCb(totalRows, totalRows, "processing");
   }
 
-  const mergedRows = mergeRowsByComputedId(rows);
+  const mergedRows = mergeRowsByTriplet(rows);
 
   const duplicateStart = Date.now();
   const computedIds = Array.from(
@@ -573,8 +623,6 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
             date_real: row.date_real,
             agent_id: row.resolved_agent_id,
             source: rowSource,
-            leads_depot_id: row.leads_depot_id,
-            sales_depot_id: row.sales_depot_id,
           });
         return {
           id,
