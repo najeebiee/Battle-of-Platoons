@@ -2,12 +2,6 @@ import React from "react";
 
 export default function Dashboard() {
   return (
-<<<<<<< HEAD
-    <div className="card">
-      <div className="card-title">Dashboard</div>
-      <div className="muted">
-        Next: KPIs + toggle (Leaders/Commanders/Depots) + preview podium/table using leaderboard.service.js.
-=======
     <div className="dashboard-page" data-mode={activeView}>
       <div className="dashboard-kpis">
         <div className={`dashboard-kpi-strip${loading ? " is-loading" : ""}`}>
@@ -166,7 +160,6 @@ export default function Dashboard() {
             </pre>
           </div>
         )}
->>>>>>> 3bebdb31 (undo dashboard depo)
       </div>
     </div>
   );
