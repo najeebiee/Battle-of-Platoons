@@ -5,8 +5,8 @@ import { buildDepotMaps, listDepots, resolveDepotId } from "./depots.service";
 import { listPlatoons } from "./platoons.service";
 import { supabase } from "./supabase";
 
-// FINDINGS: raw_data is unique by (date_real, agent_id, source). Depot attribution is stored per metric.
-// The UI should align to the DB uniqueness rule, so we merge by the triplet and compute ids without depots.
+// FINDINGS: raw_data is unique by (date_real, agent_id, source, leads_depot_id, sales_depot_id).
+// The UI should align to the DB uniqueness rule, so we merge by the full identity and compute ids with depots.
 
 const HEADER_ALIASES = {
   leader_name: ["leader", "leader_name", "platoon_leader", "platoon leader", "name"],
@@ -135,15 +135,24 @@ function normalizeSourceValue(source) {
   return (source || "").toString().toLowerCase();
 }
 
-export function computeRawDataId({ date_real, agent_id, source }) {
-  if (!date_real || !agent_id || !source) return "";
-  return `${date_real}_${agent_id}_${source}`;
+function normalizeDepotKey(depotId) {
+  if (depotId === null || depotId === undefined) return "none";
+  const trimmed = depotId.toString().trim();
+  return trimmed ? trimmed : "none";
 }
 
-function buildMergeKey({ date_real, resolved_agent_id, source }) {
+export function computeRawDataId({ date_real, agent_id, source, leads_depot_id, sales_depot_id }) {
+  if (!date_real || !agent_id || !source) return "";
+  const leadsDepotKey = normalizeDepotKey(leads_depot_id);
+  const salesDepotKey = normalizeDepotKey(sales_depot_id);
+  return `${date_real}_${agent_id}_${source}_${leadsDepotKey}_${salesDepotKey}`;
+}
+
+function buildMergeKey({ date_real, resolved_agent_id, source, leads_depot_id, sales_depot_id }) {
   if (!date_real || !resolved_agent_id || !source) return "";
-  // Merge by (date_real, agent_id, source) to align UI de-dup with DB unique constraint.
-  return `${date_real}__${resolved_agent_id}__${normalizeSourceValue(source)}`;
+  const leadsDepotKey = normalizeDepotKey(leads_depot_id);
+  const salesDepotKey = normalizeDepotKey(sales_depot_id);
+  return `${date_real}__${resolved_agent_id}__${normalizeSourceValue(source)}__${leadsDepotKey}__${salesDepotKey}`;
 }
 
 function parseMergeNumber(value) {
@@ -151,7 +160,7 @@ function parseMergeNumber(value) {
   return Number.isFinite(num) ? num : 0;
 }
 
-function mergeRowsByTriplet(rows) {
+function mergeRowsByIdentity(rows) {
   const merged = [];
   const map = new Map();
 
@@ -162,19 +171,14 @@ function mergeRowsByTriplet(rows) {
       return;
     }
 
-    const existingEntry = map.get(key);
-    if (!existingEntry) {
+    const existing = map.get(key);
+    if (!existing) {
       const base = { ...row, merge_count: 1, merge_notes: [] };
-      const leadsDepotIds = new Map();
-      const salesDepotIds = new Map();
-      if (row.leads_depot_id) leadsDepotIds.set(String(row.leads_depot_id), row.leads_depot_name);
-      if (row.sales_depot_id) salesDepotIds.set(String(row.sales_depot_id), row.sales_depot_name);
-      map.set(key, { row: base, leadsDepotIds, salesDepotIds });
+      map.set(key, base);
       merged.push(base);
       return;
     }
 
-    const existing = existingEntry.row;
     existing.leads = parseMergeNumber(existing.leads) + parseMergeNumber(row.leads);
     existing.payins = parseMergeNumber(existing.payins) + parseMergeNumber(row.payins);
     existing.sales = parseMergeNumber(existing.sales) + parseMergeNumber(row.sales);
@@ -184,50 +188,14 @@ function mergeRowsByTriplet(rows) {
     existing.suggestions = Array.from(
       new Set([...(existing.suggestions ?? []), ...(row.suggestions ?? [])])
     );
-    if (row.leads_depot_id) {
-      existingEntry.leadsDepotIds.set(String(row.leads_depot_id), row.leads_depot_name);
-    }
-    if (row.sales_depot_id) {
-      existingEntry.salesDepotIds.set(String(row.sales_depot_id), row.sales_depot_name);
-    }
     existing.merge_count += 1;
   });
 
-  map.forEach(({ row, leadsDepotIds, salesDepotIds }) => {
+  map.forEach(row => {
     if (row.merge_count > 1) {
-      row.merge_notes.push(`Merged ${row.merge_count} duplicate rows for same leader/date/source`);
-    }
-
-    const leadsDepotValues = Array.from(leadsDepotIds.keys()).filter(Boolean);
-    if (leadsDepotValues.length > 1) {
-      row.leads_depot_id = null;
-      row.leads_depot_name = "";
       row.merge_notes.push(
-        "Conflicting leads depot attribution (multiple leads_depot_id). Set to blank."
+        "Merged duplicate rows for same leader/date/source/lead depot/sales depot"
       );
-    } else if (leadsDepotValues.length === 1) {
-      const [id] = leadsDepotValues;
-      row.leads_depot_id = id;
-      row.leads_depot_name = leadsDepotIds.get(id) ?? "";
-    } else {
-      row.leads_depot_id = null;
-      row.leads_depot_name = "";
-    }
-
-    const salesDepotValues = Array.from(salesDepotIds.keys()).filter(Boolean);
-    if (salesDepotValues.length > 1) {
-      row.sales_depot_id = null;
-      row.sales_depot_name = "";
-      row.merge_notes.push(
-        "Conflicting sales depot attribution (multiple sales_depot_id). Set to blank."
-      );
-    } else if (salesDepotValues.length === 1) {
-      const [id] = salesDepotValues;
-      row.sales_depot_id = id;
-      row.sales_depot_name = salesDepotIds.get(id) ?? "";
-    } else {
-      row.sales_depot_id = null;
-      row.sales_depot_name = "";
     }
   });
 
@@ -516,6 +484,8 @@ export async function parseRawDataWorkbook(
       date_real,
       agent_id: resolved_agent_id,
       source: normalizedSource,
+      leads_depot_id: leadsDepotResult.depot_id,
+      sales_depot_id: salesDepotResult.depot_id,
     });
 
     rows.push({
@@ -551,7 +521,7 @@ export async function parseRawDataWorkbook(
     progressCb(totalRows, totalRows, "processing");
   }
 
-  const mergedRows = mergeRowsByTriplet(rows);
+  const mergedRows = mergeRowsByIdentity(rows);
 
   const duplicateStart = Date.now();
   const computedIds = Array.from(
@@ -623,6 +593,8 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
             date_real: row.date_real,
             agent_id: row.resolved_agent_id,
             source: rowSource,
+            leads_depot_id: row.leads_depot_id,
+            sales_depot_id: row.sales_depot_id,
           });
         return {
           id,
