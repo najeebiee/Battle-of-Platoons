@@ -1107,6 +1107,10 @@ button {
     border-right: none;
   }
 
+  .podium-item--rank-1 .podium-card { min-height: clamp(210px, 32vh, 260px); }
+  .podium-item--rank-2 .podium-card { min-height: clamp(180px, 30vh, 240px); }
+  .podium-item--rank-3 .podium-card { min-height: clamp(150px, 28vh, 230px); }
+
   .podium-stats-row .podium-stat:nth-child(1) {
     border-right: 1px solid rgba(255,255,255,0.22);
   }
@@ -1140,8 +1144,8 @@ button {
 
   /* slightly smaller heights for 400px screens */
   .podium-item--rank-1 .podium-card { min-height: clamp(210px, 32vh, 260px); }
-  .podium-item--rank-2 .podium-card { min-height: clamp(190px, 30vh, 240px); }
-  .podium-item--rank-3 .podium-card { min-height: clamp(180px, 28vh, 230px); }
+  .podium-item--rank-2 .podium-card { min-height: clamp(180px, 30vh, 230px); }
+  .podium-item--rank-3 .podium-card { min-height: clamp(150px, 28vh, 200px); }
 
   .podium-rank-number {
     font-size: 26px;
