@@ -1087,7 +1087,6 @@ function Podium({ top3, view }) {
             ? formatCurrencyPHPCompact(item.sales, "700")
             : formatCurrencyPHP(item.sales);
 
-        // CSS didn’t apply because podium-card class wasn’t rendered.
         const cardClass = mergeClassNames(
           "podium-card",
           rank === 1 && "podium-card--winner",
