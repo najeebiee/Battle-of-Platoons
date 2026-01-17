@@ -1041,6 +1041,7 @@ function Podium({ top3, view }) {
     <div className="podium">
       {podiumItems.map((item, index) => {
         const rank = item.rank ?? index + 1;
+        const payins = item.payins ?? item.totalPayins ?? 0;
 
         // CSS didn’t apply because podium-card class wasn’t rendered.
         const cardClass = mergeClassNames(
@@ -1055,30 +1056,40 @@ function Podium({ top3, view }) {
             key={item.key || item.id}
             className={mergeClassNames("podium-item", `podium-item--rank-${rank}`)}
           >
+            <div className="podium-rank-number" aria-hidden="true">
+              {rank}
+            </div>
+            <div className="podium-avatar-chip" aria-hidden="true">
+              <div className="podium-avatar-chip__inner">
+                {item.avatarUrl ? (
+                  <img src={item.avatarUrl} alt={item.name} />
+                ) : (
+                  <div className="podium-initials">{getInitials(item.name)}</div>
+                )}
+              </div>
+            </div>
             <motion.div
               className={cardClass}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
             >
-              <div className="podium-rank-badge">{rank}</div>
-              <div className="podium-avatar-wrapper">
-                <div className="podium-avatar">
-                  {item.avatarUrl ? (
-                    <img src={item.avatarUrl} alt={item.name} />
-                  ) : (
-                    <div className="podium-initials">{getInitials(item.name)}</div>
-                  )}
-                </div>
-              </div>
               <div className="podium-name">{item.name}</div>
-              {view === "leaders" && item.platoon && (
-                <div className="podium-subtext">{item.platoon}</div>
-              )}
-              <div className="podium-stats">
-                <div>{item.points.toFixed(1)} pts</div>
-                <div>{item.leads} leads</div>
-                <div>{formatCurrencyPHP(item.sales)} sales</div>
+              <div className="podium-points">{Number(item.points || 0).toFixed(1)}</div>
+              <div className="podium-points-label">points</div>
+              <div className="podium-stats-row">
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{item.leads ?? 0}</div>
+                  <div className="podium-stat__label">leads</div>
+                </div>
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{payins}</div>
+                  <div className="podium-stat__label">payins</div>
+                </div>
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{formatCurrencyPHP(item.sales)}</div>
+                  <div className="podium-stat__label">sales</div>
+                </div>
               </div>
             </motion.div>
           </div>
