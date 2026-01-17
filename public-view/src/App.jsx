@@ -48,6 +48,28 @@ function formatCurrencyPHP(n) {
   });
 }
 
+function formatCurrencyPHPCompact(n, mode = "700") {
+  const value = Math.max(0, Number(n) || 0);
+
+  if (value >= 1_000_000) {
+    const m = value / 1_000_000;
+    const shown = Math.floor(m * 10) / 10;
+    return `₱${shown}M+`;
+  }
+
+  if (value >= 1_000) {
+    const k = value / 1_000;
+    if (mode === "600" && value >= 100_000) {
+      const roundedK = Math.round(k / 10) * 10;
+      return `₱${roundedK}K+`;
+    }
+    const roundedK = Math.round(k);
+    return `₱${roundedK}K+`;
+  }
+
+  return `₱${value.toLocaleString("en-PH")}`;
+}
+
 function formatNumber(n) {
   return (Number(n) || 0).toLocaleString("en-US");
 }
@@ -175,6 +197,21 @@ function getInitials(name = "") {
   if (!parts.length) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(() =>
+    typeof window === "undefined" ? 1024 : window.innerWidth
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  return width;
 }
 
 function normalizePodiumItems(topItems = []) {
@@ -1035,12 +1072,20 @@ function App() {
 // Findings: the badge was outside the relative card wrapper so it could anchor to the page; podium-item was not consistently relative; width clamps were tight and placeholders squeezed layout.
 function Podium({ top3, view }) {
   const podiumItems = normalizePodiumItems(top3);
+  const width = useWindowWidth();
   if (!podiumItems.length) return null;
 
   return (
     <div className="podium">
       {podiumItems.map((item, index) => {
         const rank = item.rank ?? index + 1;
+        const payins = item.payins ?? item.totalPayins ?? 0;
+        const salesValue =
+          width <= 600
+            ? formatCurrencyPHPCompact(item.sales, "600")
+            : width <= 700
+            ? formatCurrencyPHPCompact(item.sales, "700")
+            : formatCurrencyPHP(item.sales);
 
         // CSS didn’t apply because podium-card class wasn’t rendered.
         const cardClass = mergeClassNames(
@@ -1055,30 +1100,40 @@ function Podium({ top3, view }) {
             key={item.key || item.id}
             className={mergeClassNames("podium-item", `podium-item--rank-${rank}`)}
           >
+            <div className="podium-rank-number" aria-hidden="true">
+              {rank}
+            </div>
+            <div className="podium-avatar-chip" aria-hidden="true">
+              <div className="podium-avatar-chip__inner">
+                {item.avatarUrl ? (
+                  <img src={item.avatarUrl} alt={item.name} />
+                ) : (
+                  <div className="podium-initials">{getInitials(item.name)}</div>
+                )}
+              </div>
+            </div>
             <motion.div
               className={cardClass}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
             >
-              <div className="podium-rank-badge">{rank}</div>
-              <div className="podium-avatar-wrapper">
-                <div className="podium-avatar">
-                  {item.avatarUrl ? (
-                    <img src={item.avatarUrl} alt={item.name} />
-                  ) : (
-                    <div className="podium-initials">{getInitials(item.name)}</div>
-                  )}
-                </div>
-              </div>
               <div className="podium-name">{item.name}</div>
-              {view === "leaders" && item.platoon && (
-                <div className="podium-subtext">{item.platoon}</div>
-              )}
-              <div className="podium-stats">
-                <div>{item.points.toFixed(1)} pts</div>
-                <div>{item.leads} leads</div>
-                <div>{formatCurrencyPHP(item.sales)} sales</div>
+              <div className="podium-points">{Number(item.points || 0).toFixed(1)}</div>
+              <div className="podium-points-label">points</div>
+              <div className="podium-stats-row">
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{item.leads ?? 0}</div>
+                  <div className="podium-stat__label">leads</div>
+                </div>
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{payins}</div>
+                  <div className="podium-stat__label">payins</div>
+                </div>
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{salesValue}</div>
+                  <div className="podium-stat__label">sales</div>
+                </div>
               </div>
             </motion.div>
           </div>
