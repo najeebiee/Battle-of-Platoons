@@ -485,7 +485,7 @@ function normalizeBattleType(input) {
 }
 
 function normalizeGroupBy(input) {
-  if (input === "companies") return "commanders";
+  if (input === "companies") return "teams";
   return input;
 }
 
