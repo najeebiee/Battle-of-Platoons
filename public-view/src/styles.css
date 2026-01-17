@@ -951,6 +951,8 @@ button {
 .podium-stat__value {
   font-weight: 800;
   font-size: 14px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .podium-stat__label {
