@@ -790,15 +790,18 @@ button {
 }
 
 .podium-rank-number--winner {
-  color: 0 0 0 4px rgba(255, 213, 74, 0.7);
+  color: rgba(255, 213, 74, 1);
+  text-shadow: 0 6px 18px rgba(255, 213, 74, 0.35);
 }
 
 .podium-rank-number--silver {
-  color: 0 0 0 4px rgba(223, 223, 223, 0.7);
+  color: rgba(223, 223, 223, 1);
+  text-shadow: 0 6px 18px rgba(223, 223, 223, 0.30);
 }
 
 .podium-rank-number--orange {
-  color: 0 0 0 4px rgba(255, 122, 60, 0.7);
+  color: rgba(255, 122, 60, 1);
+  text-shadow: 0 6px 18px rgba(255, 122, 60, 0.35);
 }
 
 .podium-rank-number {
