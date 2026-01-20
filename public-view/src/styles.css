@@ -993,7 +993,11 @@ button {
 
   .podium-card {
     width: clamp(190px, 24vw, 320px);
-    border-radius: 50px 50px 0px 0px;
+    border-radius: 60px 60px 0px 0px;
+  }
+
+  .podium-stat__value {
+    font-size: 13px;
   }
 }
 
@@ -1004,7 +1008,7 @@ button {
 
   .podium-card {
     width: clamp(175px, 26vw, 280px);
-    border-radius: 40px 40px 0px 0px;
+    border-radius: 50px 50px 0px 0px;
   }
 }
 
@@ -1066,7 +1070,7 @@ button {
     width: 100%;
     max-width: 180px;
     padding: 34px 10px 14px;
-    border-radius: 20px 20px 0px 0px;
+    border-radius: 30px 30px 0px 0px;
     gap: 6px;
   }
 
@@ -1123,6 +1127,7 @@ button {
 @media (max-width: 520px) {
   .podium-card {
     overflow: hidden;
+    border-radius: 25px 25px 0px 0px;
   }
 
   .podium-item--rank-1 .podium-card { height: clamp(260px, 42vh, 320px); }
@@ -1153,6 +1158,14 @@ button {
 
   .podium-stat__value {
     white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .podium-name {
+    white-space: normal;
+    line-height: 1.2;
+    word-break: break-word;
+    max-width: 100%;
   }
 }
 
@@ -1191,7 +1204,7 @@ button {
 
   .podium-name {
     font-size: 12px;
-    white-space: nowrap;
+    white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
   }
