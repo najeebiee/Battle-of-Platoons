@@ -755,8 +755,8 @@ button {
 
 .podium {
   display: grid;
-  grid-template-columns: repeat(3, max-content);
-  justify-content: center;   /* centers the 3 cards as a group */
+  grid-template-columns: repeat(auto-fit, max-content);
+  justify-content: center;   /* centers the cards as a group */
   justify-items: center;
   align-items: flex-end;
   column-gap: 30px;          /* EXACT spacing between cards */
@@ -778,7 +778,7 @@ button {
   width: clamp(220px, 26vw, 360px);
   max-width: 360px;
   background: var(--blue-card);
-  border-radius: 40px;
+  border-radius: 70px 70px 0px 0px;
   padding: 42px 18px 22px;
   color: #fff;
   text-align: center;
@@ -975,6 +975,7 @@ button {
 
   .podium-card {
     width: clamp(190px, 24vw, 320px);
+    border-radius: 50px 50px 0px 0px;
   }
 }
 
@@ -985,6 +986,7 @@ button {
 
   .podium-card {
     width: clamp(175px, 26vw, 280px);
+    border-radius: 40px 40px 0px 0px;
   }
 }
 
@@ -1027,7 +1029,7 @@ button {
 
 @media (max-width: 640px) {
   .podium {
-    grid-template-columns: repeat(3, minmax(0, 1fr)); /* keep 3 across */
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     justify-content: center;
     column-gap: 10px;
     row-gap: 0;
