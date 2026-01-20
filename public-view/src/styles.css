@@ -1113,7 +1113,7 @@ button {
   .podium-item--rank-3 .podium-card { height: clamp(200px, 34vh, 260px); }
 
   .podium-stats-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 3fr 1fr;
     row-gap: 8px;
   }
 
