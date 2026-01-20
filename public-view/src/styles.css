@@ -807,6 +807,15 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+.podium-rank-number {
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--blue-card);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
 .podium-rank-number--winner {
   color: rgba(255, 213, 74, 1);
   text-shadow: 0 6px 18px rgba(255, 213, 74, 0.35);
@@ -820,15 +829,6 @@ button {
 .podium-rank-number--orange {
   color: rgba(255, 122, 60, 1);
   text-shadow: 0 6px 18px rgba(255, 122, 60, 0.35);
-}
-
-.podium-rank-number {
-  font-size: 44px;
-  font-weight: 900;
-  line-height: 1;
-  color: var(--blue-card);
-  margin-bottom: 8px;
-  text-align: center;
 }
 
 .podium-avatar-chip {
