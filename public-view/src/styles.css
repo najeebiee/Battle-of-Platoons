@@ -811,7 +811,6 @@ button {
   font-size: 44px;
   font-weight: 900;
   line-height: 1;
-  color: var(--blue-card);
   margin-bottom: 8px;
   text-align: center;
 }
@@ -1130,10 +1129,9 @@ button {
     border-radius: 25px 25px 0px 0px;
   }
 
-  /* Fix podium overlap on short viewports. */
-  .podium-item--rank-1 .podium-card { min-height: clamp(260px, 42vh, 320px); height: auto; }
-  .podium-item--rank-2 .podium-card { min-height: clamp(220px, 36vh, 280px); height: auto; }
-  .podium-item--rank-3 .podium-card { min-height: clamp(200px, 34vh, 260px); height: auto; }
+  .podium-item--rank-1 .podium-card { height: clamp(260px, 42vh, 320px); }
+  .podium-item--rank-2 .podium-card { height: clamp(220px, 36vh, 280px); }
+  .podium-item--rank-3 .podium-card { height: clamp(200px, 34vh, 260px); }
 
   .podium-stats-row {
     grid-template-columns: 1fr 1fr;
@@ -1170,36 +1168,6 @@ button {
   }
 }
 
-@media (max-height: 740px) and (max-width: 520px) {
-  .podium-card {
-    padding: 28px 10px 12px;
-    gap: 6px;
-  }
-
-  .podium-name {
-    font-size: 12px;
-    line-height: 1.15;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .podium-points {
-    font-size: 18px;
-    margin-top: 4px;
-  }
-
-  .podium-points-label {
-    font-size: 11px;
-    margin-top: -4px;
-  }
-
-  .podium-stats-row {
-    margin-top: 10px;
-  }
-}
-
 @media (max-width: 400px) {
   /* smallest supported width: tighten spacing */
   .podium {
@@ -1214,9 +1182,9 @@ button {
   }
 
   /* slightly smaller heights for 400px screens */
-  .podium-item--rank-1 .podium-card { min-height: clamp(240px, 38vh, 300px); height: auto; }
-  .podium-item--rank-2 .podium-card { min-height: clamp(205px, 34vh, 260px); height: auto; }
-  .podium-item--rank-3 .podium-card { min-height: clamp(185px, 32vh, 240px); height: auto; }
+  .podium-item--rank-1 .podium-card { height: clamp(240px, 38vh, 300px); }
+  .podium-item--rank-2 .podium-card { height: clamp(205px, 34vh, 260px); }
+  .podium-item--rank-3 .podium-card { height: clamp(185px, 32vh, 240px); }
 
   .podium-rank-number {
     font-size: 26px;
