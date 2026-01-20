@@ -1080,10 +1080,11 @@ function Podium({ top3, view }) {
       {podiumItems.map((item, index) => {
         const rank = item.rank ?? index + 1;
         const payins = item.payins ?? item.totalPayins ?? 0;
+        // Move compact sales threshold to 1100px.
         const salesValue =
           width <= 600
             ? formatCurrencyPHPCompact(item.sales, "600")
-            : width <= 700
+            : width <= 1100
             ? formatCurrencyPHPCompact(item.sales, "700")
             : formatCurrencyPHP(item.sales);
 
