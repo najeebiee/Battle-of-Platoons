@@ -790,6 +790,23 @@ button {
   gap: 8px;
 }
 
+.podium-card--winner {
+  background: linear-gradient(180deg, #0b1aa5 0%, #04092f 85%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 22px 45px rgba(3, 16, 58, 0.55);
+}
+
+.podium-card--silver {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05)),
+    var(--blue-card);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.podium-card--orange {
+  background: linear-gradient(180deg, #ff7a3c 0%, #0b1aa5 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 .podium-rank-number--winner {
   color: rgba(255, 213, 74, 1);
   text-shadow: 0 6px 18px rgba(255, 213, 74, 0.35);
