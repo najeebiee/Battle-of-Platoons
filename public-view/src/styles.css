@@ -1041,10 +1041,12 @@ button {
     font-size: 10px;
   }
 
-  .podium-points {
-    font-size: 10px;
-  }
 }
+
+@media (max-width: 750px) {
+  .podium-stat__value {
+    font-size: 11px;
+  }
 
 @media (max-width: 640px) {
   .podium {
