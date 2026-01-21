@@ -926,8 +926,6 @@ button {
   gap: 10px;
   padding: 5px 0px 5px 0px;
   border-right: 1px solid #C2C0C0;
-  border-top: 1px solid #C2C0C0;
-  border-bottom: 1px solid #C2C0C0;
 }
 
 .row-title{ font-weight: 800; }
@@ -954,6 +952,8 @@ button {
   background: #ffffff;
   color: #0b1770;
   box-shadow: 0 12px 24px rgba(11, 23, 112, 0.08);
+  border-top: 1px solid #C2C0C0;
+  border-bottom: 1px solid #C2C0C0;
 }
 
 .rank-card__rank {
@@ -983,8 +983,6 @@ button {
   gap: 10px;
   align-items: center;
   padding: 5px 0px 5px 0px;
-  border-top: 1px solid #C2C0C0;
-  border-bottom: 1px solid #C2C0C0;
 }
 
 .leader-row-stat {
