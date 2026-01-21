@@ -294,6 +294,11 @@ function App() {
   const faqWeekKey = activeWeekTab?.range?.end ? toIsoWeekKey(activeWeekTab.range.end) : null;
   const [activeView, setActiveView] = useState("depots");
   const [leaderRoleFilter, setLeaderRoleFilter] = useState(LEADER_ROLE_TABS[0].key);
+  // Pagination plan:
+  // - paginate ranks 4+ (rows list) at 15 per page
+  // - reset page on view/week/filter changes
+  // - keep ranks absolute via r.rank from full dataset
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
@@ -410,7 +415,14 @@ function App() {
   const depotRowsFetched = debug.depotRowsFetched ?? 0;
   const activeFormula = data?.formula?.data || null;
   const selectedWeekKey = data?.formula?.weekKey || null;
-  const top3 = rows.slice(0, 3);
+  const PAGE_SIZE = 15;
+  const podiumRows = rows.slice(0, 3);
+  const listRows = rows.slice(3);
+  const total = listRows.length;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const pageEnd = pageStart + PAGE_SIZE;
+  const pageRows = listRows.slice(pageStart, pageEnd);
   const entitiesLabel =
     displayView === "commanders"
       ? "Commanders"
@@ -449,6 +461,16 @@ function App() {
       console.warn("Active formula week mismatch", { selectedWeekKey, activeFormula });
     }
   }, [activeFormula, selectedWeekKey]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeWeek, activeView, leaderRoleFilter]);
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
 
   const resolvedFormulas = {
     depots: { formula: formulasByType.depots, fallbackLabel: null },
@@ -853,8 +875,15 @@ function App() {
               </div>
             ) : (
               <>
-                <Podium top3={top3} view={displayView} roleFilter={leaderRoleFilter} />
-                <LeaderboardTable rows={rows} view={displayView} roleFilter={leaderRoleFilter} />
+                <Podium top3={podiumRows} view={displayView} roleFilter={leaderRoleFilter} />
+                <LeaderboardRows
+                  rows={pageRows}
+                  view={displayView}
+                  page={page}
+                  pageCount={pageCount}
+                  onPageChange={setPage}
+                  total={total}
+                />
               </>
             )}
           </>
@@ -1150,8 +1179,8 @@ function Podium({ top3, view }) {
   );
 }
 
-function LeaderboardTable({ rows, view, roleFilter }) {
-  if (!rows.length) return null;
+function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
+  const listRef = useRef(null);
 
   const labelHeader =
     view === "leaders"
@@ -1164,57 +1193,144 @@ function LeaderboardTable({ rows, view, roleFilter }) {
       ? "Company"
       : "Commander";
 
-  const showUpline = false;
+  const showPlatoon = view === "leaders";
+  const PAGE_SIZE = 15;
+  const hasRows = rows.length > 0;
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(total, (page - 1) * PAGE_SIZE + rows.length);
+
+  const pageNumbers = () => {
+    if (pageCount <= 7) {
+      return Array.from({ length: pageCount }, (_, index) => index + 1);
+    }
+
+    const pages = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(pageCount - 1, page + 1);
+
+    if (start > 2) {
+      pages.push("ellipsis-start");
+    }
+
+    for (let current = start; current <= end; current += 1) {
+      pages.push(current);
+    }
+
+    if (end < pageCount - 1) {
+      pages.push("ellipsis-end");
+    }
+
+    pages.push(pageCount);
+    return pages;
+  };
+
+  const handlePageChange = (nextPage) => {
+    onPageChange(nextPage);
+    if (listRef.current) {
+      listRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  if (!hasRows) return null;
 
   return (
-    <div className="table-wrapper">
-      <table className="leader-table">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>{labelHeader}</th>
-            {showUpline && <th>Upline</th>}
-            <th>Leads</th>
-            <th>Payins</th>
-            <th>Sales</th>
-            <th className="th-right">Points</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={`${view}-${r.rank}-${r.key}`}>
-              <td className="cell-rank">{r.rank}</td>
-              <td className="cell-name">
+    <div className="rank-list">
+      <div className="rank-list__items" ref={listRef}>
+        {rows.map((r, index) => {
+          const computedRank = 4 + (page - 1) * PAGE_SIZE + index;
+          const rankValue = r?.rank ?? computedRank;
+          return (
+            <div className="rank-card" key={`${view}-${rankValue}-${r.key}`}>
+              <div className="rank-card__rank">#{rankValue}</div>
+              <div className="rank-card__main">
                 <div className="row-name">
                   <div className="row-avatar">
                     {r.avatarUrl ? (
                       <img src={r.avatarUrl} alt={r.name} />
                     ) : (
-                      <span className="row-initials">
-                        {getInitials(r.name)}
-                      </span>
+                      <span className="row-initials">{getInitials(r.name)}</span>
                     )}
                   </div>
-
                   <div className="row-labels">
                     <div className="row-title">{r.name}</div>
-
-                    {/* show platoon only for leaders */}
-                    {view === "leaders" && r.platoon && (
-                      <div className="row-sub">{r.platoon}</div>
-                    )}
+                    {showPlatoon && r.platoon && <div className="row-sub">{r.platoon}</div>}
                   </div>
                 </div>
-              </td>
-              {showUpline && <td>{r.uplineName || "-"}</td>}
-              <td>{r.leads}</td>
-              <td>{r.payins}</td>
-              <td>{formatCurrencyPHP(r.sales)}</td>
-              <td className="cell-right">{r.points.toFixed(1)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <div className="rank-card__meta">{labelHeader}</div>
+              </div>
+              <div className="rank-card__metrics">
+                <div className="leader-row-stat">
+                  <span className="leader-row-stat__label">Leads</span>
+                  <span className="leader-row-stat__value">{r.leads}</span>
+                </div>
+                <div className="leader-row-stat">
+                  <span className="leader-row-stat__label">Payins</span>
+                  <span className="leader-row-stat__value">{r.payins}</span>
+                </div>
+                <div className="leader-row-stat">
+                  <span className="leader-row-stat__label">Sales</span>
+                  <span className="leader-row-stat__value">{formatCurrencyPHP(r.sales)}</span>
+                </div>
+                <div className="leader-row-stat">
+                  <span className="leader-row-stat__label">Points</span>
+                  <span className="leader-row-stat__value">{r.points.toFixed(1)}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="pagination">
+        <div className="pagination__meta">
+          Showing {rangeStart}–{rangeEnd} of {total}
+        </div>
+        {pageCount > 1 && (
+          <div className="pagination__controls">
+            <button
+              className="pagination__btn"
+              type="button"
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
+              disabled={page === 1}
+            >
+              Prev
+            </button>
+            <div className="pagination__pages">
+              {pageNumbers().map((value) => {
+                if (typeof value !== "number") {
+                  return (
+                    <span className="pagination__ellipsis" key={value}>
+                      …
+                    </span>
+                  );
+                }
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={mergeClassNames(
+                      "pagination__btn",
+                      value === page && "pagination__btn--active"
+                    )}
+                    onClick={() => handlePageChange(value)}
+                  >
+                    {value}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              className="pagination__btn"
+              type="button"
+              onClick={() => handlePageChange(Math.min(pageCount, page + 1))}
+              disabled={page === pageCount}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
