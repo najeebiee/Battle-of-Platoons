@@ -91,7 +91,7 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
   let rows = Array.from(entries.values()).map(entry => {
     const agent = agentsById.get(entry.agent_id);
     const statusValue = computeStatus(entry);
-    const approvedCompany = Boolean(entry.company?.approved);
+    const approvedCompany = Boolean(entry.company?.approved || entry.depot?.approved);
     const matched = statusValue === "matched";
     const publishable = isPublishable(entry.company, entry.depot);
     return {
