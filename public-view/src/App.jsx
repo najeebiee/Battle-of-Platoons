@@ -415,7 +415,7 @@ function App() {
   const depotRowsFetched = debug.depotRowsFetched ?? 0;
   const activeFormula = data?.formula?.data || null;
   const selectedWeekKey = data?.formula?.weekKey || null;
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 10;
   const podiumRows = rows.slice(0, 3);
   const listRows = rows.slice(3);
   const total = listRows.length;
