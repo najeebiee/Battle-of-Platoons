@@ -31,7 +31,7 @@ const STATUS_LABELS = {
 const STATUS_CLASS = {
   matched: "valid",
   mismatch: "duplicate",
-  missing_company: "invalid",
+  missing_company: "muted",
   missing_depot: "invalid",
 };
 
@@ -167,7 +167,6 @@ export default function Publishing() {
   }
 
   function openAction(mode, row) {
-    if (mode === "approve" && !row?.company) return;
     setActionDialog({ mode, row, reason: "" });
     setActionError("");
   }
@@ -380,8 +379,6 @@ export default function Publishing() {
                           type="button"
                           className="button primary"
                           onClick={() => openAction("approve", row)}
-                          disabled={!row.company}
-                          title={row.company ? "" : "Cannot approve because Company row is missing. Company must upload or create a mirrored Company entry (future feature)."}
                         >
                           Approve
                         </button>

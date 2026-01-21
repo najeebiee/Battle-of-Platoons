@@ -29,7 +29,7 @@ const STATUS_LABELS = {
 const STATUS_CLASS = {
   matched: "valid",
   mismatch: "duplicate",
-  missing_company: "invalid",
+  missing_company: "muted",
   missing_depot: "invalid",
 };
 
