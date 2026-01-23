@@ -641,12 +641,13 @@ export async function saveRawDataRows(validRows, { mode = "warn" } = {}, onProgr
         return {
           id,
           agent_id: row.resolved_agent_id,
+          date_real: row.date_real,
+          date: { source: "xlsx", original: row.date_original ?? row.date_real },
           leads: row.leads ?? 0,
           payins: row.payins ?? 0,
           sales: row.sales ?? 0,
           leads_depot_id: row.leads_depot_id ?? null,
           sales_depot_id: row.sales_depot_id ?? null,
-          date_real: row.date_real,
         };
       })
       .filter(item => item?.id);
@@ -783,6 +784,7 @@ function buildUpsertPayload(row = {}) {
     id,
     agent_id: agentId,
     date_real: dateReal,
+    date: { source: "api", original: dateReal },
     leads: row.leads ?? 0,
     payins: row.payins ?? 0,
     sales: row.sales ?? 0,
