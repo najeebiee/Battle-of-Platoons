@@ -617,7 +617,6 @@ export async function saveRawDataRows(validRows, { mode = "warn" } = {}, onProgr
   let upsertedCount = 0;
   let insertedCount = 0;
   const errors = [];
-  const now = new Date().toISOString();
   const isInsertOnly = mode === "insert_only";
 
   for (let i = 0; i < validRows.length; i += batchSize) {
@@ -642,15 +641,12 @@ export async function saveRawDataRows(validRows, { mode = "warn" } = {}, onProgr
         return {
           id,
           agent_id: row.resolved_agent_id,
-          leads: row.leads,
-          payins: row.payins,
-          sales: row.sales,
+          leads: row.leads ?? 0,
+          payins: row.payins ?? 0,
+          sales: row.sales ?? 0,
           leads_depot_id: row.leads_depot_id ?? null,
           sales_depot_id: row.sales_depot_id ?? null,
           date_real: row.date_real,
-          date: { source: "xlsx", original: row.date_original ?? row.date_real },
-          createdAt: { iso: now },
-          updatedAt: { iso: now },
         };
       })
       .filter(item => item?.id);
@@ -776,7 +772,15 @@ function buildUpsertPayload(row = {}) {
 
   if (!dateReal || !agentId || !leadsDepotId || !salesDepotId) return null;
 
+  const id = computeRawDataId({
+    date_real: dateReal,
+    agent_id: agentId,
+    leads_depot_id: leadsDepotId,
+    sales_depot_id: salesDepotId,
+  });
+
   return {
+    id,
     agent_id: agentId,
     date_real: dateReal,
     leads: row.leads ?? 0,
