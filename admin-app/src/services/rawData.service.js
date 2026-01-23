@@ -836,6 +836,16 @@ export async function setVoided(id, voided, void_reason = null) {
   return enrichSingleRow(data);
 }
 
+export async function unvoidRawData({ id, reason }) {
+  const trimmedReason = reason?.trim() || null;
+  const { data, error } = await supabase.rpc("unvoid_raw_data", {
+    p_id: id,
+    p_reason: trimmedReason,
+  });
+  if (error) throw normalizeSupabaseError(error);
+  return data;
+}
+
 export async function setPublished(id, published) {
   const { data, error } = await supabase
     .from("raw_data")
