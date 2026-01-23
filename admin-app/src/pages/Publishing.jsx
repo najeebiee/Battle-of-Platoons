@@ -47,9 +47,14 @@ export default function Publishing() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  // Void modal state
+  const [voidModalOpen, setVoidModalOpen] = useState(false);
+  const [voidModalRowId, setVoidModalRowId] = useState(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidSubmitting, setVoidSubmitting] = useState(false);
+
   const canViewAudit = ADMIN_ROLES.has(profile?.role ?? "");
   const canVoid = ADMIN_ROLES.has(profile?.role ?? "");
-  const [actionRowId, setActionRowId] = useState("");
 
   function normalizeSchemaErrorMessage(err, fallback) {
     const msg = err?.message || fallback || "";
@@ -142,24 +147,6 @@ export default function Publishing() {
     setAppliedFilters({ dateFrom: defaults.dateFrom, dateTo: defaults.dateTo, agentId: "", status: "" });
   }
 
-  async function handleTogglePublished(row) {
-    if (!canViewAudit || !row?.id) return;
-    const nextValue = !row.published;
-    setActionRowId(row.id);
-    try {
-      await setPublished(row.id, nextValue);
-      setRows(prev =>
-        prev.map(item => (item.id === row.id ? { ...item, published: nextValue } : item))
-      );
-      setAppliedFilters(prev => ({ ...prev }));
-    } catch (e) {
-      console.error(e);
-      setError(normalizeSchemaErrorMessage(e, "Failed to update publish status"));
-    } finally {
-      setActionRowId("");
-    }
-  }
-
   function openVoidModal(row) {
     setVoidModalRowId(row.id);
     setVoidReason("");
@@ -187,7 +174,7 @@ export default function Publishing() {
     try {
       await setVoided(voidModalRowId, true, trimmedReason);
       setRows(prev =>
-        prev.map(item => (item.id === voidModalRowId ? { ...item, voided: true } : item))
+        prev.map(item => (item.id === voidModalRowId ? { ...item, voided: true, void_reason: trimmedReason } : item))
       );
       setAppliedFilters(prev => ({ ...prev }));
       closeVoidModal();
@@ -322,81 +309,73 @@ export default function Publishing() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => {
-              const agent = agentMap[row.agent_id];
-              const canModify = canEditRow(row, profile, agent) && ADMIN_ROLES.has(currentRole);
-              const isEditDisabled = savingId === row.id || row.voided || !canModify;
+            {rows.map((row, index) => (
+              <tr key={row.id}>
+                <td>
+                  <div className="muted" style={{ fontSize: 12 }}>{index + 1}</div>
+                </td>
+                <td>{row.date_real}</td>
+                <td>{row.agent_id}</td>
+                <td>{row.leads_depot_id}</td>
+                <td>{row.sales_depot_id}</td>
+                <td>{row.leads}</td>
+                <td>{row.payins}</td>
+                <td>{row.sales}</td>
 
-              return (
-                <tr key={row.id}>
-                  <td>
-                    <div className="muted" style={{ fontSize: 12 }}>{index + 1}</div>
-                  </td>
-                  <td>{row.date_real}</td>
-                  <td>{renderIdentityCell(row)}</td>
+                <td>
+                  {row.voided ? (
+                    <span style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      background: "#ffe8e8",
+                      color: "#b00020",
+                      borderRadius: 12,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}>
+                      Voided
+                    </span>
+                  ) : (
+                    <span style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      background: row.published ? "#e6f5e6" : "#f5f5f5",
+                      color: row.published ? "#1b6b1b" : "#666",
+                      borderRadius: 12,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}>
+                      {row.published ? "Published" : "Unpublished"}
+                    </span>
+                  )}
+                </td>
 
-                  <td>{row.leadsDepotName || depotMap[row.leads_depot_id]?.name || "—"}</td>
-                  <td>{row.salesDepotName || depotMap[row.sales_depot_id]?.name || "—"}</td>
-                  <td>{formatNumber(row.leads)}</td>
-                  <td>{formatNumber(row.payins)}</td>
-                  <td>{formatCurrency(row.sales)}</td>
-
-                  <td>
-                    {row.voided ? (
-                      <span style={{
-                        display: "inline-block",
-                        padding: "2px 8px",
-                        background: "#ffe8e8",
-                        color: "#b00020",
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}>
-                        Voided
-                      </span>
-                    ) : (
-                      <span style={{
-                        display: "inline-block",
-                        padding: "2px 8px",
-                        background: row.published ? "#e6f5e6" : "#f5f5f5",
-                        color: row.published ? "#1b6b1b" : "#666",
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}>
-                        {row.published ? "Published" : "Unpublished"}
-                      </span>
-                    )}
-                  </td>
-
-                  <td>
-                    {row.voided && row.void_reason ? (
-                      <div className="muted" style={{ fontSize: 12, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }} title={row.void_reason}>
-                        {row.void_reason}
-                      </div>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  <td>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {canModify ? (
-                        <button
-                          type="button"
-                          className="button secondary"
-                          onClick={() => startEdit(row)}
-                          disabled={isEditDisabled}
-                          style={isEditDisabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
-                        >
-                          Edit
-                        </button>
-                      ) : null}
+                <td>
+                  {row.voided && row.void_reason ? (
+                    <div className="muted" style={{ fontSize: 12, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }} title={row.void_reason}>
+                      {row.void_reason}
                     </div>
-                  </td>
-                </tr>
-              );
-            })}
+                  ) : (
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {!row.voided && canVoid ? (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => openVoidModal(row)}
+                        disabled={voidSubmitting}
+                      >
+                        Void
+                      </button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))}
             {!rows.length && !loading ? (
               <tr>
                 <td colSpan={11} className="muted" style={{ textAlign: "center" }}>
@@ -407,6 +386,73 @@ export default function Publishing() {
           </tbody>
         </table>
       </div>
+
+      {/* Void Modal */}
+      {voidModalOpen ? (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: "white",
+            borderRadius: 8,
+            padding: 20,
+            maxWidth: 500,
+            width: "90%",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Void Record</div>
+            <div style={{ marginBottom: 16, color: "#666" }}>
+              Are you sure you want to void this record? Please provide a reason.
+            </div>
+            <textarea
+              value={voidReason}
+              onChange={e => setVoidReason(e.target.value)}
+              placeholder="Enter reason for voiding..."
+              style={{
+                width: "100%",
+                minHeight: 100,
+                padding: 8,
+                border: "1px solid #ddd",
+                borderRadius: 4,
+                fontFamily: "inherit",
+                marginBottom: 16,
+              }}
+            />
+            {error ? (
+              <div style={{ color: "#b00020", marginBottom: 12, fontSize: 14 }}>
+                {error}
+              </div>
+            ) : null}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={closeVoidModal}
+                disabled={voidSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button primary"
+                onClick={handleConfirmVoid}
+                disabled={voidSubmitting || !voidReason.trim()}
+              >
+                {voidSubmitting ? "Voiding..." : "Confirm Void"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
