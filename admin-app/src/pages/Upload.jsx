@@ -261,7 +261,16 @@ export default function Upload() {
     setSaveProgress({ done: 0, total: processed.rowsForSave.length });
     setSaveResult(null);
     try {
-      const result = await upsertRawData(processed.rowsForSave);
+      const payload = processed.rowsForSave.map(row => ({
+        date_real: row.date_real,
+        agent_id: row.agent_id ?? row.resolved_agent_id,
+        leads_depot_id: row.leads_depot_id,
+        sales_depot_id: row.sales_depot_id,
+        leads: row.leads ?? 0,
+        payins: row.payins ?? 0,
+        sales: row.sales ?? 0,
+      }));
+      const result = await upsertRawData(payload);
       if (!isMountedRef.current) return;
       setSaveProgress({ done: processed.rowsForSave.length, total: processed.rowsForSave.length });
       setSaveResult({
@@ -359,7 +368,6 @@ export default function Upload() {
       sourceRowIndex: timestampKey,
       excelRowNumber: "manual",
       date_real: manualForm.date_real,
-      date_original: manualForm.date_real,
       agent_id: manualForm.agent_id,
       leads: Number(manualForm.leads) || 0,
       payins: Number(manualForm.payins) || 0,

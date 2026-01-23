@@ -768,24 +768,15 @@ function sanitizeRawDataPatch(patch = {}) {
   return payload;
 }
 
-function buildUpsertPayload(row = {}, nowIso) {
+function buildUpsertPayload(row = {}) {
   const agentId = row.agent_id ?? row.resolved_agent_id ?? "";
   const dateReal = row.date_real ?? "";
   const leadsDepotId = row.leads_depot_id ?? null;
   const salesDepotId = row.sales_depot_id ?? null;
-  const id =
-    row.id ??
-    computeRawDataId({
-      date_real: dateReal,
-      agent_id: agentId,
-      leads_depot_id: leadsDepotId,
-      sales_depot_id: salesDepotId,
-    });
 
-  if (!id) return null;
+  if (!dateReal || !agentId || !leadsDepotId || !salesDepotId) return null;
 
   return {
-    id,
     agent_id: agentId,
     date_real: dateReal,
     leads: row.leads ?? 0,
@@ -793,15 +784,11 @@ function buildUpsertPayload(row = {}, nowIso) {
     sales: row.sales ?? 0,
     leads_depot_id: leadsDepotId,
     sales_depot_id: salesDepotId,
-    date: row.date ?? { source: "xlsx", original: row.date_original ?? dateReal },
-    createdAt: row.createdAt ?? { iso: nowIso },
-    updatedAt: { iso: nowIso },
   };
 }
 
 export async function upsertRawData(rows = []) {
-  const nowIso = new Date().toISOString();
-  const payload = rows.map(row => buildUpsertPayload(row, nowIso)).filter(Boolean);
+  const payload = rows.map(row => buildUpsertPayload(row)).filter(Boolean);
   if (!payload.length) return [];
 
   const { data, error } = await supabase
