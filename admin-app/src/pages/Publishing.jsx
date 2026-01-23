@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { listAgents } from "../services/agents.service";
 import { listCompareRows } from "../services/compare.service";
-import { approvePair, unapprovePair } from "../services/rawData.service";
+import { publishPair, unpublishPair } from "../services/rawData.service";
 import { getMyProfile } from "../services/profile.service";
 
 function formatDateInput(date) {
@@ -78,7 +78,7 @@ export default function Publishing() {
   function normalizeSchemaErrorMessage(err, fallback) {
     const msg = err?.message || fallback || "";
     const lowered = msg.toLowerCase();
-    if (lowered.includes("schema cache") || lowered.includes("approve_reason")) {
+    if (lowered.includes("schema cache") || lowered.includes("approve_reason") || lowered.includes("publish_reason")) {
       return SCHEMA_MIGRATION_HINT;
     }
     return msg || fallback || "Unexpected error";
@@ -150,9 +150,9 @@ export default function Publishing() {
   const counters = useMemo(() => {
     const total = rows.length;
     const publishable = rows.filter(row => row.publishable).length;
-    const approved = rows.filter(row => row.approved).length;
+    const published = rows.filter(row => row.published).length;
     const matched = rows.filter(row => row.status === "matched").length;
-    return { total, publishable, approved, matched };
+    return { total, publishable, published, matched };
   }, [rows]);
 
   function handleApplyFilters() {
@@ -193,16 +193,16 @@ export default function Publishing() {
     };
 
     try {
-      if (actionDialog.mode === "approve") {
-        await approvePair(payload);
+      if (actionDialog.mode === "publish") {
+        await publishPair(payload);
       } else {
-        await unapprovePair(payload);
+        await unpublishPair(payload);
       }
       closeAction();
       setAppliedFilters(prev => ({ ...prev }));
     } catch (e) {
       console.error(e);
-      setActionError(normalizeSchemaErrorMessage(e, "Failed to update approval"));
+      setActionError(normalizeSchemaErrorMessage(e, "Failed to update publish status"));
     } finally {
       setActionLoading(false);
     }
@@ -212,12 +212,12 @@ export default function Publishing() {
     <div className="card">
       <div className="card-title">Publishing</div>
       <div className="muted" style={{ marginBottom: 12 }}>
-        Only matched pairs or company rows approved by a Super Admin will be shown on the public leaderboard. Missing Company rows cannot be published.
+        Only matched pairs or company rows published by a Super Admin will be shown on the public leaderboard. Missing Company rows cannot be published.
       </div>
 
       {!profileLoading && !isSuperAdmin ? (
         <div className="error-box" role="alert">
-          Only Super Admins can approve or unapprove rows. You can still view the current publish state.
+          Only Super Admins can publish or unpublish rows. You can still view the current publish state.
         </div>
       ) : null}
 
@@ -293,8 +293,8 @@ export default function Publishing() {
           <div className="summary-value valid">{counters.publishable}</div>
         </div>
         <div className="summary-pill">
-          <div className="summary-label">Approved</div>
-          <div className="summary-value">{counters.approved}</div>
+          <div className="summary-label">Published</div>
+          <div className="summary-value">{counters.published}</div>
         </div>
         <div className="summary-pill">
           <div className="summary-label">Matched</div>
@@ -329,7 +329,7 @@ export default function Publishing() {
               <th>Depot Mismatch</th>
               <th>Status</th>
               <th>Publishable</th>
-              <th>Approved</th>
+              <th>Published</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -365,27 +365,25 @@ export default function Publishing() {
                   </span>
                 </td>
                 <td>
-                  {row.approved ? (
-                    <span className="status-pill duplicate">Approved</span>
-                  ) : (
-                    <span className="status-pill muted">Not Approved</span>
-                  )}
+                  <span className={`status-pill ${row.published ? "valid" : "muted"}`}>
+                    {row.published ? "Published" : "Unpublished"}
+                  </span>
                 </td>
                 <td>
                   {isSuperAdmin ? (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {!row.approved ? (
+                      {!row.published ? (
                         <button
                           type="button"
                           className="button primary"
-                          onClick={() => openAction("approve", row)}
+                          onClick={() => openAction("publish", row)}
                         >
-                          Approve
+                          Publish
                         </button>
                       ) : null}
-                      {row.approved ? (
-                        <button type="button" className="button secondary" onClick={() => openAction("unapprove", row)}>
-                          Unapprove
+                      {row.published ? (
+                        <button type="button" className="button secondary" onClick={() => openAction("unpublish", row)}>
+                          Unpublish
                         </button>
                       ) : null}
                     </div>
@@ -397,7 +395,7 @@ export default function Publishing() {
             ))}
             {!rows.length && !loading ? (
               <tr>
-                <td colSpan={16} className="muted" style={{ textAlign: "center" }}>
+                <td colSpan={17} className="muted" style={{ textAlign: "center" }}>
                   No rows found for the selected filters.
                 </td>
               </tr>
@@ -411,7 +409,7 @@ export default function Publishing() {
           <div className="modal-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
               <div style={{ fontSize: 18, fontWeight: 700 }}>
-                {actionDialog.mode === "approve" ? "Approve pair" : "Unapprove pair"}
+                {actionDialog.mode === "publish" ? "Publish pair" : "Unpublish pair"}
               </div>
               <button type="button" className="button secondary" onClick={closeAction} disabled={actionLoading}>
                 Close
@@ -419,16 +417,16 @@ export default function Publishing() {
             </div>
 
             <div className="muted" style={{ marginTop: 6 }}>
-              {actionDialog.mode === "approve"
-                ? "Mark the company row for this leader/day as approved. Depot rows are unaffected."
-                : "Remove approval on the company row so the pair will only publish if matched."}
+              {actionDialog.mode === "publish"
+                ? "Mark the company row for this leader/day as published. Depot rows are unaffected."
+                : "Remove publish status on the company row so the pair will only publish if matched."}
             </div>
 
             <div style={{ marginTop: 12 }}>
               <textarea
                 className="input"
                 rows={3}
-                placeholder="Approval reason (required)"
+                placeholder="Publish reason (required)"
                 value={actionDialog.reason}
                 onChange={e => setActionDialog(prev => ({ ...prev, reason: e.target.value }))}
               />
@@ -450,7 +448,7 @@ export default function Publishing() {
                 onClick={submitAction}
                 disabled={!actionReasonValid || actionLoading}
               >
-                {actionLoading ? "Working…" : actionDialog.mode === "approve" ? "Approve" : "Unapprove"}
+                {actionLoading ? "Working…" : actionDialog.mode === "publish" ? "Publish" : "Unpublish"}
               </button>
               <button type="button" className="button secondary" onClick={closeAction} disabled={actionLoading}>
                 Cancel

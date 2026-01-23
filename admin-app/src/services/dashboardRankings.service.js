@@ -57,7 +57,6 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo } = {}) {
         sales,
         date_real,
         date,
-        approved,
         voided,
         agents:agents (
           id,

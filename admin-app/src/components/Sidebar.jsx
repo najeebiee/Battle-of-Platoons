@@ -11,7 +11,6 @@ const ICONS = {
   upload: "/icons/upload.svg",
   download: "/icons/download.svg",
   reset: "/icons/reset.svg",
-  compare: "/icons/compare.svg",
   publishing: "/icons/publishing.svg",
   audit: "/icons/audit.svg",
   finalization: "/icons/finalization.svg",
@@ -76,11 +75,6 @@ export default function Sidebar() {
         <NavLink to="/upload" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
           <img className="sb-ico" src={ICONS.upload} alt="" aria-hidden="true" />
           <span>Upload Data</span>
-        </NavLink>
-
-        <NavLink to="/compare" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-          <img className="sb-ico" src={ICONS.compare} alt="" aria-hidden="true" />
-          <span>Compare Data</span>
         </NavLink>
 
         <NavLink to="/publishing" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>

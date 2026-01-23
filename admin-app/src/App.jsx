@@ -11,7 +11,6 @@ import Participants from "./pages/Participants";
 import Updates from "./pages/Updates";
 import Formulas from "./pages/Formulas";
 import Upload from "./pages/Upload";
-import Compare from "./pages/Compare";
 import Publishing from "./pages/Publishing";
 import Finalization from "./pages/Finalization";
 import AuditLog from "./pages/AuditLog";
@@ -38,7 +37,6 @@ export default function App() {
             <Route path="formulas" element={<Formulas />} />
             <Route path="scoring-formulas" element={<Formulas />} />
             <Route path="upload" element={<Upload />} />
-            <Route path="compare" element={<Compare />} />
             <Route path="publishing" element={<Publishing />} />
             <Route path="finalization" element={<Finalization />} />
             <Route path="audit-log" element={<AuditLog />} />

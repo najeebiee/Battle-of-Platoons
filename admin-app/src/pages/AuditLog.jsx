@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import {
   getProfilesByIds,
   listFinalizedWeeks,
@@ -293,6 +294,10 @@ export default function AuditLog() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
 
   const isSuperAdmin = profile?.role === "super_admin";
+
+  if (!profileLoading && !isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const actorIdsToResolve = useMemo(() => {
     const ids = new Set();

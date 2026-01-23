@@ -264,7 +264,7 @@ function isWeekKeyInRange(weekKey, startKey, endKey) {
 
 function getBattleTypeForView(viewKey, roleFilter) {
   if (viewKey === "depots") return "depots";
-  if (viewKey === "companies") return "companies";
+  if (viewKey === "companies") return "teams";
   if (viewKey === "teams") return "teams";
   if (viewKey === "commanders") return "commanders";
   if (viewKey === "platoon") return "platoons";
@@ -411,8 +411,7 @@ function App() {
   const debug = data?.debug || {};
   const publishableRowsCount = debug.publishableRowsCount ?? 0;
   const filteredByRangeCount = debug.filteredByRangeCount ?? 0;
-  const companyRowsFetched = debug.companyRowsFetched ?? 0;
-  const depotRowsFetched = debug.depotRowsFetched ?? 0;
+  const publishableRowsFetched = debug.publishableRowsFetched ?? 0;
   const activeFormula = data?.formula?.data || null;
   const selectedWeekKey = data?.formula?.weekKey || null;
   const PAGE_SIZE = 10;
@@ -474,7 +473,7 @@ function App() {
 
   const resolvedFormulas = {
     depots: { formula: formulasByType.depots, fallbackLabel: null },
-    companies: { formula: formulasByType.companies, fallbackLabel: null },
+    companies: { formula: formulasByType.teams, fallbackLabel: null },
     commanders: {
       formula: formulasByType.commanders,
       fallbackLabel: null,
@@ -700,35 +699,35 @@ function App() {
   } else if (probe.status === "done" && !probe.error && probe.count === 0) {
     statusBlocks.push(
       <div key="probe-empty" className="status-text" style={{ marginBottom: 12 }}>
-        <strong>DATA NOT PUBLISHABLE / RLS FILTERED:</strong> Connected to Supabase, but <code>raw_data</code> returned
-        0 rows for anon access.
+        <strong>DATA NOT PUBLISHABLE / RLS FILTERED:</strong> Connected to Supabase, but{" "}
+        <code>publishable_raw_data</code> returned 0 rows for anon access.
         <ul style={{ marginTop: 6, paddingLeft: 18, fontSize: 13 }}>
           <li>RLS publishable filter might hide all rows (approved=true OR matched depot/company totals).</li>
           <li>No approved/matched company rows exist for this project yet.</li>
           <li>Project ref mismatch - verify you are using the correct Supabase env vars (see debug banner).</li>
         </ul>
         <div style={{ fontSize: 13, marginTop: 4 }}>
-          Next actions: approve one company row and re-test; verify <code>raw_data</code> RLS for source='company' &amp;
-          voided=false &amp; approved=true/matched; confirm env vars point to the intended project.
+          Next actions: approve one company row and re-test; verify <code>publishable_raw_data</code> visibility; confirm
+          env vars point to the intended project.
         </div>
       </div>
     );
   } else if (probe.status === "done" && probe.error) {
     const probeMsg = import.meta.env.DEV
       ? `${probe.error?.message ?? "Unknown error"}${probe.error?.code ? ` (code: ${probe.error.code})` : ""}`
-      : "The public role could not read raw_data.";
+      : "The public role could not read publishable_raw_data.";
     statusBlocks.push(
       <div key="probe-error" className="status-text status-text--error" style={{ marginBottom: 12 }}>
-        <strong>Connected, but raw_data probe failed:</strong> {probeMsg}
+        <strong>Connected, but publishable_raw_data probe failed:</strong> {probeMsg}
       </div>
     );
   } else if (probe.status === "done" && (probe.count ?? 0) > 0 && !loading && rows.length === 0) {
     statusBlocks.push(
       <div key="no-publishable" className="status-text" style={{ marginBottom: 12 }}>
-        <strong>raw_data is visible, but no publishable results for this week range.</strong>{" "}
+        <strong>publishable_raw_data is visible, but no publishable results for this week range.</strong>{" "}
         <span style={{ fontSize: 13 }}>
-          (company rows fetched: {companyRowsFetched}, depot pairs: {depotRowsFetched}, publishable matches:{" "}
-          {publishableRowsCount}, after date filter: {filteredByRangeCount})
+          (publishable rows fetched: {publishableRowsFetched}, publishable matches: {publishableRowsCount}, after date
+          filter: {filteredByRangeCount})
         </span>
       </div>
     );
@@ -754,7 +753,7 @@ function App() {
           }}
         >
           <span>Project: {projectRef}</span>
-          <span>raw_data visible: {probe.status === "done" ? probe.count ?? "error" : "?"}</span>
+          <span>publishable_raw_data visible: {probe.status === "done" ? probe.count ?? "error" : "?"}</span>
           <span>Leaderboard rows: {rows.length}</span>
           <span>Error: {error || "none"}</span>
         </div>

@@ -4,11 +4,10 @@ import {
   mergeRawDataRowsByIdentity,
   normalizeRawDataRows,
   parseRawDataWorkbook,
-  saveRawDataRows,
+  upsertRawData,
 } from "../services/rawData.service";
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
-import { getMyProfile } from "../services/profile.service";
 
 export default function Upload() {
   const [fileName, setFileName] = useState("");
@@ -21,36 +20,25 @@ export default function Upload() {
   const [saveResult, setSaveResult] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [importMode, setImportMode] = useState("warn");
-  const [profile, setProfile] = useState(null);
-  const [profileError, setProfileError] = useState("");
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [source, setSource] = useState("company");
-  const [parsedFile, setParsedFile] = useState(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualForm, setManualForm] = useState({
     date_real: "",
     agent_id: "",
-    leader_name_input: "",
+    leads_depot_id: "",
     leads: 0,
     payins: 0,
     sales: 0,
-    leads_depot_id: "",
     sales_depot_id: "",
   });
-  const [manualDepotInputs, setManualDepotInputs] = useState({
-    leads_depot_input: "",
-    sales_depot_input: "",
+  const [manualLookupInputs, setManualLookupInputs] = useState({
+    agent: "",
+    leads_depot_id: "",
+    sales_depot_id: "",
   });
   const [agentsOptions, setAgentsOptions] = useState([]);
   const [depotsOptions, setDepotsOptions] = useState([]);
   const [manualError, setManualError] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
-  const forcedSource = profile?.role === "depot_admin" ? "depot" : profile?.role === "company_admin" ? "company" : null;
-  const canSelectSource = profile?.role === "super_admin";
-  const sourceLabel = source === "depot" ? "Depot" : "Company";
-  const sourceHint = forcedSource
-    ? `Source is locked to ${sourceLabel} for your role.`
-    : "Select which source you are uploading.";
 
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -145,30 +133,6 @@ export default function Upload() {
 
   useEffect(() => {
     let mounted = true;
-    setProfileLoading(true);
-    getMyProfile()
-      .then(data => {
-        if (!mounted) return;
-        setProfile(data);
-        const derivedSource = data?.role === "depot_admin" ? "depot" : data?.role === "company_admin" ? "company" : null;
-        setSource(prev => derivedSource || prev || "company");
-      })
-      .catch(err => {
-        if (!mounted) return;
-        setProfileError(err.message || "Failed to load profile");
-      })
-      .finally(() => {
-        if (mounted) setProfileLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    if (profileLoading) return () => {};
     setManualLoading(true);
     Promise.all([listAgents(), listDepots()])
       .then(([agents, depots]) => {
@@ -187,9 +151,9 @@ export default function Upload() {
     return () => {
       mounted = false;
     };
-  }, [profileLoading]);
+  }, []);
 
-  async function processFileWithSource(file, selectedSource) {
+  async function processFile(file) {
     setLoading(true);
     setError("");
     setSaveResult(null);
@@ -199,7 +163,7 @@ export default function Upload() {
     try {
       const { rows: parsedRows, meta: workbookMeta } = await parseRawDataWorkbook(
         file,
-        { source: selectedSource },
+        {},
         (done, total, stage) => {
           if (!isMountedRef.current) return;
           setParseProgress({ done, total, stage });
@@ -234,22 +198,13 @@ export default function Upload() {
       setParseProgress({ done: 0, total: 0, stage: "" });
       return;
     }
-    setParsedFile(file);
-    await processFileWithSource(file, source);
+    await processFile(file);
   }
 
   function onInputChange(e) {
     const file = e.target.files?.[0];
     handleFile(file);
   }
-
-  useEffect(() => {
-    if (!profile) return;
-    if (forcedSource && source !== forcedSource) {
-      setSource(forcedSource);
-      if (parsedFile) processFileWithSource(parsedFile, forcedSource);
-    }
-  }, [profile, parsedFile, source, forcedSource]);
 
   function downloadTemplate() {
     const a = document.createElement("a");
@@ -271,25 +226,22 @@ export default function Upload() {
     setParseProgress({ done: 0, total: 0, stage: "" });
     setIsDragging(false);
     setImportMode("warn");
-    setParsedFile(null);
     setManualOpen(false);
     setManualError("");
     setManualForm({
       date_real: "",
       agent_id: "",
-      leader_name_input: "",
+      leads_depot_id: "",
       leads: 0,
       payins: 0,
       sales: 0,
+      sales_depot_id: "",
+    });
+    setManualLookupInputs({
+      agent: "",
       leads_depot_id: "",
       sales_depot_id: "",
     });
-    setManualDepotInputs({
-      leads_depot_input: "",
-      sales_depot_input: "",
-    });
-    if (profile?.role === "depot_admin") setSource("depot");
-    else if (profile?.role === "company_admin") setSource("company");
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -305,25 +257,19 @@ export default function Upload() {
     handleFile(file);
   }
 
-  function handleSourceChange(nextSource) {
-    setSource(nextSource);
-    if (parsedFile) processFileWithSource(parsedFile, nextSource);
-  }
-
   async function handleSave() {
     setSaveProgress({ done: 0, total: processed.rowsForSave.length });
     setSaveResult(null);
     try {
-      const result = await saveRawDataRows(
-        processed.rowsForSave,
-        { mode: importMode, source },
-        (done, total) => {
-          if (!isMountedRef.current) return;
-          setSaveProgress({ done, total });
-        }
-      );
+      const result = await upsertRawData(processed.rowsForSave);
       if (!isMountedRef.current) return;
-      setSaveResult({ ...result, skipped: rows.length - processed.rowsForSave.length });
+      setSaveProgress({ done: processed.rowsForSave.length, total: processed.rowsForSave.length });
+      setSaveResult({
+        insertedCount: 0,
+        upsertedCount: result.length,
+        errors: [],
+        skipped: rows.length - processed.rowsForSave.length,
+      });
     } catch (e) {
       if (!isMountedRef.current) return;
       setSaveResult({
@@ -359,16 +305,19 @@ export default function Upload() {
     return matches.length === 1 ? matches[0] : null;
   }
 
-  function handleManualLeaderChange(value) {
+  function handleManualAgentChange(value) {
     const parsed = parseLookupValue(value);
     let agentId = parsed.id;
     if (!agentId && parsed.label) {
       const match = findAgentByName(parsed.label);
       agentId = match?.id ?? "";
     }
+    setManualLookupInputs(prev => ({
+      ...prev,
+      agent: value,
+    }));
     setManualForm(prev => ({
       ...prev,
-      leader_name_input: value,
       agent_id: agentId,
     }));
   }
@@ -380,13 +329,13 @@ export default function Upload() {
       const match = findDepotByName(parsed.label);
       depotId = match?.id ?? "";
     }
-    setManualDepotInputs(prev => ({
+    setManualLookupInputs(prev => ({
       ...prev,
       [field]: value,
     }));
     setManualForm(prev => ({
       ...prev,
-      [field === "leads_depot_input" ? "leads_depot_id" : "sales_depot_id"]: depotId,
+      [field]: depotId,
     }));
   }
 
@@ -397,7 +346,7 @@ export default function Upload() {
 
     const errors = [];
     if (!manualForm.date_real) errors.push("Date is required.");
-    if (!manualForm.agent_id) errors.push("Leader name is required.");
+    if (!manualForm.agent_id) errors.push("Leader is required.");
     if (!manualForm.leads_depot_id) errors.push("Leads depot is required.");
     if (!manualForm.sales_depot_id) errors.push("Sales depot is required.");
     if (errors.length) {
@@ -405,15 +354,12 @@ export default function Upload() {
       return;
     }
 
-    const agent = agentsOptions.find(option => option.id === manualForm.agent_id);
-    const leaderName = agent?.name ?? manualForm.leader_name_input?.split(" — ")[0]?.trim() ?? "";
     const timestampKey = `manual-${Date.now()}`;
     const manualRow = {
       sourceRowIndex: timestampKey,
       excelRowNumber: "manual",
       date_real: manualForm.date_real,
       date_original: manualForm.date_real,
-      leader_name_input: leaderName,
       agent_id: manualForm.agent_id,
       leads: Number(manualForm.leads) || 0,
       payins: Number(manualForm.payins) || 0,
@@ -424,22 +370,22 @@ export default function Upload() {
 
     try {
       setManualLoading(true);
-      const { rows: normalizedRows } = await normalizeRawDataRows([manualRow], { source });
+      const { rows: normalizedRows } = await normalizeRawDataRows([manualRow]);
       setRows(prev => mergeRawDataRowsByIdentity([...prev, ...normalizedRows]));
       setManualOpen(false);
       setManualForm({
         date_real: "",
         agent_id: "",
-        leader_name_input: "",
+        leads_depot_id: "",
         leads: 0,
         payins: 0,
         sales: 0,
-        leads_depot_id: "",
         sales_depot_id: "",
       });
-      setManualDepotInputs({
-        leads_depot_input: "",
-        sales_depot_input: "",
+      setManualLookupInputs({
+        agent: "",
+        leads_depot_id: "",
+        sales_depot_id: "",
       });
     } catch (submitError) {
       setManualError(submitError.message || "Failed to add manual row");
@@ -461,7 +407,7 @@ export default function Upload() {
             setManualError("");
             setManualOpen(true);
           }}
-          disabled={profileLoading || manualLoading}
+          disabled={manualLoading}
         >
           Manual Input
         </button>
@@ -505,31 +451,29 @@ export default function Upload() {
 
       <div className="summary-grid" style={{ marginTop: 12 }}>
         <div className="summary-pill">
-          <div className="summary-label">Source</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="summary-label">Import Mode</div>
+          <div>
             <select
-              value={source}
-              onChange={e => handleSourceChange(e.target.value)}
-              disabled={profileLoading || (!canSelectSource && Boolean(forcedSource))}
+              value={importMode}
+              onChange={e => {
+                setImportMode(e.target.value);
+                setSaveResult(null);
+              }}
             >
-              <option value="company">Company</option>
-              <option value="depot">Depot</option>
+              <option value="warn">Warn (upsert)</option>
+              <option value="upsert">Upsert</option>
+              <option value="insert_only">Insert Only</option>
             </select>
-            <span className={`status-pill ${source === "depot" ? "duplicate" : "valid"}`}>
-              Source: {sourceLabel}
-            </span>
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            {profileLoading ? "Loading profile…" : sourceHint}
+            {importMode === "insert_only"
+              ? "Duplicates will be skipped."
+              : importMode === "upsert"
+                ? "Duplicates will overwrite existing rows."
+                : "Duplicates will be flagged but still overwrite."}
           </div>
         </div>
       </div>
-
-      {profileError ? (
-        <div className="error-box" role="alert">
-          {profileError}
-        </div>
-      ) : null}
 
       {fileName ? (
         <div className="hint" style={{ marginTop: 12 }}>
@@ -551,31 +495,6 @@ export default function Upload() {
 
       {rows.length ? (
         <>
-          <div className="summary-grid">
-            <div className="summary-pill">
-              <div className="summary-label">Import Mode</div>
-              <div>
-                <select
-                  value={importMode}
-                  onChange={e => {
-                    setImportMode(e.target.value);
-                    setSaveResult(null);
-                  }}
-                >
-                  <option value="warn">Warn (upsert)</option>
-                  <option value="upsert">Upsert</option>
-                  <option value="insert_only">Insert Only</option>
-                </select>
-              </div>
-              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                {importMode === "insert_only"
-                  ? "Duplicates will be skipped."
-                  : importMode === "upsert"
-                    ? "Duplicates will overwrite existing rows."
-                    : "Duplicates will be flagged but still overwrite."}
-              </div>
-            </div>
-          </div>
           <div className="summary-grid">
             <div className="summary-pill">
               <div className="summary-label">Total</div>
@@ -737,35 +656,13 @@ export default function Upload() {
             />
           </label>
           <label className="form-field">
-            <span>Leader Name</span>
+            <span>Leader</span>
             <input
               type="text"
               list="manual-agents"
-              value={manualForm.leader_name_input}
-              onChange={e => handleManualLeaderChange(e.target.value)}
+              value={manualLookupInputs.agent}
+              onChange={e => handleManualAgentChange(e.target.value)}
               placeholder="Select leader"
-              required
-            />
-          </label>
-          <label className="form-field">
-            <span>Leads Depot</span>
-            <input
-              type="text"
-              list="manual-depots"
-              value={manualDepotInputs.leads_depot_input}
-              onChange={e => handleManualDepotChange("leads_depot_input", e.target.value)}
-              placeholder="Select leads depot"
-              required
-            />
-          </label>
-          <label className="form-field">
-            <span>Sales Depot</span>
-            <input
-              type="text"
-              list="manual-depots"
-              value={manualDepotInputs.sales_depot_input}
-              onChange={e => handleManualDepotChange("sales_depot_input", e.target.value)}
-              placeholder="Select sales depot"
               required
             />
           </label>
@@ -777,6 +674,17 @@ export default function Upload() {
               step="1"
               value={manualForm.leads}
               onChange={e => setManualForm(prev => ({ ...prev, leads: e.target.value }))}
+            />
+          </label>
+          <label className="form-field">
+            <span>Leads Depot</span>
+            <input
+              type="text"
+              list="manual-depots"
+              value={manualLookupInputs.leads_depot_id}
+              onChange={e => handleManualDepotChange("leads_depot_id", e.target.value)}
+              placeholder="Select leads depot"
+              required
             />
           </label>
           <label className="form-field">
@@ -797,6 +705,17 @@ export default function Upload() {
               step="1"
               value={manualForm.sales}
               onChange={e => setManualForm(prev => ({ ...prev, sales: e.target.value }))}
+            />
+          </label>
+          <label className="form-field">
+            <span>Sales Depot</span>
+            <input
+              type="text"
+              list="manual-depots"
+              value={manualLookupInputs.sales_depot_id}
+              onChange={e => handleManualDepotChange("sales_depot_id", e.target.value)}
+              placeholder="Select sales depot"
+              required
             />
           </label>
         </div>

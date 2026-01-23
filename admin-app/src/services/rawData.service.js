@@ -5,7 +5,7 @@ import { buildDepotMaps, listDepots, resolveDepotId } from "./depots.service";
 import { listPlatoons } from "./platoons.service";
 import { supabase } from "./supabase";
 
-// FINDINGS: raw_data is unique by (date_real, agent_id, source, leads_depot_id, sales_depot_id).
+// FINDINGS: raw_data is unique by (date_real, agent_id, leads_depot_id, sales_depot_id).
 // The UI should align to the DB uniqueness rule, so we merge by the full identity and compute ids with depots.
 
 const HEADER_ALIASES = {
@@ -28,7 +28,7 @@ function mapWeekFinalizedMessage(message = "") {
     return WEEK_FINALIZED_MESSAGE;
   }
   if (message.toLowerCase().includes("raw_data_unique_triplet")) {
-    return "Database uniqueness is still (date_real, agent_id, source). Apply migration to include depot columns.";
+    return "Database uniqueness is still (date_real, agent_id). Apply migration to include depot columns.";
   }
   return message;
 }
@@ -134,28 +134,22 @@ function parseNumber(value, field, errors) {
   return 0;
 }
 
-function normalizeSourceValue(source) {
-  return (source || "").toString().toLowerCase();
-}
-
 function normalizeDepotKey(depotId) {
   if (depotId === null || depotId === undefined) return "none";
   const trimmed = depotId.toString().trim();
   return trimmed ? trimmed : "none";
 }
 
-export function computeRawDataId({ date_real, agent_id, source, leads_depot_id, sales_depot_id }) {
-  if (!date_real || !agent_id || !source) return "";
-  const leadsDepotKey = normalizeDepotKey(leads_depot_id);
-  const salesDepotKey = normalizeDepotKey(sales_depot_id);
-  return `${date_real}_${agent_id}_${source}_${leadsDepotKey}_${salesDepotKey}`;
+export function computeRawDataId({ date_real, agent_id, leads_depot_id, sales_depot_id }) {
+  if (!date_real || !agent_id || !leads_depot_id || !sales_depot_id) return "";
+  return `${date_real}_${agent_id}_${leads_depot_id}_${sales_depot_id}`;
 }
 
-function buildMergeKey({ date_real, resolved_agent_id, source, leads_depot_id, sales_depot_id }) {
-  if (!date_real || !resolved_agent_id || !source) return "";
+function buildMergeKey({ date_real, resolved_agent_id, leads_depot_id, sales_depot_id }) {
+  if (!date_real || !resolved_agent_id || !leads_depot_id || !sales_depot_id) return "";
   const leadsDepotKey = normalizeDepotKey(leads_depot_id);
   const salesDepotKey = normalizeDepotKey(sales_depot_id);
-  return `${date_real}__${resolved_agent_id}__${normalizeSourceValue(source)}__${leadsDepotKey}__${salesDepotKey}`;
+  return `${date_real}__${resolved_agent_id}__${leadsDepotKey}__${salesDepotKey}`;
 }
 
 function parseMergeNumber(value) {
@@ -212,7 +206,7 @@ export function mergeRawDataRowsByIdentity(rows) {
       row.merge_notes = Array.from(
         new Set([
           ...(row.merge_notes ?? []),
-          "Merged duplicate rows for same leader/date/source/lead depot/sales depot",
+          "Merged duplicate rows for same leader/date/lead depot/sales depot",
         ])
       );
     }
@@ -221,12 +215,7 @@ export function mergeRawDataRowsByIdentity(rows) {
   return merged;
 }
 
-export async function normalizeRawDataRows(
-  inputRows = [],
-  { source = "company" } = {},
-  onProgress = () => {}
-) {
-  const normalizedSource = source === "depot" ? "depot" : "company";
+export async function normalizeRawDataRows(inputRows = [], _options = {}, onProgress = () => {}) {
   const progressCb = typeof onProgress === "function" ? onProgress : () => {};
   const parseStart = Date.now();
   const [lookups, depots, companies, platoons] = await Promise.all([
@@ -303,7 +292,6 @@ export async function normalizeRawDataRows(
     const computedId = computeRawDataId({
       date_real,
       agent_id: resolved_agent_id,
-      source: normalizedSource,
       leads_depot_id: leadsDepotResult.depot_id,
       sales_depot_id: salesDepotResult.depot_id,
     });
@@ -326,7 +314,6 @@ export async function normalizeRawDataRows(
       status: errors.length ? "invalid" : "valid",
       errors,
       suggestions,
-      source: normalizedSource,
       merge_count: rawRow.merge_count,
       merge_notes: rawRow.merge_notes,
       dup_base_row: rawRow.dup_base_row,
@@ -396,38 +383,24 @@ export async function normalizeRawDataRows(
 }
 
 export function isPublishable(companyRow, depotRow) {
-  if (!companyRow) return false;
-  const companySource = normalizeSourceValue(companyRow.source);
-  if (companySource !== "company") return false;
-  if (companyRow.voided) return false;
-  if (companyRow.approved === true) return true;
-
-  if (!depotRow) return false;
-  const depotSource = normalizeSourceValue(depotRow.source);
-  if (depotSource !== "depot") return false;
-
-  const leadsMatch = Number(companyRow.leads ?? 0) === Number(depotRow.leads ?? 0);
-  const payinsMatch = Number(companyRow.payins ?? 0) === Number(depotRow.payins ?? 0);
-  const salesMatch = Number(companyRow.sales ?? 0) === Number(depotRow.sales ?? 0);
-
-  return leadsMatch && payinsMatch && salesMatch;
+  if (!companyRow && !depotRow) return false;
+  return Boolean(companyRow?.published ?? depotRow?.published);
 }
 
 export function canEditRow(row, profile, agent) {
   if (!row || !profile?.role) return false;
-  const source = normalizeSourceValue(row.source);
   const role = profile.role;
   if (role === "super_admin") return true;
 
   if (role === "company_admin") {
-    return source === "company";
+    return true;
   }
 
   if (role === "depot_admin") {
     const profileDepotId = profile.depot_id ?? profile.depotId ?? "";
     const agentDepotId = agent?.depotId ?? agent?.depot_id ?? "";
     if (!profileDepotId || !agentDepotId) return false;
-    return source === "depot" && String(profileDepotId) === String(agentDepotId);
+    return String(profileDepotId) === String(agentDepotId);
   }
 
   return false;
@@ -562,8 +535,8 @@ async function enrichRawDataRows(rows = []) {
       sales: row.sales ?? 0,
       leads_depot_id: row.leads_depot_id ?? null,
       sales_depot_id: row.sales_depot_id ?? null,
-      source: row.source ?? "",
       voided: Boolean(row.voided),
+      published: Boolean(row.published),
       void_reason: row.void_reason ?? null,
       voided_at: row.voided_at ?? null,
       voided_by: row.voided_by ?? null,
@@ -577,13 +550,8 @@ async function enrichRawDataRows(rows = []) {
   });
 }
 
-export async function parseRawDataWorkbook(
-  file,
-  { source = "company" } = {},
-  onProgress = () => {}
-) {
+export async function parseRawDataWorkbook(file, _options = {}, onProgress = () => {}) {
   if (!file) throw new Error("File is required");
-  const normalizedSource = source === "depot" ? "depot" : "company";
   const progressCb = typeof onProgress === "function" ? onProgress : () => {};
 
   progressCb(0, 0, "reading");
@@ -629,7 +597,7 @@ export async function parseRawDataWorkbook(
 
   const { rows: rowsWithDuplicates, meta } = await normalizeRawDataRows(
     inputRows,
-    { source: normalizedSource },
+    {},
     progressCb
   );
 
@@ -644,20 +612,18 @@ export async function parseRawDataWorkbook(
   };
 }
 
-export async function saveRawDataRows(validRows, { mode = "warn", source = "company" } = {}, onProgress = () => {}) {
+export async function saveRawDataRows(validRows, { mode = "warn" } = {}, onProgress = () => {}) {
   const batchSize = 200;
   let upsertedCount = 0;
   let insertedCount = 0;
   const errors = [];
   const now = new Date().toISOString();
   const isInsertOnly = mode === "insert_only";
-  const normalizedSource = source === "depot" ? "depot" : "company";
 
   for (let i = 0; i < validRows.length; i += batchSize) {
     const batch = validRows
       .slice(i, i + batchSize)
       .map(row => {
-        const rowSource = row.source === "depot" || row.source === "company" ? row.source : normalizedSource;
         if (!row.leads_depot_id || !row.sales_depot_id) {
           row.status = "invalid";
           row.errors = Array.from(
@@ -670,7 +636,6 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
           computeRawDataId({
             date_real: row.date_real,
             agent_id: row.resolved_agent_id,
-            source: rowSource,
             leads_depot_id: row.leads_depot_id,
             sales_depot_id: row.sales_depot_id,
           });
@@ -683,7 +648,6 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
           leads_depot_id: row.leads_depot_id ?? null,
           sales_depot_id: row.sales_depot_id ?? null,
           date_real: row.date_real,
-          source: rowSource,
           date: { source: "xlsx", original: row.date_original ?? row.date_real },
           createdAt: { iso: now },
           updatedAt: { iso: now },
@@ -701,7 +665,7 @@ export async function saveRawDataRows(validRows, { mode = "warn", source = "comp
     } else {
       const { data, error } = await supabase
         .from("raw_data")
-        .upsert(batch, { onConflict: "date_real,agent_id,source,leads_depot_id,sales_depot_id" })
+        .upsert(batch, { onConflict: "date_real,agent_id,leads_depot_id,sales_depot_id" })
         .select();
       if (error) {
         errors.push(mapWeekFinalizedMessage(error.message || "Unknown database error"));
@@ -728,7 +692,7 @@ function applyRawDataFilters(query, { dateFrom, dateTo, agentId, limit = 200 }) 
 
 export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, includeVoided = false } = {}) {
   const baseSelect =
-    "id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,source,voided,void_reason,voided_at,voided_by,agents:agents(id,name,photo_url,depot_id,company_id,platoon_id)";
+    "id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,voided,void_reason,voided_at,voided_by,published,agents:agents(id,name,photo_url,depot_id,company_id,platoon_id)";
 
   try {
     let query = supabase.from("raw_data").select(baseSelect);
@@ -744,7 +708,7 @@ export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, incl
     return enrichRawDataRows(data ?? []);
   } catch {
     let query = supabase.from("raw_data").select(
-      "id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,source,voided,void_reason,voided_at,voided_by"
+      "id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,voided,void_reason,voided_at,voided_by,published"
     );
     if (!includeVoided) query = query.eq("voided", false);
 
@@ -759,16 +723,113 @@ export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, incl
   }
 }
 
-export async function updateRawData(id, { leads, payins, sales }) {
+const FORBIDDEN_UPDATE_FIELDS = new Set([
+  "source",
+  "approved",
+  "approved_by",
+  "approved_at",
+  "is_company_row_matched",
+  "published",
+]);
+
+function sanitizeRawDataPatch(patch = {}) {
+  const payload = {};
+  Object.entries(patch ?? {}).forEach(([key, value]) => {
+    if (FORBIDDEN_UPDATE_FIELDS.has(key) || value === undefined) return;
+    payload[key] = value;
+  });
+  return payload;
+}
+
+function buildUpsertPayload(row = {}, nowIso) {
+  const agentId = row.agent_id ?? row.resolved_agent_id ?? "";
+  const dateReal = row.date_real ?? "";
+  const leadsDepotId = row.leads_depot_id ?? null;
+  const salesDepotId = row.sales_depot_id ?? null;
+  const id =
+    row.id ??
+    computeRawDataId({
+      date_real: dateReal,
+      agent_id: agentId,
+      leads_depot_id: leadsDepotId,
+      sales_depot_id: salesDepotId,
+    });
+
+  if (!id) return null;
+
+  return {
+    id,
+    agent_id: agentId,
+    date_real: dateReal,
+    leads: row.leads ?? 0,
+    payins: row.payins ?? 0,
+    sales: row.sales ?? 0,
+    leads_depot_id: leadsDepotId,
+    sales_depot_id: salesDepotId,
+    date: row.date ?? { source: "xlsx", original: row.date_original ?? dateReal },
+    createdAt: row.createdAt ?? { iso: nowIso },
+    updatedAt: { iso: nowIso },
+  };
+}
+
+export async function upsertRawData(rows = []) {
+  const nowIso = new Date().toISOString();
+  const payload = rows.map(row => buildUpsertPayload(row, nowIso)).filter(Boolean);
+  if (!payload.length) return [];
+
   const { data, error } = await supabase
     .from("raw_data")
-    .update({ leads, payins, sales })
+    .upsert(payload, { onConflict: "date_real,agent_id,leads_depot_id,sales_depot_id" })
+    .select();
+  if (error) throw normalizeSupabaseError(error);
+
+  return enrichRawDataRows(data ?? []);
+}
+
+export async function updateRow(id, patch = {}) {
+  const payload = sanitizeRawDataPatch(patch);
+  const { data, error } = await supabase
+    .from("raw_data")
+    .update(payload)
     .eq("id", id)
-    .select("id,date_real,agent_id,leads,payins,sales,voided,void_reason,voided_at,voided_by")
+    .select("id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,voided,void_reason,voided_at,voided_by")
     .single();
   if (error) throw normalizeSupabaseError(error);
 
   return enrichSingleRow(data);
+}
+
+export async function setVoided(id, voided, void_reason = null) {
+  const payload = {
+    voided: Boolean(voided),
+    void_reason: voided ? (void_reason?.trim() || null) : null,
+    voided_at: voided ? new Date().toISOString() : null,
+  };
+  const { data, error } = await supabase
+    .from("raw_data")
+    .update(payload)
+    .eq("id", id)
+    .select("id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,voided,void_reason,voided_at,voided_by")
+    .single();
+  if (error) throw normalizeSupabaseError(error);
+
+  return enrichSingleRow(data);
+}
+
+export async function setPublished(id, published) {
+  const { data, error } = await supabase
+    .from("raw_data")
+    .update({ published: Boolean(published) })
+    .eq("id", id)
+    .select("id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,voided,void_reason,voided_at,voided_by,published")
+    .single();
+  if (error) throw normalizeSupabaseError(error);
+
+  return enrichSingleRow(data);
+}
+
+export async function updateRawData(id, { leads, payins, sales }) {
+  return updateRow(id, { leads, payins, sales });
 }
 
 export async function deleteRawData(id) {
@@ -797,7 +858,7 @@ export async function updateRawDataWithAudit(rowId, changes, reason, sessionUser
   if (beforeError) throw normalizeSupabaseError(beforeError);
 
   const updatePayload = {
-    ...changes,
+    ...sanitizeRawDataPatch(changes),
     updatedAt: { iso: new Date().toISOString(), reason: reason.trim(), actor: actorEmail },
   };
 
@@ -937,7 +998,7 @@ async function enrichSingleRow(row) {
   return enriched?.[0] ?? row;
 }
 
-export async function approvePair({ date_real, agent_id, reason }) {
+export async function publishPair({ date_real, agent_id, reason }) {
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   if (!date_real || !agent_id) throw new Error("Missing date or agent");
@@ -947,16 +1008,13 @@ export async function approvePair({ date_real, agent_id, reason }) {
     .from("raw_data")
     .select("*")
     .eq("date_real", date_real)
-    .eq("agent_id", agent_id)
-    .in("source", ["company", "depot"]);
+    .eq("agent_id", agent_id);
   if (beforeError) throw normalizeSupabaseError(beforeError);
   if (!beforeRows?.length) throw new Error("No rows found for this leader and date");
 
   const updatePayload = {
-    approved: true,
-    approved_by: user.id,
-    approved_at: new Date().toISOString(),
-    approved_reason: trimmedReason,
+    published: true,
+    updatedAt: { iso: new Date().toISOString(), reason: trimmedReason, actor: user.email ?? "" },
   };
 
   const { data: updatedRows, error: updateError } = await supabase
@@ -964,17 +1022,16 @@ export async function approvePair({ date_real, agent_id, reason }) {
     .update(updatePayload)
     .eq("date_real", date_real)
     .eq("agent_id", agent_id)
-    .in("source", ["company", "depot"])
     .select("*");
   if (updateError) throw normalizeSupabaseError(updateError);
-  if (!updatedRows?.length) throw new Error("Approval update did not modify any rows");
+  if (!updatedRows?.length) throw new Error("Publish update did not modify any rows");
 
   const afterRows = updatedRows ?? [];
-  await logAuditEntriesForPair(beforeRows, afterRows, "approve", trimmedReason, user);
+  await logAuditEntriesForPair(beforeRows, afterRows, "publish", trimmedReason, user);
   return enrichRawDataRows(afterRows);
 }
 
-export async function unapprovePair({ date_real, agent_id, reason }) {
+export async function unpublishPair({ date_real, agent_id, reason }) {
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   if (!date_real || !agent_id) throw new Error("Missing date or agent");
@@ -984,16 +1041,13 @@ export async function unapprovePair({ date_real, agent_id, reason }) {
     .from("raw_data")
     .select("*")
     .eq("date_real", date_real)
-    .eq("agent_id", agent_id)
-    .in("source", ["company", "depot"]);
+    .eq("agent_id", agent_id);
   if (beforeError) throw normalizeSupabaseError(beforeError);
   if (!beforeRows?.length) throw new Error("No rows found for this leader and date");
 
   const updatePayload = {
-    approved: false,
-    approved_by: null,
-    approved_at: null,
-    approved_reason: null,
+    published: false,
+    updatedAt: { iso: new Date().toISOString(), reason: trimmedReason, actor: user.email ?? "" },
   };
 
   const { data: updatedRows, error: updateError } = await supabase
@@ -1001,11 +1055,10 @@ export async function unapprovePair({ date_real, agent_id, reason }) {
     .update(updatePayload)
     .eq("date_real", date_real)
     .eq("agent_id", agent_id)
-    .in("source", ["company", "depot"])
     .select("*");
   if (updateError) throw normalizeSupabaseError(updateError);
-  if (!updatedRows?.length) throw new Error("Unapprove update did not modify any rows");
+  if (!updatedRows?.length) throw new Error("Unpublish update did not modify any rows");
 
-  await logAuditEntriesForPair(beforeRows, updatedRows, "unapprove", trimmedReason, user);
+  await logAuditEntriesForPair(beforeRows, updatedRows, "unpublish", trimmedReason, user);
   return enrichRawDataRows(updatedRows);
 }

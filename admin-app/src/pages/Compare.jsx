@@ -116,7 +116,8 @@ export default function Compare() {
     const mismatch = rows.filter(row => row.status === "mismatch").length;
     const missing = rows.filter(row => row.status === "missing_company" || row.status === "missing_depot").length;
     const publishable = rows.filter(row => row.publishable).length;
-    return { total, matched, mismatch, missing, publishable };
+    const published = rows.filter(row => row.published).length;
+    return { total, matched, mismatch, missing, publishable, published };
   }, [rows]);
 
   function handleApplyFilters() {
@@ -136,7 +137,7 @@ export default function Compare() {
     <div className="card">
       <div className="card-title">Compare Data</div>
       <div className="muted" style={{ marginBottom: 12 }}>
-        Company vs Depot entries per leader/day. Resolve mismatches by re-uploading the correct source.
+        Company vs Depot entries per leader/day. Resolve mismatches by re-uploading corrected rows.
       </div>
 
       <div className="filters-row" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
@@ -212,6 +213,10 @@ export default function Compare() {
           <div className="summary-value">{counters.publishable}</div>
         </div>
         <div className="summary-pill">
+          <div className="summary-label">Published</div>
+          <div className="summary-value">{counters.published}</div>
+        </div>
+        <div className="summary-pill">
           <div className="summary-label">Mismatch</div>
           <div className="summary-value duplicate">{counters.mismatch}</div>
         </div>
@@ -247,7 +252,7 @@ export default function Compare() {
               <th>Depot Sales</th>
               <th>Status</th>
               <th>Publishable</th>
-              <th>Approved</th>
+              <th>Published</th>
               <th>Delta</th>
             </tr>
           </thead>
@@ -282,11 +287,9 @@ export default function Compare() {
                   </span>
                 </td>
                 <td>
-                  {row.approved ? (
-                    <span className="status-pill duplicate">Approved</span>
-                  ) : (
-                    <span className="status-pill muted">No</span>
-                  )}
+                  <span className={`status-pill ${row.published ? "valid" : "muted"}`}>
+                    {row.published ? "Yes" : "No"}
+                  </span>
                 </td>
                 <td>{formatDelta(row.delta)}</td>
               </tr>

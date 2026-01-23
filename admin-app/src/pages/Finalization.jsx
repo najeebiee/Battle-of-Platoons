@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import {
   finalizeWeek,
   getWeekStatusByDate,
@@ -146,6 +147,10 @@ export default function Finalization() {
     } finally {
       setActionLoading(false);
     }
+  }
+
+  if (!profileLoading && !isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (
