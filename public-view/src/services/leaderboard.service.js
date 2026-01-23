@@ -47,14 +47,11 @@ export async function getLeaderboard({
     .from("agents")
     .select("id,name,upline_agent_id,company_id,platoon_id,role,photo_url,photoURL");
 
-  // 1) Fetch raw_data + agents (basic fields only) - rely on RLS for publishability
-  const { data: companyRows, error: companyError } = await supabase
-    .from("raw_data")
+  // 1) Fetch publishable rows + agents (basic fields only) - rely on RLS for visibility
+  const { data: publishableRows, error: publishableError } = await supabase
+    .from("public.publishable_raw_data")
     .select(
       `
-      approved,
-      source,
-      voided,
       id,
       leads,
       payins,
@@ -77,11 +74,9 @@ export async function getLeaderboard({
     `
     )
     .gte("date_real", startDate)
-    .lte("date_real", endDate)
-    .eq("voided", false)
-    .eq("source", "company");
+    .lte("date_real", endDate);
 
-  if (companyError) throw companyError;
+  if (publishableError) throw publishableError;
 
   // 2) If date_real exists & is correct, above filter is enough.
   //    Keep a safety filter in JS in case date_real has time/edge cases.
@@ -92,10 +87,9 @@ export async function getLeaderboard({
   let warnedMissingAgentId = false;
   let warnedMissingAgentData = false;
 
-  const companyRowsFetched = companyRows?.length ?? 0;
-  const depotRowsFetched = 0;
+  const publishableRowsFetched = publishableRows?.length ?? 0;
 
-  const filteredRows = (companyRows ?? []).filter((r) => {
+  const filteredRows = (publishableRows ?? []).filter((r) => {
     if (isDev) {
       if (!r?.agent_id && !warnedMissingAgentId) {
         console.warn("[Leaderboard] Missing agent_id in raw_data row", r?.id ?? r);
@@ -178,8 +172,7 @@ export async function getLeaderboard({
       fallback: null,
     },
     debug: {
-      companyRowsFetched,
-      depotRowsFetched,
+      publishableRowsFetched,
       publishableRowsCount: filteredRows.length,
       filteredByRangeCount: filtered.length,
       startDate,
@@ -199,7 +192,7 @@ export async function probeRawDataVisibility() {
   }
 
   const { count, error } = await supabase
-    .from("raw_data")
+    .from("public.publishable_raw_data")
     .select("id", { count: "exact", head: true });
 
   if (error) {

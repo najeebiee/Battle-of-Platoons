@@ -5,6 +5,7 @@ import { listDepotsDetailed, upsertDepot } from "../services/depots.service";
 import { listCompanies, upsertCompany } from "../services/companies.service";
 import { listPlatoons, upsertPlatoon } from "../services/platoons.service";
 import { uploadAvatar } from "../services/storage.service";
+import { getMyProfile } from "../services/profile.service";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
@@ -43,6 +44,7 @@ function useFilePreview(file) {
 }
 
 export default function Participants() {
+  const [profile, setProfile] = useState(null);
   const [tab, setTab] = useState("leaders"); // leaders | companies | depots | platoons
   const [status, setStatus] = useState({ type: "", msg: "" });
   const [isAnimating, setIsAnimating] = useState(false);
@@ -88,6 +90,7 @@ export default function Participants() {
   const leaderFilePreview = useFilePreview(leaderPhotoFile);
   const simpleFilePreview = useFilePreview(simplePhotoFile);
   const platoonFilePreview = useFilePreview(platoonPhotoFile);
+  const isSuperAdmin = profile?.role === "super_admin";
 
   // --- forms
   const [leaderForm, setLeaderForm] = useState({
@@ -152,10 +155,25 @@ export default function Participants() {
 
   // --- load collections
   useEffect(() => {
+    let active = true;
+    getMyProfile()
+      .then(data => {
+        if (!active) return;
+        setProfile(data);
+      })
+      .catch(() => {
+        if (!active) return;
+        setProfile(null);
+      });
+
     fetchAgents();
     fetchDepots();
     fetchCompanies();
     fetchPlatoons();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const companyById = useMemo(() => Object.fromEntries(companies.map(c => [c.id, c])), [companies]);
@@ -261,6 +279,9 @@ export default function Participants() {
 
   async function saveLeader(e) {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      return err("Read-only access. Contact a Super Admin to update participants.");
+    }
     setStatus({ type: "", msg: "" });
     setLeaderPhotoError("");
 
@@ -332,6 +353,9 @@ export default function Participants() {
   }
 
   function editLeader(a) {
+    if (!isSuperAdmin) {
+      return err("Read-only access. Contact a Super Admin to update participants.");
+    }
     setTab("leaders");
     setLeaderForm({
       id: a.id,
@@ -402,6 +426,9 @@ export default function Participants() {
 
   async function saveSimple(e) {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      return err("Read-only access. Contact a Super Admin to update participants.");
+    }
     setStatus({ type: "", msg: "" });
     setSimplePhotoError("");
 
@@ -464,6 +491,9 @@ export default function Participants() {
   }
 
   function editSimple(row) {
+    if (!isSuperAdmin) {
+      return err("Read-only access. Contact a Super Admin to update participants.");
+    }
     setSimpleForm({ id: row.id, name: row.name || "", photoURL: row.photoURL || "" });
     setSimplePhotoFile(null);
     setSimpleFileKey(k => k + 1);
@@ -517,6 +547,9 @@ export default function Participants() {
 
   async function savePlatoon(e) {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      return err("Read-only access. Contact a Super Admin to update participants.");
+    }
     setStatus({ type: "", msg: "" });
     setPlatoonPhotoError("");
 
@@ -571,6 +604,9 @@ export default function Participants() {
   }
 
   function editPlatoon(row) {
+    if (!isSuperAdmin) {
+      return err("Read-only access. Contact a Super Admin to update participants.");
+    }
     setPlatoonForm({ id: row.id, name: row.name || "", photoURL: row.photoURL || "" });
     setPlatoonPhotoFile(null);
     setPlatoonFileKey(k => k + 1);
@@ -697,33 +733,40 @@ export default function Participants() {
 
         <div className="p-title-row">
           <h2 className="p-title">Participants</h2>
-          <button
-            className="btn-primary"
-            onClick={() => {
-              if (tab === "leaders") {
-                clearLeader();
-                setIsFormOpen(true);
-                return;
-              }
-              if (tab === "companies") {
-                clearSimple();
-                setIsAddCommanderOpen(true);
-                return;
-              }
-              if (tab === "depots") {
-                clearSimple();
-                setIsAddDepotOpen(true);
-                return;
-              }
-              if (tab === "platoons") {
-                clearPlatoon();
-                setIsAddCompanyOpen(true);
-              }
-            }}
-          >
-            Add +
-          </button>
+          {isSuperAdmin ? (
+            <button
+              className="btn-primary"
+              onClick={() => {
+                if (tab === "leaders") {
+                  clearLeader();
+                  setIsFormOpen(true);
+                  return;
+                }
+                if (tab === "companies") {
+                  clearSimple();
+                  setIsAddCommanderOpen(true);
+                  return;
+                }
+                if (tab === "depots") {
+                  clearSimple();
+                  setIsAddDepotOpen(true);
+                  return;
+                }
+                if (tab === "platoons") {
+                  clearPlatoon();
+                  setIsAddCompanyOpen(true);
+                }
+              }}
+            >
+              Add +
+            </button>
+          ) : null}
         </div>
+        {!isSuperAdmin ? (
+          <div className="hint" style={{ marginTop: 6 }}>
+            Read-only access. Contact a Super Admin to add or edit participants.
+          </div>
+        ) : null}
 
         {status.msg && (
           <div className={`p-status ${status.type === "ok" ? "ok" : status.type === "warn" ? "warn" : "error"}`}>
@@ -1149,7 +1192,9 @@ export default function Participants() {
                   <div>{platoonById[a.platoonId]?.name || a.platoonId || "-"}</div>
                   <div>{a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-"}</div>
                   <div className="t-right">
-                    <button className="btn-link" onClick={() => editLeader(a)}>Edit</button>
+                    {isSuperAdmin ? (
+                      <button className="btn-link" onClick={() => editLeader(a)}>Edit</button>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -1177,7 +1222,9 @@ export default function Participants() {
                 <div className="muted">{d.photoURL ? "Has photoURL" : "-"}</div>
                 <div></div><div></div>
                 <div className="t-right">
-                  <button className="btn-link" onClick={() => { setTab("depots"); editSimple(d); setIsAddDepotOpen(true); }}>Edit</button>
+                  {isSuperAdmin ? (
+                    <button className="btn-link" onClick={() => { setTab("depots"); editSimple(d); setIsAddDepotOpen(true); }}>Edit</button>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -1204,7 +1251,9 @@ export default function Participants() {
                 <div className="muted">{c.photoURL ? "Has photoURL" : "-"}</div>
                 <div></div><div></div>
                 <div className="t-right">
-                  <button className="btn-link" onClick={() => { setTab("companies"); editSimple(c); setIsAddCommanderOpen(true); }}>Edit</button>
+                  {isSuperAdmin ? (
+                    <button className="btn-link" onClick={() => { setTab("companies"); editSimple(c); setIsAddCommanderOpen(true); }}>Edit</button>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -1230,7 +1279,9 @@ export default function Participants() {
                 </div>
                 <div></div><div></div><div></div>
                 <div className="t-right">
-                  <button className="btn-link" onClick={() => editPlatoon(p)}>Edit</button>
+                  {isSuperAdmin ? (
+                    <button className="btn-link" onClick={() => editPlatoon(p)}>Edit</button>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -1241,5 +1292,3 @@ export default function Participants() {
     </div>
   );
 }
-
-
