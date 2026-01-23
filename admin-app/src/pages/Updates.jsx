@@ -97,17 +97,6 @@ export default function Updates() {
   // Auth / session
   const [profile, setProfile] = useState(null);
   const currentRole = profile?.role || "";
-  const isSuperAdmin = currentRole === "super_admin";
-
-  // CHANGE 1: Line 32 - Add selected state for batch operations
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [batchLoading, setBatchLoading] = useState(false);
-
-  // CHANGE 1: Line 50 - Add modal state
-  const [voidModalOpen, setVoidModalOpen] = useState(false);
-  const [voidModalRowId, setVoidModalRowId] = useState(null);
-  const [voidReason, setVoidReason] = useState("");
-  const [voidSubmitting, setVoidSubmitting] = useState(false);
 
   const agentMap = useMemo(() => {
     const map = {};
@@ -361,7 +350,7 @@ export default function Updates() {
     );
   }
 
-  const tableColumnCount = 10;
+  const tableColumnCount = 8;
 
   return (
     <div className="card">
@@ -486,16 +475,6 @@ export default function Updates() {
         <table className="data-table">
           <thead>
             <tr>
-              <th style={{ width: "40px" }}>
-                {isSuperAdmin ? (
-                  <input
-                    type="checkbox"
-                    checked={rows.length > 0 && selectedIds.size === rows.length}
-                    indeterminate={selectedIds.size > 0 && selectedIds.size < rows.length}
-                    onChange={e => handleSelectAll(e.target.checked)}
-                  />
-                ) : null}
-              </th>
               <th>Date</th>
               <th>Leader</th>
               <th>Leads Depot</th>
@@ -504,23 +483,13 @@ export default function Updates() {
               <th>Payins</th>
               <th>Sales</th>
               <th>Published</th>
-              <th>Voided</th>
+              <th>Status</th>
             </tr>
           </thead>
 
           <tbody>
             {rows.map(row => (
               <tr key={row.id}>
-                <td style={{ width: "40px", textAlign: "center" }}>
-                  {isSuperAdmin ? (
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(row.id)}
-                      onChange={e => handleSelectRow(row.id, e.target.checked)}
-                      disabled={batchLoading}
-                    />
-                  ) : null}
-                </td>
                 <td>{row.date_real}</td>
                 <td>
                   <div>{row.leaderName || "(Restricted)"}</div>
@@ -536,34 +505,16 @@ export default function Updates() {
                   </span>
                 </td>
                 <td>
-                  {canVoid ? (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      {!row.voided ? (
-                        <button
-                          type="button"
-                          className="button secondary"
-                          onClick={() => openVoidModal(row)}
-                          disabled={voidSubmitting}
-                          style={{ fontSize: 12, padding: "4px 8px" }}
-                        >
-                          Void
-                        </button>
-                      ) : (
-                        <span className="status-pill invalid">Voided</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className={`status-pill ${row.voided ? "invalid" : "muted"}`}>
-                      {row.voided ? "Voided" : "Active"}
-                    </span>
-                  )}
+                  <span className={`status-pill ${row.voided ? "invalid" : "muted"}`}>
+                    {row.voided ? "Voided" : "Active"}
+                  </span>
                 </td>
               </tr>
             ))}
 
             {!visibleRows.length && !loading ? (
               <tr>
-                <td colSpan={10} className="muted" style={{ textAlign: "center", padding: 16 }}>
+                <td colSpan={tableColumnCount} className="muted" style={{ textAlign: "center", padding: 16 }}>
                   No data to display.
                 </td>
               </tr>
@@ -650,102 +601,6 @@ export default function Updates() {
         </div>
       </ModalForm>
 
-      {isSuperAdmin && (selectedIds.size > 0) ? (
-        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="button primary"
-            onClick={handlePublishSelected}
-            disabled={batchLoading || loading}
-          >
-            Publish Selected ({selectedIds.size})
-          </button>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={handleUnpublishSelected}
-            disabled={batchLoading || loading}
-          >
-            Unpublish Selected ({selectedIds.size})
-          </button>
-        </div>
-      ) : null}
-
-      {voidModalOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-          onClick={closeVoidModal}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: 8,
-              padding: 24,
-              maxWidth: 400,
-              width: "90%",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 style={{ marginTop: 0, marginBottom: 12 }}>Void Row</h2>
-            <p className="muted" style={{ marginBottom: 16 }}>
-              This action marks the row as voided and cannot be undone without approval.
-            </p>
-            
-            <label style={{ display: "block", marginBottom: 12 }}>
-              <span style={{ display: "block", marginBottom: 6, fontWeight: 500 }}>
-                Reason for void (required)
-              </span>
-              <textarea
-                value={voidReason}
-                onChange={e => setVoidReason(e.target.value)}
-                placeholder="Enter reason for voiding this row..."
-                style={{
-                  width: "100%",
-                  minHeight: 100,
-                  padding: 8,
-                  border: "1px solid #ccc",
-                  borderRadius: 4,
-                  fontFamily: "inherit",
-                  fontSize: "inherit",
-                }}
-                disabled={voidSubmitting}
-              />
-            </label>
-
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={closeVoidModal}
-                disabled={voidSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="button"
-                onClick={handleConfirmVoid}
-                disabled={voidSubmitting || !voidReason.trim()}
-                style={{ backgroundColor: "#b00020", color: "white" }}
-              >
-                {voidSubmitting ? "Voiding..." : "Void Row"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
