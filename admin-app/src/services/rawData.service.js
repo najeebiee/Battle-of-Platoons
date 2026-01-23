@@ -998,7 +998,7 @@ async function enrichSingleRow(row) {
   return enriched?.[0] ?? row;
 }
 
-export async function approvePair({ date_real, agent_id, reason }) {
+export async function publishPair({ date_real, agent_id, reason }) {
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   if (!date_real || !agent_id) throw new Error("Missing date or agent");
@@ -1024,14 +1024,14 @@ export async function approvePair({ date_real, agent_id, reason }) {
     .eq("agent_id", agent_id)
     .select("*");
   if (updateError) throw normalizeSupabaseError(updateError);
-  if (!updatedRows?.length) throw new Error("Approval update did not modify any rows");
+  if (!updatedRows?.length) throw new Error("Publish update did not modify any rows");
 
   const afterRows = updatedRows ?? [];
-  await logAuditEntriesForPair(beforeRows, afterRows, "approve", trimmedReason, user);
+  await logAuditEntriesForPair(beforeRows, afterRows, "publish", trimmedReason, user);
   return enrichRawDataRows(afterRows);
 }
 
-export async function unapprovePair({ date_real, agent_id, reason }) {
+export async function unpublishPair({ date_real, agent_id, reason }) {
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   if (!date_real || !agent_id) throw new Error("Missing date or agent");
@@ -1057,8 +1057,8 @@ export async function unapprovePair({ date_real, agent_id, reason }) {
     .eq("agent_id", agent_id)
     .select("*");
   if (updateError) throw normalizeSupabaseError(updateError);
-  if (!updatedRows?.length) throw new Error("Unapprove update did not modify any rows");
+  if (!updatedRows?.length) throw new Error("Unpublish update did not modify any rows");
 
-  await logAuditEntriesForPair(beforeRows, updatedRows, "unapprove", trimmedReason, user);
+  await logAuditEntriesForPair(beforeRows, updatedRows, "unpublish", trimmedReason, user);
   return enrichRawDataRows(updatedRows);
 }

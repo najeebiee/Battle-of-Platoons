@@ -39,10 +39,9 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
   let query = supabase
     .from("raw_data")
     .select(
-      "id,agent_id,date_real,leads,payins,sales,leads_depot_id,sales_depot_id,source,voided,approved"
+      "id,agent_id,date_real,leads,payins,sales,leads_depot_id,sales_depot_id,voided,published"
     )
-    .eq("voided", false)
-    .in("source", ["company", "depot"]);
+    .eq("voided", false);
 
   if (dateFrom) query = query.gte("date_real", dateFrom);
   if (dateTo) query = query.lte("date_real", dateTo);
@@ -70,6 +69,7 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
 
     const entry = entries.get(key);
     const payload = {
+      id: row.id,
       leads: Number(row.leads ?? 0) || 0,
       payins: Number(row.payins ?? 0) || 0,
       sales: Number(row.sales ?? 0) || 0,
@@ -77,12 +77,14 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
       sales_depot_id: row.sales_depot_id ?? null,
       leadsDepotName: row.leads_depot_id ? depotNames.get(String(row.leads_depot_id)) ?? "" : "",
       salesDepotName: row.sales_depot_id ? depotNames.get(String(row.sales_depot_id)) ?? "" : "",
-      approved: Boolean(row.approved),
-      source: row.source,
       voided: Boolean(row.voided),
+      published: Boolean(row.published),
     };
-    if (row.source === "company") entry.company = payload;
-    if (row.source === "depot") entry.depot = payload;
+    if (!entry.company) {
+      entry.company = payload;
+    } else if (!entry.depot) {
+      entry.depot = payload;
+    }
   });
 
   const agents = await listAgents();
@@ -91,9 +93,9 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
   let rows = Array.from(entries.values()).map(entry => {
     const agent = agentsById.get(entry.agent_id);
     const statusValue = computeStatus(entry);
-    const approvedCompany = Boolean(entry.company?.approved || entry.depot?.approved);
     const matched = statusValue === "matched";
     const publishable = isPublishable(entry.company, entry.depot);
+    const published = Boolean(entry.company?.published || entry.depot?.published);
     return {
       ...entry,
       leader_name: agent?.name ?? "(Restricted)",
@@ -101,8 +103,8 @@ export async function listCompareRows({ dateFrom, dateTo, agentId, status } = {}
       delta: computeDelta(entry.company, entry.depot),
       restricted: !agent,
       restricted_agent_id: agent ? null : entry.agent_id,
-      approved: approvedCompany,
       publishable,
+      published,
       matched,
     };
   });
