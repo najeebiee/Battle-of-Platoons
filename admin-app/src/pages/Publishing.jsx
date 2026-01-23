@@ -43,6 +43,7 @@ export default function Publishing() {
   const [loading, setLoading] = useState(true);
   const [agentsLoading, setAgentsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -53,8 +54,12 @@ export default function Publishing() {
   const [voidReason, setVoidReason] = useState("");
   const [voidSubmitting, setVoidSubmitting] = useState(false);
 
-  const canViewAudit = ADMIN_ROLES.has(profile?.role ?? "");
-  const canVoid = ADMIN_ROLES.has(profile?.role ?? "");
+  const role = profile?.role ?? "";
+  const isSuperAdmin = role === "super_admin";
+  const canViewAudit = ADMIN_ROLES.has(role);
+  const canVoid = ADMIN_ROLES.has(role);
+
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   function normalizeSchemaErrorMessage(err, fallback) {
     const msg = err?.message || fallback || "";
@@ -128,6 +133,18 @@ export default function Publishing() {
     };
   }, [appliedFilters]);
 
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (!prev.size) return prev;
+      const next = new Set();
+      for (const row of rows) {
+        if (row.voided) continue;
+        if (prev.has(row.id)) next.add(row.id);
+      }
+      return next;
+    });
+  }, [rows]);
+
   const counters = useMemo(() => {
     const total = rows.length;
     const published = rows.filter(row => row.published && !row.voided).length;
@@ -145,6 +162,59 @@ export default function Publishing() {
   function handleClearFilters() {
     setFilters({ dateFrom: defaults.dateFrom, dateTo: defaults.dateTo, agentId: "", status: "" });
     setAppliedFilters({ dateFrom: defaults.dateFrom, dateTo: defaults.dateTo, agentId: "", status: "" });
+  }
+
+  const selectableRows = useMemo(() => rows.filter(row => !row.voided), [rows]);
+  const selectableRowIds = useMemo(() => new Set(selectableRows.map(row => row.id)), [selectableRows]);
+
+  function handleSelectAll(checked) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        for (const row of selectableRows) {
+          next.add(row.id);
+        }
+      } else {
+        for (const row of selectableRows) {
+          next.delete(row.id);
+        }
+      }
+      return next;
+    });
+  }
+
+  function handleSelectRow(rowId, checked) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(rowId);
+      } else {
+        next.delete(rowId);
+      }
+      return next;
+    });
+  }
+
+  async function handleBatchPublish(nextPublished) {
+    if (!isSuperAdmin || batchLoading) return;
+    const ids = Array.from(selectedIds).filter(id => selectableRowIds.has(id));
+    if (!ids.length) return;
+    setBatchLoading(true);
+    setError("");
+
+    try {
+      await Promise.all(ids.map(id => setPublished(id, nextPublished)));
+      setRows(prev =>
+        prev.map(row => (ids.includes(row.id) ? { ...row, published: nextPublished } : row))
+      );
+      setSelectedIds(new Set());
+      setAppliedFilters(prev => ({ ...prev }));
+    } catch (err) {
+      console.error(err);
+      setError(normalizeSchemaErrorMessage(err, "Failed to update publish status"));
+    } finally {
+      setBatchLoading(false);
+    }
   }
 
   function openVoidModal(row) {
@@ -291,10 +361,41 @@ export default function Publishing() {
 
       {loading ? <div className="muted" style={{ marginTop: 12 }}>Loading publishing data…</div> : null}
 
+      {isSuperAdmin ? (
+        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => handleBatchPublish(true)}
+            disabled={batchLoading || !selectedIds.size}
+          >
+            Publish Selected ({selectedIds.size})
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => handleBatchPublish(false)}
+            disabled={batchLoading || !selectedIds.size}
+          >
+            Unpublish Selected ({selectedIds.size})
+          </button>
+        </div>
+      ) : null}
+
       <div className="table-scroll" style={{ marginTop: 12 }}>
         <table className="data-table">
           <thead>
             <tr>
+              {isSuperAdmin ? (
+                <th style={{ width: 36 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectableRows.length > 0 && selectedIds.size === selectableRows.length}
+                    onChange={e => handleSelectAll(e.target.checked)}
+                    disabled={!selectableRows.length || batchLoading}
+                  />
+                </th>
+              ) : null}
               <th>#</th>
               <th>Date</th>
               <th>Leader</th>
@@ -311,6 +412,16 @@ export default function Publishing() {
           <tbody>
             {rows.map((row, index) => (
               <tr key={row.id}>
+                {isSuperAdmin ? (
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={e => handleSelectRow(row.id, e.target.checked)}
+                      disabled={row.voided || batchLoading}
+                    />
+                  </td>
+                ) : null}
                 <td>
                   <div className="muted" style={{ fontSize: 12 }}>{index + 1}</div>
                 </td>
@@ -378,7 +489,7 @@ export default function Publishing() {
             ))}
             {!rows.length && !loading ? (
               <tr>
-                <td colSpan={11} className="muted" style={{ textAlign: "center" }}>
+                <td colSpan={isSuperAdmin ? 12 : 11} className="muted" style={{ textAlign: "center" }}>
                   No rows found for the selected filters.
                 </td>
               </tr>
