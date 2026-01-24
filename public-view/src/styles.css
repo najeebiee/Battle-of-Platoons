@@ -924,7 +924,7 @@ button {
   display:flex;
   align-items:center;
   gap: 10px;
-  padding: 5px 0px 5px 0px;
+  padding: 5px 14px 5px 0px;
   border-right: 1px solid #C2C0C0;
 }
 
@@ -946,8 +946,9 @@ button {
 
 .rank-card {
   display: grid;
-  grid-template-columns: auto 1.5fr 1fr;
-  gap: 16px;
+  grid-template-columns: 50px minmax(180px, 1.4fr) minmax(260px, 1fr) minmax(90px, 110px);
+  gap: 14px;
+  align-items: center;
   border-radius: 8px;
   background: #ffffff;
   color: #0b1770;
@@ -979,10 +980,27 @@ button {
 
 .rank-card__metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  justify-items: center;
   align-items: center;
   padding: 5px 0px 5px 0px;
+}
+
+.rank-card__metrics-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 14px;
+  width: 100%;
+}
+
+.rank-card__points {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  text-align: right;
+  min-width: 90px;
 }
 
 .leader-row-stat {
@@ -1061,9 +1079,9 @@ button {
 
 @media (max-width: 980px) {
   .rank-card {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 50px 1fr;
     grid-template-areas:
-      "rank main"
+      "rank name"
       "metrics metrics";
     align-items: flex-start;
   }
@@ -1072,7 +1090,13 @@ button {
     grid-area: rank;
   }
 
-  .rank-card__metrics {
+  .row-name {
+    grid-area: name;
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .rank-card__metrics-wrap {
     grid-area: metrics;
   }
 }
@@ -1085,6 +1109,14 @@ button {
   .rank-card__metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     font-size: 12px;
+  }
+
+  .rank-card__metrics-wrap {
+    grid-template-columns: 1fr auto;
+  }
+
+  .rank-card__metrics .leader-row-stat:nth-child(3) {
+    grid-column: 1 / -1;
   }
 }
 
