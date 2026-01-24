@@ -13,8 +13,11 @@ export async function getMyProfile() {
     .from("profiles")
     .select("role,depot_id")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
-  return data ?? { role: null, depot_id: null };
+  if (error && error.code !== "PGRST116") throw error;
+  if (!data) {
+    return { role: "admin", depot_id: null };
+  }
+  return data;
 }
