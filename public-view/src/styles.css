@@ -997,6 +997,22 @@ button {
   width: 100%;
 }
 
+.rank-card__metrics-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 14px;
+  width: 100%;
+}
+
+.rank-card__points {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  text-align: right;
+  min-width: 90px;
+}
+
 .leader-row-stat {
   display: flex;
   flex-direction: column;
@@ -1109,6 +1125,14 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     font-size: 12px;
     row-gap: 8px;
+  }
+
+  .rank-card__metrics .leader-row-stat:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .rank-card__metrics-wrap {
+    grid-template-columns: 1fr auto;
   }
 
   .rank-card__metrics .leader-row-stat:nth-child(3) {

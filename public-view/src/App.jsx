@@ -1256,18 +1256,20 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
                     {showPlatoon && r.platoon && <div className="row-sub">{r.platoon}</div>}
                   </div>
                 </div>
-              <div className="rank-card__metrics">
-                <div className="leader-row-stat">
-                  <span className="leader-row-stat__label">Leads</span>
-                  <span className="leader-row-stat__value">{r.leads}</span>
-                </div>
-                <div className="leader-row-stat">
-                  <span className="leader-row-stat__label">Payins</span>
-                  <span className="leader-row-stat__value">{r.payins}</span>
-                </div>
-                <div className="leader-row-stat">
-                  <span className="leader-row-stat__label">Sales</span>
-                  <span className="leader-row-stat__value">{formatCurrencyPHP(r.sales)}</span>
+              <div className="rank-card__metrics-wrap">
+                <div className="rank-card__metrics">
+                  <div className="leader-row-stat">
+                    <span className="leader-row-stat__label">Leads</span>
+                    <span className="leader-row-stat__value">{r.leads}</span>
+                  </div>
+                  <div className="leader-row-stat">
+                    <span className="leader-row-stat__label">Payins</span>
+                    <span className="leader-row-stat__value">{r.payins}</span>
+                  </div>
+                  <div className="leader-row-stat">
+                    <span className="leader-row-stat__label">Sales</span>
+                    <span className="leader-row-stat__value">{formatCurrencyPHP(r.sales)}</span>
+                  </div>
                 </div>
               </div>
               <div className="rank-card__points">
