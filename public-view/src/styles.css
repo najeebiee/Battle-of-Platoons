@@ -925,13 +925,9 @@ button {
   align-items:center;
   gap: 10px;
   padding: 5px 10px 5px 0px;
-  border-right: 1px solid #C2C0C0;  .rank-card {
-    display: grid;
-    grid-template-columns: 52px clamp(120px, 1.2fr, 300px) minmax(220px, 1fr) minmax(90px, 120px);
-    gap: 14px;
-    /* ... rest of styles */
-  }
+  border-right: 1px solid #C2C0C0;
 }
+
 
 .row-title{ font-weight: 800; }
 .row-sub{ opacity:.75; font-size: 12px; margin-top:2px; }
@@ -951,7 +947,7 @@ button {
 
 .rank-card {
   display: grid;
-  grid-template-columns: 52px minmax(180px, 1.2fr) minmax(220px, 1fr) minmax(90px, 120px);
+  grid-template-columns: 52px minmax(150px, 1.2fr) minmax(200px, 1fr) minmax(50px, 120px);
   gap: 14px;
   align-items: center;
   border-radius: 8px;
