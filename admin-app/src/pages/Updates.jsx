@@ -66,7 +66,7 @@ const initialFilters = {
   salesDepotId: "",
 };
 
-const ADMIN_ROLES = new Set(["admin", "company_admin", "depot_admin", "super_admin"]);
+const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
 export default function Updates() {
   const [agents, setAgents] = useState([]);

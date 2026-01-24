@@ -22,7 +22,7 @@ function getDefaultDateRange() {
 }
 
 const SCHEMA_MIGRATION_HINT = "Run SQL migration and reload schema.";
-const ADMIN_ROLES = new Set(["admin", "company_admin", "depot_admin", "super_admin"]);
+const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
 export default function Publishing() {
   const defaults = useMemo(() => getDefaultDateRange(), []);

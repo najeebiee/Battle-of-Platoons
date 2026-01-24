@@ -390,18 +390,7 @@ export function isPublishable(companyRow, depotRow) {
 export function canEditRow(row, profile, agent) {
   if (!row || !profile?.role) return false;
   const role = profile.role;
-  if (role === "super_admin") return true;
-
-  if (role === "company_admin") {
-    return true;
-  }
-
-  if (role === "depot_admin") {
-    const profileDepotId = profile.depot_id ?? profile.depotId ?? "";
-    const agentDepotId = agent?.depotId ?? agent?.depot_id ?? "";
-    if (!profileDepotId || !agentDepotId) return false;
-    return String(profileDepotId) === String(agentDepotId);
-  }
+  if (role === "super_admin" || role === "admin") return true;
 
   return false;
 }

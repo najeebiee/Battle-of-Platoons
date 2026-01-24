@@ -109,18 +109,14 @@ security definer
 set search_path = public
 stable
 as $$
-  -- Super admins see everything
+  -- Admins see everything
   select
     public.is_super_admin()
     or exists (
       select 1
       from public.profiles p
-      join public.agents a on a.id = r.agent_id
       where p.user_id = auth.uid()
-        and (
-          (p.role = 'company_admin' and a.company_id = p.company_id)
-          or (p.role = 'depot_admin' and a.depot_id = p.depot_id)
-        )
+        and p.role = 'admin'
     );
 $$;
 
