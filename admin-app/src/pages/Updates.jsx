@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ModalForm } from "../components/ModalForm";
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
-import { canEditRow, listRawData, updateRow } from "../services/rawData.service";
+import { canEditRow, getRawDataHistory, updateRow } from "../services/rawData.service";
 import { getMyProfile } from "../services/profile.service";
 
 // ----------------------
@@ -170,7 +170,15 @@ export default function Updates() {
     try {
       // IMPORTANT: fetch without relying on server-side string date filtering
       // We will always filter client-side correctly.
-      const data = await listRawData({ limit: 500, includeVoided: false });
+      const data = await getRawDataHistory({
+        dateFrom: normalized.dateFrom,
+        dateTo: normalized.dateTo,
+        agentId: normalized.leaderId,
+        leadsDepotId: normalized.leadsDepotId,
+        salesDepotId: normalized.salesDepotId,
+        limit: 500,
+        includeVoided: false,
+      });
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -488,7 +496,7 @@ export default function Updates() {
           </thead>
 
           <tbody>
-            {rows.map(row => (
+            {visibleRows.map(row => (
               <tr key={row.id}>
                 <td>{row.date_real}</td>
                 <td>
