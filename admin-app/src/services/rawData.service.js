@@ -666,17 +666,30 @@ export async function saveRawDataRows(validRows, { mode = "warn" } = {}, onProgr
   return { insertedCount, upsertedCount, errors };
 }
 
-function applyRawDataFilters(query, { dateFrom, dateTo, agentId, limit = 200 }) {
+function applyRawDataFilters(
+  query,
+  { dateFrom, dateTo, agentId, leadsDepotId, salesDepotId, limit = 200 }
+) {
   let q = query;
   if (dateFrom) q = q.gte("date_real", dateFrom);
   if (dateTo) q = q.lte("date_real", dateTo);
   if (agentId) q = q.eq("agent_id", agentId);
+  if (leadsDepotId) q = q.eq("leads_depot_id", leadsDepotId);
+  if (salesDepotId) q = q.eq("sales_depot_id", salesDepotId);
   const safeLimit = Number(limit) || 200;
   q = q.order("date_real", { ascending: false }).limit(safeLimit);
   return q;
 }
 
-export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, includeVoided = false } = {}) {
+export async function getRawDataHistory({
+  dateFrom,
+  dateTo,
+  agentId,
+  leadsDepotId,
+  salesDepotId,
+  limit = 200,
+  includeVoided = false,
+} = {}) {
   const baseSelect =
     "id,date_real,agent_id,leads,payins,sales,leads_depot_id,sales_depot_id,voided,void_reason,voided_at,voided_by,published,agents:agents(id,name,photo_url,depot_id,company_id,platoon_id)";
 
@@ -688,6 +701,8 @@ export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, incl
       dateFrom,
       dateTo,
       agentId,
+      leadsDepotId,
+      salesDepotId,
       limit,
     });
     if (error) throw error;
@@ -702,11 +717,33 @@ export async function listRawData({ dateFrom, dateTo, agentId, limit = 200, incl
       dateFrom,
       dateTo,
       agentId,
+      leadsDepotId,
+      salesDepotId,
       limit,
     });
     if (error) throw error;
     return enrichRawDataRows(data ?? []);
   }
+}
+
+export async function listRawData({
+  dateFrom,
+  dateTo,
+  agentId,
+  leadsDepotId,
+  salesDepotId,
+  limit = 200,
+  includeVoided = false,
+} = {}) {
+  return getRawDataHistory({
+    dateFrom,
+    dateTo,
+    agentId,
+    leadsDepotId,
+    salesDepotId,
+    limit,
+    includeVoided,
+  });
 }
 
 export async function listPublishingRows({ dateFrom, dateTo, agentId, status, limit = 200 } = {}) {
