@@ -906,6 +906,7 @@ export async function applyRawDataAuditAction({ action, reason, rowIds }) {
   for (const rowId of ids) {
     try {
       const nowIso = new Date().toISOString();
+      const updatedAt = { iso: nowIso, reason: trimmedReason, actor: actorEmail };
       let updatePayload;
       if (action === AuditAction.VOID) {
         updatePayload = {
@@ -913,6 +914,7 @@ export async function applyRawDataAuditAction({ action, reason, rowIds }) {
           void_reason: trimmedReason,
           voided_at: nowIso,
           voided_by: actorId,
+          updatedAt,
         };
       } else if (action === AuditAction.UNVOID) {
         updatePayload = {
@@ -920,14 +922,17 @@ export async function applyRawDataAuditAction({ action, reason, rowIds }) {
           void_reason: null,
           voided_at: null,
           voided_by: null,
+          updatedAt,
         };
       } else if (action === AuditAction.UNPUBLISH) {
         updatePayload = {
           published: false,
+          updatedAt,
         };
       } else if (action === AuditAction.PUBLISH) {
         updatePayload = {
           published: true,
+          updatedAt,
         };
       } else {
         throw new Error(`Unsupported audit action: ${action}`);
