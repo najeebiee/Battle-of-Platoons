@@ -1154,14 +1154,52 @@ button {
 }
 
 @media (max-width: 640px) {
-  .rank-card {
-    grid-template-columns: 40px minmax(80px, 1fr) auto;
+  .rank-card{
+    /* keep 4 columns: rank | name | metrics | points */
+    grid-template-columns: 40px minmax(90px, 1fr) minmax(140px, 0.9fr) 56px;
+    gap: 8px;
+    align-items: center;
   }
-  
-  .row-name {
-    min-width: 80px;
+
+  .rank-card__rank{
+    width: 40px;
+    font-size: 14px;
+  }
+
+  .row-name{
+    min-width: 0;                 /* allow shrink */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rank-card__metrics-wrap{
+    min-width: 0;                 /* IMPORTANT */
+  }
+
+  .rank-card__metrics{
+    min-width: 0;                 /* IMPORTANT */
+    gap: 6px;
+  }
+
+  .rank-card__points{
+    min-width: 0;                 /* remove the 90px pressure */
+    width: 56px;
+    padding-right: 6px;
+  }
+
+  .leader-row-stat__label{
+    font-size: 9px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
+  .leader-row-stat__value{
+    font-size: 12px;
+    white-space: nowrap;
   }
 }
+
 
 .podium-avatar-placeholder {
   display: block;
