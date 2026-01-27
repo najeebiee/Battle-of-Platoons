@@ -12,6 +12,7 @@ export function AuditReasonModal({
   onConfirm,
   error,
   submitting,
+  progressText,
   placeholder = "Incorrect entry, pending verification from depot.",
 }) {
   const trimmed = reason?.trim() ?? "";
@@ -41,6 +42,11 @@ export function AuditReasonModal({
       <p className="muted" style={{ marginBottom: 12 }}>
         {description}
       </p>
+      {progressText ? (
+        <div className="muted" style={{ marginBottom: 12 }}>
+          {progressText}
+        </div>
+      ) : null}
       <label className="form-label" htmlFor="audit-reason">
         Reason
       </label>

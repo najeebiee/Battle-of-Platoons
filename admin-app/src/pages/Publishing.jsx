@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { AuditReasonModal } from "../components/AuditReasonModal";
 import { listAgents } from "../services/agents.service";
-import { AuditAction, applyRawDataAuditAction, listPublishingRows, setPublished } from "../services/rawData.service";
+import {
+  AuditAction,
+  applyRawDataAuditAction,
+  listPublishingRows,
+  setPublished,
+  unpublishRowsWithAudit,
+} from "../services/rawData.service";
 import { getMyProfile } from "../services/profile.service";
 
 function formatDateInput(date) {
@@ -55,6 +61,7 @@ export default function Publishing() {
   const [auditReason, setAuditReason] = useState("");
   const [auditSubmitting, setAuditSubmitting] = useState(false);
   const [auditError, setAuditError] = useState("");
+  const [auditProgress, setAuditProgress] = useState(null);
 
   const role = profile?.role ?? "";
   const isSuperAdmin = role === "super_admin";
@@ -205,7 +212,9 @@ export default function Publishing() {
     setError("");
 
     try {
-      await Promise.all(ids.map(id => setPublished(id, nextPublished)));
+      for (const id of ids) {
+        await setPublished(id, nextPublished);
+      }
       setRows(prev =>
         prev.map(row => (ids.includes(row.id) ? { ...row, published: nextPublished } : row))
       );
@@ -254,6 +263,7 @@ export default function Publishing() {
     setAuditRowIds(rowIds);
     setAuditReason("");
     setAuditError("");
+    setAuditProgress(null);
     setAuditModalOpen(true);
   }
 
@@ -264,6 +274,7 @@ export default function Publishing() {
     setAuditReason("");
     setAuditSubmitting(false);
     setAuditError("");
+    setAuditProgress(null);
   }
 
   async function handleConfirmAuditAction() {
@@ -276,13 +287,26 @@ export default function Publishing() {
 
     setAuditSubmitting(true);
     setAuditError("");
+    setAuditProgress(null);
 
     try {
-      const updatedRows = await applyRawDataAuditAction({
-        action: auditAction,
-        reason: trimmedReason,
-        rowIds: auditRowIds,
-      });
+      let updatedRows = [];
+      if (auditAction === AuditAction.UNPUBLISH) {
+        const total = auditRowIds.length;
+        setAuditProgress({ current: 0, total });
+        updatedRows = await unpublishRowsWithAudit({
+          rowIds: auditRowIds,
+          reason: trimmedReason,
+          onProgress: ({ current, total: totalCount }) =>
+            setAuditProgress({ current, total: totalCount }),
+        });
+      } else {
+        updatedRows = await applyRawDataAuditAction({
+          action: auditAction,
+          reason: trimmedReason,
+          rowIds: auditRowIds,
+        });
+      }
       const updatedById = new Map((updatedRows ?? []).map(row => [row.id, row]));
       const nowIso = new Date().toISOString();
       setRows(prev =>
@@ -313,6 +337,7 @@ export default function Publishing() {
       setAuditError(message);
     } finally {
       setAuditSubmitting(false);
+      setAuditProgress(null);
     }
   }
 
@@ -585,6 +610,11 @@ export default function Publishing() {
           onConfirm={handleConfirmAuditAction}
           error={auditError}
           submitting={auditSubmitting}
+          progressText={
+            auditSubmitting && auditAction === AuditAction.UNPUBLISH && auditProgress?.total
+              ? `Unpublishing ${auditProgress.current}/${auditProgress.total}...`
+              : null
+          }
         />
       ) : null}
     </div>

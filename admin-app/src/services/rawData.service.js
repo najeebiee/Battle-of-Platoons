@@ -968,6 +968,79 @@ export async function applyRawDataAuditAction({ action, reason, rowIds }) {
   return updatedRows;
 }
 
+export async function unpublishRowsWithAudit({ rowIds, reason, onProgress }) {
+  const trimmedReason = reason?.trim();
+  if (!trimmedReason) throw new Error("Reason is required");
+  const ids = (rowIds ?? []).filter(Boolean);
+  if (!ids.length) throw new Error("No rows selected");
+
+  const user = await requireSessionUser();
+  const actorId = user.id;
+  const actorEmail = user.email ?? "";
+  const progressCb = typeof onProgress === "function" ? onProgress : () => {};
+
+  const updatedRows = [];
+  let completed = 0;
+
+  for (const rowId of ids) {
+    try {
+      const { data: before, error: beforeError } = await supabase
+        .from("raw_data")
+        .select("*")
+        .eq("id", rowId)
+        .single();
+      if (beforeError) throw normalizeSupabaseError(beforeError);
+
+      const nowIso = new Date().toISOString();
+      const updatePayload = {
+        published: false,
+        publish_reason: trimmedReason,
+        updatedAt: { iso: nowIso, reason: trimmedReason, actor: actorEmail },
+      };
+
+      const { data: updatedRow, error: updateError } = await supabase
+        .from("raw_data")
+        .update(updatePayload)
+        .eq("id", rowId)
+        .select("*")
+        .single();
+      if (updateError) throw normalizeSupabaseError(updateError);
+
+      const snapshot = {
+        id: before.id,
+        date_real: before.date_real,
+        agent_id: before.agent_id,
+        leads_depot_id: before.leads_depot_id,
+        sales_depot_id: before.sales_depot_id,
+        published_before: before.published,
+        published_after: updatedRow.published,
+      };
+
+      const { error: auditError } = await supabase.from("raw_data_audit").insert({
+        raw_data_id: rowId,
+        action: AuditAction.UNPUBLISH,
+        reason: trimmedReason,
+        actor_id: actorId,
+        actor_email: actorEmail,
+        created_at: nowIso,
+        before,
+        after: updatedRow,
+        snapshot,
+      });
+      if (auditError) throw normalizeSupabaseError(auditError);
+
+      updatedRows.push(updatedRow);
+      completed += 1;
+      progressCb({ current: completed, total: ids.length });
+    } catch (err) {
+      const message = err?.message || "Unknown error";
+      throw new Error(`Failed to unpublish row ${rowId}: ${message}`);
+    }
+  }
+
+  return updatedRows;
+}
+
 export async function updateRawData(id, { leads, payins, sales }) {
   return updateRow(id, { leads, payins, sales });
 }
