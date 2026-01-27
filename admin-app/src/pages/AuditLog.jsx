@@ -17,11 +17,16 @@ const BASE_ACTIONS = [
   "approve",
   "unapprove",
   "publish",
+  "unpublish",
   "create",
   "update",
   "delete",
   "finalize",
   "reopen",
+  "VOID",
+  "UNVOID",
+  "PUBLISH",
+  "UNPUBLISH",
 ];
 
 function toIsoRange(dateFrom, dateTo) {

@@ -5,6 +5,13 @@ import { buildDepotMaps, listDepots, resolveDepotId } from "./depots.service";
 import { listPlatoons } from "./platoons.service";
 import { supabase } from "./supabase";
 
+export const AuditAction = Object.freeze({
+  VOID: "VOID",
+  UNVOID: "UNVOID",
+  PUBLISH: "PUBLISH",
+  UNPUBLISH: "UNPUBLISH",
+});
+
 // FINDINGS: raw_data is unique by (date_real, agent_id, leads_depot_id, sales_depot_id).
 // The UI should align to the DB uniqueness rule, so we merge by the full identity and compute ids with depots.
 
@@ -884,6 +891,76 @@ export async function setPublished(id, published) {
   return enrichSingleRow(data);
 }
 
+export async function applyRawDataAuditAction({ action, reason, rowIds }) {
+  const trimmedReason = reason?.trim();
+  if (!trimmedReason) throw new Error("Reason is required");
+  const ids = (rowIds ?? []).filter(Boolean);
+  if (!ids.length) throw new Error("No rows selected");
+
+  const user = await requireSessionUser();
+  const actorId = user.id;
+  const actorEmail = user.email ?? "";
+
+  const updatedRows = [];
+
+  for (const rowId of ids) {
+    try {
+      const nowIso = new Date().toISOString();
+      let updatePayload;
+      if (action === AuditAction.VOID) {
+        updatePayload = {
+          voided: true,
+          void_reason: trimmedReason,
+          voided_at: nowIso,
+          voided_by: actorId,
+        };
+      } else if (action === AuditAction.UNVOID) {
+        updatePayload = {
+          voided: false,
+          void_reason: null,
+          voided_at: null,
+          voided_by: null,
+        };
+      } else if (action === AuditAction.UNPUBLISH) {
+        updatePayload = {
+          published: false,
+        };
+      } else if (action === AuditAction.PUBLISH) {
+        updatePayload = {
+          published: true,
+        };
+      } else {
+        throw new Error(`Unsupported audit action: ${action}`);
+      }
+
+      const { data: updatedRow, error: updateError } = await supabase
+        .from("raw_data")
+        .update(updatePayload)
+        .eq("id", rowId)
+        .select("*")
+        .single();
+      if (updateError) throw normalizeSupabaseError(updateError);
+
+      const { error: auditError } = await supabase.from("raw_data_audit").insert({
+        raw_data_id: rowId,
+        action,
+        reason: trimmedReason,
+        actor_id: actorId,
+        actor_email: actorEmail,
+        created_at: nowIso,
+      });
+      if (auditError) throw normalizeSupabaseError(auditError);
+
+      updatedRows.push(updatedRow);
+    } catch (err) {
+      const message = err?.message || "Unknown error";
+      throw new Error(`Failed to ${action} row ${rowId}: ${message}`);
+    }
+  }
+
+  return updatedRows;
+}
+
 export async function updateRawData(id, { leads, payins, sales }) {
   return updateRow(id, { leads, payins, sales });
 }
@@ -979,7 +1056,7 @@ export async function voidRawDataWithAudit(rowId, reason, sessionUser) {
     voided: true,
     void_reason: reason.trim(),
     voided_at: new Date().toISOString(),
-    voided_by: actorEmail,
+    voided_by: actorId,
     updatedAt: { iso: new Date().toISOString(), reason: reason.trim(), actor: actorEmail },
   };
 
@@ -993,7 +1070,7 @@ export async function voidRawDataWithAudit(rowId, reason, sessionUser) {
 
   const { error: auditError } = await supabase.from("raw_data_audit").insert({
     raw_data_id: rowId,
-    action: "void",
+    action: AuditAction.VOID,
     reason: reason.trim(),
     actor_id: actorId,
     actor_email: actorEmail,
@@ -1036,7 +1113,7 @@ export async function unvoidRawDataWithAudit(rowId, reason, sessionUser) {
 
   const { error: auditError } = await supabase.from("raw_data_audit").insert({
     raw_data_id: rowId,
-    action: "unvoid",
+    action: AuditAction.UNVOID,
     reason: reason.trim(),
     actor_id: actorId,
     actor_email: actorEmail,
@@ -1083,7 +1160,7 @@ export async function publishPair({ date_real, agent_id, reason }) {
   if (!updatedRows?.length) throw new Error("Publish update did not modify any rows");
 
   const afterRows = updatedRows ?? [];
-  await logAuditEntriesForPair(beforeRows, afterRows, "publish", trimmedReason, user);
+  await logAuditEntriesForPair(beforeRows, afterRows, AuditAction.PUBLISH, trimmedReason, user);
   return enrichRawDataRows(afterRows);
 }
 
@@ -1115,6 +1192,6 @@ export async function unpublishPair({ date_real, agent_id, reason }) {
   if (updateError) throw normalizeSupabaseError(updateError);
   if (!updatedRows?.length) throw new Error("Unpublish update did not modify any rows");
 
-  await logAuditEntriesForPair(beforeRows, updatedRows, "unpublish", trimmedReason, user);
+  await logAuditEntriesForPair(beforeRows, updatedRows, AuditAction.UNPUBLISH, trimmedReason, user);
   return enrichRawDataRows(updatedRows);
 }

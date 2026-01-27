@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { listAgents } from "../services/agents.service";
-import { listPublishingRows, setPublished, setVoided, unvoidRawData } from "../services/rawData.service";
-import { getMyProfile } from "../services/profile.service";
 import { Navigate } from "react-router-dom";
+import { AuditReasonModal } from "../components/AuditReasonModal";
+import { listAgents } from "../services/agents.service";
+import { AuditAction, applyRawDataAuditAction, listPublishingRows, setPublished } from "../services/rawData.service";
+import { getMyProfile } from "../services/profile.service";
 
 function formatDateInput(date) {
   const year = date.getFullYear();
@@ -48,16 +49,12 @@ export default function Publishing() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  // Void modal state
-  const [voidModalOpen, setVoidModalOpen] = useState(false);
-  const [voidModalRowId, setVoidModalRowId] = useState(null);
-  const [voidReason, setVoidReason] = useState("");
-  const [voidSubmitting, setVoidSubmitting] = useState(false);
-
-  const [unvoidModalOpen, setUnvoidModalOpen] = useState(false);
-  const [unvoidModalRowId, setUnvoidModalRowId] = useState(null);
-  const [unvoidReason, setUnvoidReason] = useState("");
-  const [unvoidSubmitting, setUnvoidSubmitting] = useState(false);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [auditAction, setAuditAction] = useState(null);
+  const [auditRowIds, setAuditRowIds] = useState([]);
+  const [auditReason, setAuditReason] = useState("");
+  const [auditSubmitting, setAuditSubmitting] = useState(false);
+  const [auditError, setAuditError] = useState("");
 
   const role = profile?.role ?? "";
   const isSuperAdmin = role === "super_admin";
@@ -222,85 +219,100 @@ export default function Publishing() {
     }
   }
 
-  function openVoidModal(row) {
-    setVoidModalRowId(row.id);
-    setVoidReason("");
-    setVoidModalOpen(true);
+  const auditConfig = useMemo(() => {
+    if (!auditAction) return null;
+    const isBulk = auditRowIds.length > 1;
+    if (auditAction === AuditAction.VOID) {
+      return {
+        title: "Void Record",
+        description:
+          "Provide a reason for voiding this record. This action will be logged for audit purposes.",
+        confirmLabel: "Confirm Void",
+      };
+    }
+    if (auditAction === AuditAction.UNVOID) {
+      return {
+        title: "Unvoid Record",
+        description:
+          "Provide a reason for unvoiding this record. This action will be logged for audit purposes.",
+        confirmLabel: "Confirm Unvoid",
+      };
+    }
+    if (auditAction === AuditAction.UNPUBLISH) {
+      return {
+        title: isBulk ? "Unpublish Selected Records" : "Unpublish Record",
+        description:
+          "Provide a reason for unpublishing this record. Unpublished records will not appear on the public leaderboard.",
+        confirmLabel: "Confirm Unpublish",
+      };
+    }
+    return null;
+  }, [auditAction, auditRowIds.length]);
+
+  function openAuditModal(action, rowIds) {
+    setAuditAction(action);
+    setAuditRowIds(rowIds);
+    setAuditReason("");
+    setAuditError("");
+    setAuditModalOpen(true);
   }
 
-  function closeVoidModal() {
-    setVoidModalOpen(false);
-    setVoidModalRowId(null);
-    setVoidReason("");
-    setVoidSubmitting(false);
+  function closeAuditModal() {
+    setAuditModalOpen(false);
+    setAuditAction(null);
+    setAuditRowIds([]);
+    setAuditReason("");
+    setAuditSubmitting(false);
+    setAuditError("");
   }
 
-  function openUnvoidModal(row) {
-    setUnvoidModalRowId(row.id);
-    setUnvoidReason("");
-    setUnvoidModalOpen(true);
-  }
-
-  function closeUnvoidModal() {
-    setUnvoidModalOpen(false);
-    setUnvoidModalRowId(null);
-    setUnvoidReason("");
-    setUnvoidSubmitting(false);
-  }
-
-  async function handleConfirmVoid() {
-    if (!canVoid || !voidModalRowId) return;
-    const trimmedReason = voidReason.trim();
+  async function handleConfirmAuditAction() {
+    if (!auditAction || !auditRowIds.length) return;
+    const trimmedReason = auditReason.trim();
     if (!trimmedReason) {
-      setError("Reason for void is required.");
+      setAuditError("Reason is required.");
       return;
     }
 
-    setVoidSubmitting(true);
-    setError("");
+    setAuditSubmitting(true);
+    setAuditError("");
 
     try {
-      await setVoided(voidModalRowId, true, trimmedReason);
+      const updatedRows = await applyRawDataAuditAction({
+        action: auditAction,
+        reason: trimmedReason,
+        rowIds: auditRowIds,
+      });
+      const updatedById = new Map((updatedRows ?? []).map(row => [row.id, row]));
+      const nowIso = new Date().toISOString();
       setRows(prev =>
-        prev.map(item => (item.id === voidModalRowId ? { ...item, voided: true, void_reason: trimmedReason } : item))
+        prev.map(item => {
+          if (!auditRowIds.includes(item.id)) return item;
+          const updated = updatedById.get(item.id);
+          if (updated) {
+            return { ...item, ...updated };
+          }
+          if (auditAction === AuditAction.VOID) {
+            return { ...item, voided: true, void_reason: trimmedReason, voided_at: nowIso };
+          }
+          if (auditAction === AuditAction.UNVOID) {
+            return { ...item, voided: false, void_reason: null, voided_at: null, voided_by: null };
+          }
+          if (auditAction === AuditAction.UNPUBLISH) {
+            return { ...item, published: false };
+          }
+          return item;
+        })
       );
+      setSelectedIds(new Set());
       setAppliedFilters(prev => ({ ...prev }));
-      closeVoidModal();
+      closeAuditModal();
     } catch (e) {
       console.error(e);
-      setError(normalizeSchemaErrorMessage(e, "Failed to void row"));
+      const message = normalizeSchemaErrorMessage(e, "Failed to update rows");
+      setAuditError(message);
     } finally {
-      setVoidSubmitting(false);
-    }
-  }
-
-  async function handleConfirmUnvoid() {
-    if (!isSuperAdmin || !unvoidModalRowId) return;
-    const trimmedReason = unvoidReason.trim();
-    if (!trimmedReason) {
-      setError("Reason for unvoid is required.");
-      return;
-    }
-
-    setUnvoidSubmitting(true);
-    setError("");
-
-    try {
-      await unvoidRawData({ id: unvoidModalRowId, reason: trimmedReason });
-      setRows(prev =>
-        prev.map(item =>
-          item.id === unvoidModalRowId
-            ? { ...item, voided: false, void_reason: null, voided_at: null, voided_by: null }
-            : item
-        )
-      );
-      setAppliedFilters(prev => ({ ...prev }));
-      closeUnvoidModal();
-    } catch (e) {
-      console.error(e);
-      setError(normalizeSchemaErrorMessage(e, "Failed to unvoid row"));
-    } finally {
-      setUnvoidSubmitting(false);
+      setAuditSubmitting(false);
     }
   }
 
@@ -422,7 +434,12 @@ export default function Publishing() {
           <button
             type="button"
             className="button secondary"
-            onClick={() => handleBatchPublish(false)}
+            onClick={() =>
+              openAuditModal(
+                AuditAction.UNPUBLISH,
+                Array.from(selectedIds).filter(id => selectableRowIds.has(id))
+              )
+            }
             disabled={batchLoading || !selectedIds.size}
           >
             Unpublish Selected ({selectedIds.size})
@@ -525,18 +542,28 @@ export default function Publishing() {
                       <button
                         type="button"
                         className="button secondary"
-                        onClick={() => openVoidModal(row)}
-                        disabled={voidSubmitting}
+                        onClick={() => openAuditModal(AuditAction.VOID, [row.id])}
+                        disabled={auditSubmitting}
                       >
                         Void
+                      </button>
+                    ) : null}
+                    {!row.voided && isSuperAdmin && row.published ? (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => openAuditModal(AuditAction.UNPUBLISH, [row.id])}
+                        disabled={auditSubmitting}
+                      >
+                        Unpublish
                       </button>
                     ) : null}
                     {row.voided && isSuperAdmin ? (
                       <button
                         type="button"
                         className="button secondary"
-                        onClick={() => openUnvoidModal(row)}
-                        disabled={unvoidSubmitting}
+                        onClick={() => openAuditModal(AuditAction.UNVOID, [row.id])}
+                        disabled={auditSubmitting}
                       >
                         Unvoid
                       </button>
@@ -556,137 +583,19 @@ export default function Publishing() {
         </table>
       </div>
 
-      {/* Void Modal */}
-      {voidModalOpen ? (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0,0,0,0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000,
-        }}>
-          <div style={{
-            background: "white",
-            borderRadius: 8,
-            padding: 20,
-            maxWidth: 500,
-            width: "90%",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Void Record</div>
-            <div style={{ marginBottom: 16, color: "#666" }}>
-              Are you sure you want to void this record? Please provide a reason.
-            </div>
-            <textarea
-              value={voidReason}
-              onChange={e => setVoidReason(e.target.value)}
-              placeholder="Enter reason for voiding..."
-              style={{
-                width: "100%",
-                minHeight: 100,
-                padding: 8,
-                border: "1px solid #ddd",
-                borderRadius: 4,
-                fontFamily: "inherit",
-                marginBottom: 16,
-              }}
-            />
-            {error ? (
-              <div style={{ color: "#b00020", marginBottom: 12, fontSize: 14 }}>
-                {error}
-              </div>
-            ) : null}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={closeVoidModal}
-                disabled={voidSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="button primary"
-                onClick={handleConfirmVoid}
-                disabled={voidSubmitting || !voidReason.trim()}
-              >
-                {voidSubmitting ? "Voiding..." : "Confirm Void"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {unvoidModalOpen ? (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0,0,0,0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000,
-        }}>
-          <div style={{
-            background: "white",
-            borderRadius: 8,
-            padding: 20,
-            maxWidth: 500,
-            width: "90%",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}>
-            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Unvoid Row</div>
-            <div style={{ marginBottom: 16, color: "#666" }}>
-              Provide a reason for unvoiding this record.
-            </div>
-            <textarea
-              value={unvoidReason}
-              onChange={e => setUnvoidReason(e.target.value)}
-              placeholder="Enter reason for unvoiding..."
-              style={{
-                width: "100%",
-                minHeight: 100,
-                padding: 8,
-                border: "1px solid #ddd",
-                borderRadius: 4,
-                fontFamily: "inherit",
-                marginBottom: 16,
-              }}
-            />
-            {error ? (
-              <div style={{ color: "#b00020", marginBottom: 12, fontSize: 14 }}>
-                {error}
-              </div>
-            ) : null}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={closeUnvoidModal}
-                disabled={unvoidSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="button primary"
-                onClick={handleConfirmUnvoid}
-                disabled={unvoidSubmitting || !unvoidReason.trim()}
-              >
-                {unvoidSubmitting ? "Unvoiding..." : "Confirm Unvoid"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {auditModalOpen && auditConfig ? (
+        <AuditReasonModal
+          isOpen={auditModalOpen}
+          title={auditConfig.title}
+          description={auditConfig.description}
+          reason={auditReason}
+          onReasonChange={setAuditReason}
+          confirmLabel={auditSubmitting ? "Saving..." : auditConfig.confirmLabel}
+          onCancel={closeAuditModal}
+          onConfirm={handleConfirmAuditAction}
+          error={auditError}
+          submitting={auditSubmitting}
+        />
       ) : null}
     </div>
   );
