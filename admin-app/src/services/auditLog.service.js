@@ -17,18 +17,44 @@ function isMissingColumn(error, column) {
   return message.includes("does not exist") && message.includes(column.toLowerCase());
 }
 
+function isRangeError(error) {
+  if (!error) return false;
+  if (error.code?.toString?.() === "416") return true;
+  const message = error.message?.toLowerCase?.() ?? "";
+  return message.includes("range not satisfiable");
+}
+
 export async function listRawDataAudit({ fromTs, toTs, actorId, action, from = 0, to = 49 }) {
-  let query = supabase.from("raw_data_audit").select("*", { count: "exact" });
+  let dataQuery = supabase.from("raw_data_audit").select("*", { count: "exact" });
+  let countQuery = supabase.from("raw_data_audit").select("*", { count: "exact", head: true });
 
-  if (fromTs) query = query.gte("created_at", fromTs);
-  if (toTs) query = query.lte("created_at", toTs);
-  if (action) query = query.eq("action", action);
-  if (actorId) query = query.eq("actor_id", actorId);
+  if (fromTs) {
+    dataQuery = dataQuery.gte("created_at", fromTs);
+    countQuery = countQuery.gte("created_at", fromTs);
+  }
+  if (toTs) {
+    dataQuery = dataQuery.lte("created_at", toTs);
+    countQuery = countQuery.lte("created_at", toTs);
+  }
+  if (action) {
+    dataQuery = dataQuery.eq("action", action);
+    countQuery = countQuery.eq("action", action);
+  }
+  if (actorId) {
+    dataQuery = dataQuery.eq("actor_id", actorId);
+    countQuery = countQuery.eq("actor_id", actorId);
+  }
 
-  query = query.order("created_at", { ascending: false }).range(from, to);
+  const countResult = await countQuery;
+  if (countResult.error) return { data: [], error: countResult.error, count: null };
+  const total = countResult.count ?? 0;
+  if (from >= total) return { data: [], error: null, count: total };
 
-  const { data, error, count } = await query;
-  return { data: data ?? [], error, count };
+  dataQuery = dataQuery.order("created_at", { ascending: false }).range(from, to);
+
+  const { data, error, count } = await dataQuery;
+  if (error && isRangeError(error)) return { data: [], error: null, count: total };
+  return { data: data ?? [], error, count: count ?? total };
 }
 
 export async function listScoringFormulaAudit({ fromTs, toTs, actorId, action, from = 0, to = 49 }) {
@@ -53,23 +79,75 @@ export async function listScoringFormulaAudit({ fromTs, toTs, actorId, action, f
         ? SCORING_ACTOR_COLUMNS[actorIndex]
         : null;
 
-    let query = supabase.from("scoring_formula_audit").select("*", { count: "exact" });
+    let dataQuery = supabase.from("scoring_formula_audit").select("*", { count: "exact" });
+    let countQuery = supabase.from("scoring_formula_audit").select("*", { count: "exact", head: true });
 
     if (timestampColumn) {
-      if (fromTs) query = query.gte(timestampColumn, fromTs);
-      if (toTs) query = query.lte(timestampColumn, toTs);
-      query = query.order(timestampColumn, { ascending: false });
+      if (fromTs) {
+        dataQuery = dataQuery.gte(timestampColumn, fromTs);
+        countQuery = countQuery.gte(timestampColumn, fromTs);
+      }
+      if (toTs) {
+        dataQuery = dataQuery.lte(timestampColumn, toTs);
+        countQuery = countQuery.lte(timestampColumn, toTs);
+      }
+      dataQuery = dataQuery.order(timestampColumn, { ascending: false });
     }
 
-    if (actionColumn && action) query = query.eq(actionColumn, action);
-    if (actorColumn && actorId) query = query.eq(actorColumn, actorId);
+    if (actionColumn && action) {
+      dataQuery = dataQuery.eq(actionColumn, action);
+      countQuery = countQuery.eq(actionColumn, action);
+    }
+    if (actorColumn && actorId) {
+      dataQuery = dataQuery.eq(actorColumn, actorId);
+      countQuery = countQuery.eq(actorColumn, actorId);
+    }
 
-    query = query.range(from, to);
+    const countResult = await countQuery;
+    if (countResult.error) {
+      lastError = countResult.error;
 
-    const { data, error, count } = await query;
-    if (!error) return { data: data ?? [], error: null, count };
+      if (isMissingColumn(countResult.error, timestampColumn)) {
+        if (timestampIndex < SCORING_TIMESTAMP_COLUMNS.length - 1) {
+          timestampIndex += 1;
+        } else {
+          timestampIndex = SCORING_TIMESTAMP_COLUMNS.length;
+        }
+        continue;
+      }
+
+      if (isMissingColumn(countResult.error, actionColumn)) {
+        if (actionIndex < SCORING_ACTION_COLUMNS.length - 1) {
+          actionIndex += 1;
+        } else {
+          actionIndex = SCORING_ACTION_COLUMNS.length;
+        }
+        continue;
+      }
+
+      if (isMissingColumn(countResult.error, actorColumn)) {
+        if (actorIndex < SCORING_ACTOR_COLUMNS.length - 1) {
+          actorIndex += 1;
+        } else {
+          actorIndex = SCORING_ACTOR_COLUMNS.length;
+        }
+        continue;
+      }
+
+      return { data: [], error: countResult.error, count: null };
+    }
+
+    const total = countResult.count ?? 0;
+    if (from >= total) return { data: [], error: null, count: total };
+
+    dataQuery = dataQuery.range(from, to);
+
+    const { data, error, count } = await dataQuery;
+    if (!error) return { data: data ?? [], error: null, count: count ?? total };
 
     lastError = error;
+
+    if (isRangeError(error)) return { data: [], error: null, count: total };
 
     if (isMissingColumn(error, timestampColumn)) {
       if (timestampIndex < SCORING_TIMESTAMP_COLUMNS.length - 1) {
@@ -105,13 +183,22 @@ export async function listScoringFormulaAudit({ fromTs, toTs, actorId, action, f
 }
 
 export async function listFinalizedWeeks({ from = 0, to = 49 }) {
+  const countResult = await supabase
+    .from("finalized_weeks")
+    .select("*", { count: "exact", head: true });
+
+  if (countResult.error) return { data: [], error: countResult.error, count: null };
+  const total = countResult.count ?? 0;
+  if (from >= total) return { data: [], error: null, count: total };
+
   const { data, error, count } = await supabase
     .from("finalized_weeks")
     .select("*", { count: "exact" })
     .order("start_date", { ascending: false })
     .range(from, to);
 
-  return { data: data ?? [], error, count };
+  if (error && isRangeError(error)) return { data: [], error: null, count: total };
+  return { data: data ?? [], error, count: count ?? total };
 }
 
 export async function getProfilesByIds(userIds = []) {
