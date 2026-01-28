@@ -7,8 +7,6 @@ import {
   listScoringFormulaAudit,
 } from "../services/auditLog.service";
 import { getMyProfile } from "../services/profile.service";
-import { supabase } from "../services/supabase";
-
 const PAGE_SIZE = 50;
 const BASE_ACTIONS = [
   "edit",
@@ -279,7 +277,7 @@ export default function AuditLog() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [counts, setCounts] = useState({ raw: 0, scoring: 0, finalized: 0 });
+  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
   const [detailRow, setDetailRow] = useState(null);
   const [exporting, setExporting] = useState(false);
@@ -397,6 +395,19 @@ export default function AuditLog() {
     };
   }, []);
 
+  function getPageRange(currentPage) {
+    const from = currentPage * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    return { from, to };
+  }
+
+  function isRangeError(err) {
+    if (!err) return false;
+    if (err.code?.toString?.() === "416") return true;
+    const message = err.message?.toLowerCase?.() ?? "";
+    return message.includes("range not satisfiable");
+  }
+
   useEffect(() => {
     if (!isSuperAdmin) return;
 
@@ -405,7 +416,7 @@ export default function AuditLog() {
       setLoading(true);
       setError("");
       const { fromTs, toTs } = toIsoRange(appliedFilters.dateFrom, appliedFilters.dateTo);
-      const offset = page * PAGE_SIZE;
+      const { from, to } = getPageRange(page);
 
       try {
         const shouldFetchRaw = appliedFilters.entityType === "all" || appliedFilters.entityType === "raw_data";
@@ -421,8 +432,8 @@ export default function AuditLog() {
                 toTs,
                 actorId: appliedFilters.actorId,
                 action: appliedFilters.action,
-                limit: PAGE_SIZE,
-                offset,
+                from,
+                to,
               })
             : Promise.resolve({ data: [], count: 0, error: null }),
           shouldFetchScoring
@@ -431,13 +442,11 @@ export default function AuditLog() {
                 toTs,
                 actorId: appliedFilters.actorId,
                 action: appliedFilters.action,
-                limit: PAGE_SIZE,
-                offset,
+                from,
+                to,
               })
             : Promise.resolve({ data: [], count: 0, error: null }),
-          shouldFetchFinalized
-            ? listFinalizedWeeks({ limit: PAGE_SIZE, offset })
-            : Promise.resolve({ data: [], count: 0, error: null }),
+          shouldFetchFinalized ? listFinalizedWeeks({ from, to }) : Promise.resolve({ data: [], count: 0, error: null }),
         ]);
 
         if (rawResult.error) throw rawResult.error;
@@ -452,15 +461,20 @@ export default function AuditLog() {
 
         if (!active) return;
         setRows(normalized);
-        setCounts({
-          raw: rawResult.count ?? 0,
-          scoring: scoringResult.count ?? 0,
-          finalized: finalizedResult.count ?? 0,
-        });
+        const nextTotalCount = (rawResult.count ?? 0) + (scoringResult.count ?? 0) + (finalizedResult.count ?? 0);
+        setTotalCount(nextTotalCount);
+        if (normalized.length === 0 && page > 0) {
+          setPage(0);
+        }
       } catch (err) {
         if (!active) return;
+        if (isRangeError(err) && page > 0) {
+          setPage(0);
+          return;
+        }
         setError(err?.message || "Failed to load audit log");
         setRows([]);
+        setTotalCount(0);
       } finally {
         if (active) setLoading(false);
       }
@@ -489,10 +503,10 @@ export default function AuditLog() {
     return ["", ...Array.from(actionSet).sort()];
   }, [rows]);
 
-  const totalCount = counts.raw + counts.scoring + counts.finalized;
   const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 1;
   const hasPrev = page > 0;
-  const hasNext = totalCount ? (page + 1) * PAGE_SIZE < totalCount : visibleRows.length >= PAGE_SIZE;
+  const { from } = getPageRange(page);
+  const hasNext = (from + rows.length) < totalCount;
 
   function handleApply() {
     setPage(0);
@@ -523,55 +537,58 @@ export default function AuditLog() {
       const allRows = [];
 
       async function fetchAllRaw() {
-        let offset = 0;
+        let pageIndex = 0;
         while (true) {
-          setExportProgress(`Fetching raw data audit (offset ${offset})…`);
+          const { from, to } = getPageRange(pageIndex);
+          setExportProgress(`Fetching raw data audit (offset ${from})…`);
           const result = await listRawDataAudit({
             fromTs,
             toTs,
             actorId: appliedFilters.actorId,
             action: appliedFilters.action,
-            limit: PAGE_SIZE,
-            offset,
+            from,
+            to,
           });
           if (result.error) throw result.error;
           const chunk = result.data || [];
           allRows.push(...chunk.map(normalizeRawDataRow));
           if (chunk.length < PAGE_SIZE) break;
-          offset += PAGE_SIZE;
+          pageIndex += 1;
         }
       }
 
       async function fetchAllScoring() {
-        let offset = 0;
+        let pageIndex = 0;
         while (true) {
-          setExportProgress(`Fetching scoring formula audit (offset ${offset})…`);
+          const { from, to } = getPageRange(pageIndex);
+          setExportProgress(`Fetching scoring formula audit (offset ${from})…`);
           const result = await listScoringFormulaAudit({
             fromTs,
             toTs,
             actorId: appliedFilters.actorId,
             action: appliedFilters.action,
-            limit: PAGE_SIZE,
-            offset,
+            from,
+            to,
           });
           if (result.error) throw result.error;
           const chunk = result.data || [];
           allRows.push(...chunk.map(normalizeScoringFormulaRow));
           if (chunk.length < PAGE_SIZE) break;
-          offset += PAGE_SIZE;
+          pageIndex += 1;
         }
       }
 
       async function fetchAllFinalized() {
-        let offset = 0;
+        let pageIndex = 0;
         while (true) {
-          setExportProgress(`Fetching week finalizations (offset ${offset})…`);
-          const result = await listFinalizedWeeks({ limit: PAGE_SIZE, offset });
+          const { from, to } = getPageRange(pageIndex);
+          setExportProgress(`Fetching week finalizations (offset ${from})…`);
+          const result = await listFinalizedWeeks({ from, to });
           if (result.error) throw result.error;
           const chunk = result.data || [];
           allRows.push(...chunk.flatMap(normalizeFinalizedWeek));
           if (chunk.length < PAGE_SIZE) break;
-          offset += PAGE_SIZE;
+          pageIndex += 1;
         }
       }
 
