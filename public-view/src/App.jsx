@@ -1138,15 +1138,15 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
           <div className="rank-header__metrics">
             <span className="rank-label">
               <span className="rank-label__full">Leads</span>
-              <span className="rank-label__short">LD</span>
+              <span className="rank-label__short">LDS</span>
             </span>
             <span className="rank-label">
               <span className="rank-label__full">Payins</span>
-              <span className="rank-label__short">PAY</span>
+              <span className="rank-label__short">PI</span>
             </span>
             <span className="rank-label">
               <span className="rank-label__full">Sales</span>
-              <span className="rank-label__short">SAL</span>
+              <span className="rank-label__short">SALES</span>
             </span>
           </div>
           <div className="rank-header__points">
