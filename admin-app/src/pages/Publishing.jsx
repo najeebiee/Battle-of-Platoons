@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { AuditReasonModal } from "../components/AuditReasonModal";
+import { ModalForm } from "../components/ModalForm";
 import { listAgents } from "../services/agents.service";
 import {
   AuditAction,
@@ -345,6 +345,8 @@ export default function Publishing() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const trimmedReason = auditReason.trim();
+
   return (
     <div className="card">
       <div className="card-title">Publishing</div>
@@ -599,23 +601,51 @@ export default function Publishing() {
       </div>
 
       {auditModalOpen && auditConfig ? (
-        <AuditReasonModal
+        <ModalForm
           isOpen={auditModalOpen}
+          onOverlayClose={closeAuditModal}
+          onClose={closeAuditModal}
+          onSubmit={event => {
+            event.preventDefault();
+            if (auditSubmitting || !trimmedReason) return;
+            handleConfirmAuditAction();
+          }}
           title={auditConfig.title}
-          description={auditConfig.description}
-          reason={auditReason}
-          onReasonChange={setAuditReason}
-          confirmLabel={auditSubmitting ? "Saving..." : auditConfig.confirmLabel}
-          onCancel={closeAuditModal}
-          onConfirm={handleConfirmAuditAction}
-          error={auditError}
-          submitting={auditSubmitting}
-          progressText={
-            auditSubmitting && auditAction === AuditAction.UNPUBLISH && auditProgress?.total
-              ? `Unpublishing ${auditProgress.current}/${auditProgress.total}...`
-              : null
-          }
-        />
+          footer={(
+            <>
+              <button type="button" className="button secondary" onClick={closeAuditModal} disabled={auditSubmitting}>
+                Cancel
+              </button>
+              <button type="submit" className="button primary" disabled={auditSubmitting || !trimmedReason}>
+                {auditSubmitting ? "Saving..." : auditConfig.confirmLabel}
+              </button>
+            </>
+          )}
+        >
+          <p className="muted" style={{ marginBottom: 12 }}>
+            {auditConfig.description}
+          </p>
+          {auditSubmitting && auditAction === AuditAction.UNPUBLISH && auditProgress?.total ? (
+            <div className="muted" style={{ marginBottom: 12 }}>
+              {`Unpublishing ${auditProgress.current}/${auditProgress.total}...`}
+            </div>
+          ) : null}
+          <label className="form-label" htmlFor="audit-reason">
+            Reason
+          </label>
+          <textarea
+            id="audit-reason"
+            value={auditReason}
+            onChange={e => setAuditReason(e.target.value)}
+            style={{ minHeight: 120 }}
+            required
+          />
+          {auditError ? (
+            <div className="error" style={{ marginTop: 12 }}>
+              {auditError}
+            </div>
+          ) : null}
+        </ModalForm>
       ) : null}
     </div>
   );

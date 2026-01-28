@@ -948,15 +948,17 @@ export async function applyRawDataAuditAction({ action, reason, rowIds }) {
         .single();
       if (updateError) throw normalizeSupabaseError(updateError);
 
-      const { error: auditError } = await supabase.from("raw_data_audit").insert({
-        raw_data_id: rowId,
-        action,
-        reason: trimmedReason,
-        actor_id: actorId,
-        actor_email: actorEmail,
-        created_at: nowIso,
-      });
-      if (auditError) throw normalizeSupabaseError(auditError);
+      if (action !== AuditAction.UNPUBLISH) {
+        const { error: auditError } = await supabase.from("raw_data_audit").insert({
+          raw_data_id: rowId,
+          action,
+          reason: trimmedReason,
+          actor_id: actorId,
+          actor_email: actorEmail,
+          created_at: nowIso,
+        });
+        if (auditError) throw normalizeSupabaseError(auditError);
+      }
 
       updatedRows.push(updatedRow);
     } catch (err) {
@@ -984,13 +986,6 @@ export async function unpublishRowsWithAudit({ rowIds, reason, onProgress }) {
 
   for (const rowId of ids) {
     try {
-      const { data: before, error: beforeError } = await supabase
-        .from("raw_data")
-        .select("*")
-        .eq("id", rowId)
-        .single();
-      if (beforeError) throw normalizeSupabaseError(beforeError);
-
       const nowIso = new Date().toISOString();
       const updatePayload = {
         published: false,
@@ -1005,29 +1000,6 @@ export async function unpublishRowsWithAudit({ rowIds, reason, onProgress }) {
         .select("*")
         .single();
       if (updateError) throw normalizeSupabaseError(updateError);
-
-      const snapshot = {
-        id: before.id,
-        date_real: before.date_real,
-        agent_id: before.agent_id,
-        leads_depot_id: before.leads_depot_id,
-        sales_depot_id: before.sales_depot_id,
-        published_before: before.published,
-        published_after: updatedRow.published,
-      };
-
-      const { error: auditError } = await supabase.from("raw_data_audit").insert({
-        raw_data_id: rowId,
-        action: AuditAction.UNPUBLISH,
-        reason: trimmedReason,
-        actor_id: actorId,
-        actor_email: actorEmail,
-        created_at: nowIso,
-        before,
-        after: updatedRow,
-        snapshot,
-      });
-      if (auditError) throw normalizeSupabaseError(auditError);
 
       updatedRows.push(updatedRow);
       completed += 1;
