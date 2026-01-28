@@ -17,7 +17,7 @@ function isMissingColumn(error, column) {
   return message.includes("does not exist") && message.includes(column.toLowerCase());
 }
 
-export async function listRawDataAudit({ fromTs, toTs, actorId, action, limit = 50, offset = 0 }) {
+export async function listRawDataAudit({ fromTs, toTs, actorId, action, from = 0, to = 49 }) {
   let query = supabase.from("raw_data_audit").select("*", { count: "exact" });
 
   if (fromTs) query = query.gte("created_at", fromTs);
@@ -25,13 +25,13 @@ export async function listRawDataAudit({ fromTs, toTs, actorId, action, limit = 
   if (action) query = query.eq("action", action);
   if (actorId) query = query.eq("actor_id", actorId);
 
-  query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+  query = query.order("created_at", { ascending: false }).range(from, to);
 
   const { data, error, count } = await query;
   return { data: data ?? [], error, count };
 }
 
-export async function listScoringFormulaAudit({ fromTs, toTs, actorId, action, limit = 50, offset = 0 }) {
+export async function listScoringFormulaAudit({ fromTs, toTs, actorId, action, from = 0, to = 49 }) {
   let timestampIndex = 0;
   let actionIndex = action ? 0 : -1;
   let actorIndex = actorId ? 0 : -1;
@@ -64,7 +64,7 @@ export async function listScoringFormulaAudit({ fromTs, toTs, actorId, action, l
     if (actionColumn && action) query = query.eq(actionColumn, action);
     if (actorColumn && actorId) query = query.eq(actorColumn, actorId);
 
-    query = query.range(offset, offset + limit - 1);
+    query = query.range(from, to);
 
     const { data, error, count } = await query;
     if (!error) return { data: data ?? [], error: null, count };
@@ -104,12 +104,12 @@ export async function listScoringFormulaAudit({ fromTs, toTs, actorId, action, l
   return { data: [], error: lastError, count: null };
 }
 
-export async function listFinalizedWeeks({ limit = 50, offset = 0 }) {
+export async function listFinalizedWeeks({ from = 0, to = 49 }) {
   const { data, error, count } = await supabase
     .from("finalized_weeks")
     .select("*", { count: "exact" })
     .order("start_date", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(from, to);
 
   return { data: data ?? [], error, count };
 }
