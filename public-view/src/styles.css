@@ -1176,7 +1176,7 @@ button {
 
 @media (max-width: 520px) {
   .rank-header {
-    grid-template-columns: 40px minmax(80px, 1fr) minmax(150px, 1fr) minmax(44px, auto);
+    grid-template-columns: 36px minmax(120px, 1fr) minmax(140px, 1fr) minmax(44px, auto);
     gap: 8px;
     font-size: 10px;
   }
@@ -1186,23 +1186,56 @@ button {
   }
 
   .rank-card {
-    padding: 12px;
-    grid-template-columns: 40px minmax(80px, 1fr) minmax(150px, 1fr) minmax(44px, auto);
+    padding: 6px 8px;
+    grid-template-columns: 36px minmax(120px, 1fr) minmax(140px, 1fr) minmax(44px, auto);
     gap: 8px;
   }
 
   .rank-card__rank {
-    width: 40px;
-    font-size: 16px;
+    width: 36px;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .row-name {
+    gap: 8px;
+    padding: 0 8px 0 0;
+  }
+
+  .row-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .row-labels {
+    min-width: 0;
+  }
+
+  .row-title {
+    font-size: 12px;
+  }
+
+  .row-sub {
+    font-size: 10px;
   }
 
   .rank-card__metrics {
     font-size: 12px;
     gap: 6px;
+    padding: 0;
+  }
+
+  .leader-row-stat__label {
+    font-size: 9px;
+    letter-spacing: 0.03em;
   }
 
   .leader-row-stat__value {
-    font-size: 12px;
+    font-size: 11px;
+  }
+
+  .rank-card__points {
+    padding: 0 6px 0 0;
   }
 }
 
