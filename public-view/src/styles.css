@@ -1186,7 +1186,6 @@ button {
   }
 
   .rank-card {
-    padding: 6px 8px;
     grid-template-columns: 36px minmax(120px, 1fr) minmax(140px, 1fr) minmax(44px, auto);
     gap: 8px;
   }
