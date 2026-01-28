@@ -86,8 +86,6 @@ export async function getLeaderboard({
   let warnedMissingAgentId = false;
   let warnedMissingAgentData = false;
 
-  const publishableRowsFetched = publishableRows?.length ?? 0;
-
   const filteredRows = (publishableRows ?? []).filter((r) => {
     if (isDev) {
       if (!r?.agent_id && !warnedMissingAgentId) {
@@ -170,35 +168,7 @@ export async function getLeaderboard({
       missing: !resolvedFormula,
       fallback: null,
     },
-    debug: {
-      publishableRowsFetched,
-      publishableRowsCount: filteredRows.length,
-      filteredByRangeCount: filtered.length,
-      startDate,
-      endDate,
-      groupBy,
-      roleFilter,
-      battleType: resolvedBattleType,
-      weekKey: resolvedWeekKey,
-      formulaMissing: !resolvedFormula,
-    },
   };
-}
-
-export async function probeRawDataVisibility() {
-  if (!supabaseConfigured || !supabase) {
-    return { ok: false, reason: "not_configured", count: null, error: null };
-  }
-
-  const { count, error } = await supabase
-    .from("publishable_raw_data")
-    .select("id", { count: "exact", head: true });
-
-  if (error) {
-    return { ok: false, count: null, error };
-  }
-
-  return { ok: true, count: count ?? 0, error: null };
 }
 
 /* ------------------------------ Aggregation ------------------------------ */

@@ -12,9 +12,9 @@ import {
   Factory,
   ChevronDown,
 } from "lucide-react";
-import { getLeaderboard, probeRawDataVisibility } from "./services/leaderboard.service";
+import { getLeaderboard } from "./services/leaderboard.service";
 import { getActiveFormula } from "./services/scoringFormula.service";
-import { supabaseConfigured, supabaseConfigError, getSupabaseProjectRef } from "./services/supabase";
+import { supabaseConfigured } from "./services/supabase";
 import "./styles.css";
 
 // Findings: layout wrappers were flattened, so the shared metric bar and podium positioning lost their shared blue container and relative rank anchors.
@@ -302,7 +302,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
-  const [probe, setProbe] = useState({ status: "idle", count: null, error: null });
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [faqOpenKey, setFaqOpenKey] = useState("formulas");
   const [formulaOpenKey, setFormulaOpenKey] = useState("depots");
@@ -310,13 +309,10 @@ function App() {
   const [formulasByType, setFormulasByType] = useState({});
   const faqButtonRef = useRef(null);
   const faqCloseRef = useRef(null);
-  const projectRef = getSupabaseProjectRef();
 
   useEffect(() => {
     if (!supabaseConfigured) {
-      setError(
-        "Supabase env vars missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment (e.g., Vercel project settings or local .env)."
-      );
+      setError("Service temporarily unavailable. Please try again later.");
       setLoading(false);
     } else {
       setError("");
@@ -364,35 +360,6 @@ function App() {
     };
   }, [activeWeek, activeView, leaderRoleFilter]);
 
-  useEffect(() => {
-    if (!supabaseConfigured) {
-      setProbe({ status: "idle", count: null, error: null });
-      return;
-    }
-
-    let cancelled = false;
-    setProbe({ status: "loading", count: null, error: null });
-
-    probeRawDataVisibility()
-      .then((res) => {
-        if (cancelled) return;
-        setProbe({
-          status: "done",
-          count: res?.count ?? null,
-          error: res?.error || null,
-        });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setProbe({ status: "done", count: null, error: err });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [supabaseConfigured]);
-
-
   const today = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "2-digit",
@@ -408,10 +375,6 @@ function App() {
     totalSales: 0,
   };
   const rows = data?.rows || [];
-  const debug = data?.debug || {};
-  const publishableRowsCount = debug.publishableRowsCount ?? 0;
-  const filteredByRangeCount = debug.filteredByRangeCount ?? 0;
-  const publishableRowsFetched = debug.publishableRowsFetched ?? 0;
   const activeFormula = data?.formula?.data || null;
   const selectedWeekKey = data?.formula?.weekKey || null;
   const PAGE_SIZE = 10;
@@ -452,12 +415,12 @@ function App() {
       ? "Company Rankings"
       : "Commander Rankings";
 
-  const statusBlocks = [];
-
   useEffect(() => {
     if (!activeFormula || !selectedWeekKey) return;
     if (!isWeekKeyInRange(selectedWeekKey, activeFormula.effective_start_week_key, activeFormula.effective_end_week_key)) {
-      console.warn("Active formula week mismatch", { selectedWeekKey, activeFormula });
+      if (import.meta.env.DEV) {
+        console.warn("Active formula week mismatch", { selectedWeekKey, activeFormula });
+      }
     }
   }, [activeFormula, selectedWeekKey]);
 
@@ -687,77 +650,8 @@ function App() {
     }
   }, [isFaqOpen]);
 
-  if (!supabaseConfigured) {
-    statusBlocks.push(
-      <div key="config-error" className="status-text status-text--error" style={{ marginBottom: 12 }}>
-        <strong>CONFIG ERROR:</strong> {supabaseConfigError || "Supabase env vars missing."} Set{" "}
-        <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in your deployment (e.g., Vercel project
-        settings) or local <code>.env</code>. Older builds may have worked with baked keys, but this build requires the
-        env vars.
-      </div>
-    );
-  } else if (probe.status === "done" && !probe.error && probe.count === 0) {
-    statusBlocks.push(
-      <div key="probe-empty" className="status-text" style={{ marginBottom: 12 }}>
-        <strong>DATA NOT PUBLISHABLE / RLS FILTERED:</strong> Connected to Supabase, but{" "}
-        <code>publishable_raw_data</code> returned 0 rows for anon access.
-        <ul style={{ marginTop: 6, paddingLeft: 18, fontSize: 13 }}>
-          <li>RLS publishable filter might hide all rows (approved=true OR matched depot/company totals).</li>
-          <li>No approved/matched company rows exist for this project yet.</li>
-          <li>Project ref mismatch - verify you are using the correct Supabase env vars (see debug banner).</li>
-        </ul>
-        <div style={{ fontSize: 13, marginTop: 4 }}>
-          Next actions: approve one company row and re-test; verify <code>publishable_raw_data</code> visibility; confirm
-          env vars point to the intended project.
-        </div>
-      </div>
-    );
-  } else if (probe.status === "done" && probe.error) {
-    const probeMsg = import.meta.env.DEV
-      ? `${probe.error?.message ?? "Unknown error"}${probe.error?.code ? ` (code: ${probe.error.code})` : ""}`
-      : "The public role could not read publishable_raw_data.";
-    statusBlocks.push(
-      <div key="probe-error" className="status-text status-text--error" style={{ marginBottom: 12 }}>
-        <strong>Connected, but publishable_raw_data probe failed:</strong> {probeMsg}
-      </div>
-    );
-  } else if (probe.status === "done" && (probe.count ?? 0) > 0 && !loading && rows.length === 0) {
-    statusBlocks.push(
-      <div key="no-publishable" className="status-text" style={{ marginBottom: 12 }}>
-        <strong>publishable_raw_data is visible, but no publishable results for this week range.</strong>{" "}
-        <span style={{ fontSize: 13 }}>
-          (publishable rows fetched: {publishableRowsFetched}, publishable matches: {publishableRowsCount}, after date
-          filter: {filteredByRangeCount})
-        </span>
-      </div>
-    );
-  }
-
   return (
     <div className="page">
-      {import.meta.env.DEV && (
-        <div
-          style={{
-            position: "fixed",
-            top: 8,
-            right: 8,
-            padding: "6px 10px",
-            background: "#111827",
-            color: "#e5e7eb",
-            borderRadius: 999,
-            fontSize: 12,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-            display: "flex",
-            gap: 12,
-            zIndex: 9999,
-          }}
-        >
-          <span>Project: {projectRef}</span>
-          <span>publishable_raw_data visible: {probe.status === "done" ? probe.count ?? "error" : "?"}</span>
-          <span>Leaderboard rows: {rows.length}</span>
-          <span>Error: {error || "none"}</span>
-        </div>
-      )}
       {/* Full-bleed header bar */}
       <header className="site-header">
         <div className="site-header__inner">
@@ -773,8 +667,6 @@ function App() {
       </header>
 
       <div className="page-inner">
-
-        {statusBlocks}
 
         {/* Week selector + metrics */}
         <section className="week-metrics">
@@ -870,7 +762,8 @@ function App() {
           <>
             {rows.length === 0 ? (
               <div className="empty-state">
-                No publishable data for this period.
+                No published results yet for this period.
+                <div className="empty-state__hint">Try a different date range.</div>
               </div>
             ) : (
               <>
