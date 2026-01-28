@@ -1008,6 +1008,7 @@ button {
   font-size: 18px;
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
+  border: 1px solid #C2C0C0;
 }
 
 .rank-card__meta {
@@ -1044,6 +1045,8 @@ button {
   min-width: fit-content;
   justify-self: end;
   padding: 5px 8px 5px 0px;
+  border-right: 1px solid #C2C0C0;
+  border-left: 1px solid #C2C0C0;
 }
 
 .leader-row-stat {
@@ -1198,7 +1201,7 @@ button {
 
   .row-name {
     gap: 8px;
-    padding: 0 8px 0 0;
+    padding: 6px 0px 6px 0px;
   }
 
   .row-avatar {
