@@ -1210,7 +1210,7 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
         {pageCount > 1 && (
           <div className="pagination__controls">
             <button
-              className="pagination__btn"
+              className="pagination__btn pagination__btn--nav"
               type="button"
               onClick={() => handlePageChange(Math.max(1, page - 1))}
               disabled={page === 1}
@@ -1242,7 +1242,7 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
               })}
             </div>
             <button
-              className="pagination__btn"
+              className="pagination__btn pagination__btn--nav"
               type="button"
               onClick={() => handlePageChange(Math.min(pageCount, page + 1))}
               disabled={page === pageCount}

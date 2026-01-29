@@ -1091,8 +1091,8 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0 18px;
+  gap: 12px;
+  padding: 10px 0 20px;
   text-align: center;
 }
 
@@ -1104,7 +1104,7 @@ button {
 .pagination__controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -1112,11 +1112,12 @@ button {
 .pagination__btn {
   background: #ffffff;
   color: #0b1770;
-  border: 1px solid rgba(11, 23, 112, 0.2);
+  border: 1px solid rgba(11, 26, 165, 0.28);
   border-radius: 999px;
-  padding: 8px 16px;
+  padding: 10px 18px;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .pagination__btn:disabled {
@@ -1124,17 +1125,51 @@ button {
   cursor: not-allowed;
 }
 
-.pagination__btn--active {
-  background: #0b1770;
-  color: #ffffff;
-}
-
 .pagination__pages {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   flex-wrap: wrap;
   justify-content: center;
+  background: #ffffff;
+  border: 1px solid rgba(11, 26, 165, 0.25);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 8px 18px rgba(11, 26, 165, 0.08);
+}
+
+.pagination__pages .pagination__btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 36px;
+}
+
+.pagination__btn--active {
+  background: rgba(11, 26, 165, 0.14);
+  color: var(--blue-card);
+  box-shadow: inset 0 0 0 1px rgba(11, 26, 165, 0.25);
+}
+
+.pagination__btn--nav {
+  background: var(--blue-card);
+  color: #ffffff;
+  border-color: var(--blue-card);
+  box-shadow: 0 10px 20px rgba(11, 26, 165, 0.18);
+}
+
+.pagination__btn--nav:disabled {
+  background: #d6d9f5;
+  border-color: #d6d9f5;
+  color: #6d74aa;
+}
+
+.pagination__btn:not(:disabled):hover {
+  background: rgba(11, 26, 165, 0.08);
+}
+
+.pagination__btn--nav:not(:disabled):hover {
+  background: #0b1db8;
 }
 
 .pagination__ellipsis {
@@ -1202,6 +1237,23 @@ button {
     --rank-gap: 8px;
     --rank-header-pad: 6px 0;
   }
+
+  .pagination__controls {
+    gap: 10px;
+  }
+
+  .pagination__btn {
+    padding: 8px 14px;
+  }
+
+  .pagination__pages {
+    padding: 3px;
+  }
+
+  .pagination__pages .pagination__btn {
+    padding: 6px 10px;
+    min-width: 32px;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1264,6 +1316,20 @@ button {
 
   .rank-card__points {
     padding: 0 6px 0 0;
+  }
+
+  .pagination {
+    padding: 8px 0 16px;
+  }
+
+  .pagination__btn {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  .pagination__pages .pagination__btn {
+    padding: 6px 8px;
+    min-width: 28px;
   }
 }
 
@@ -1354,6 +1420,24 @@ button {
 
   .rank-label__short {
     display: inline;
+  }
+
+  .pagination__controls {
+    gap: 8px;
+  }
+
+  .pagination__btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .pagination__pages {
+    padding: 2px;
+  }
+
+  .pagination__pages .pagination__btn {
+    padding: 5px 7px;
+    min-width: 26px;
   }
 }
 
