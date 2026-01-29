@@ -24,6 +24,26 @@
 html, body {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(11, 26, 165, 0.55) #eef1ff;
+}
+
+body::-webkit-scrollbar {
+  width: 10px;
+}
+
+body::-webkit-scrollbar-track {
+  background: #eef1ff;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: rgba(11, 26, 165, 0.55);
+  border-radius: 999px;
+  border: 2px solid #eef1ff;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 26, 165, 0.75);
 }
 
 body {
