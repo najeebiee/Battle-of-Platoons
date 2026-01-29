@@ -127,7 +127,7 @@ body{
   background: #ffffff;
   border-bottom: 1px solid #e6eaf5;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-  padding: 14px 18px;
+  padding: 10px 18px;
   display:grid;
   grid-template-columns: 1fr auto 1fr;
   align-items:center;
@@ -158,6 +158,11 @@ body{
   text-overflow: ellipsis;
 }
 
+.topbar-separator{
+  color: #cfd5f5;
+  font-weight: 700;
+}
+
 .topbar-title{
   text-align:center;
   font-family: Oswald, system-ui;
@@ -166,37 +171,39 @@ body{
   color: var(--blue2);
 }
 
-.topbar-right{
-  display:flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.topbar-date{
-  font-size: clamp(0.9rem, 1.3vw, 1.15rem);
-  font-weight: 500;
-  color: var(--blue2);
-  white-space: nowrap;
-}
-
 .topbar-user{
   display:flex;
   justify-content:flex-end;
   align-items:center;
   gap: 10px;
+  justify-self: end;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e6eaf5;
+  border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(11, 26, 165, 0.08);
 }
 
 .topbar-avatar{
-  width:42px;
-  height:42px;
+  width:32px;
+  height:32px;
   border-radius: 999px;
   background:#d9ddff;
 }
 
 .topbar-meta{ text-align:left; }
-.topbar-name{ font-weight:800; font-size:14px; }
+.topbar-name{ font-weight:800; font-size:13px; }
 .topbar-role{ font-size:12px; color: var(--muted); margin-top:2px; }
+
+.topbar-logout{
+  border: none;
+  background: #eef1ff;
+  color: var(--blue2);
+  font-weight: 900;
+  padding: 6px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
 
 /* ----- Common UI blocks ----- */
 .card{
@@ -714,7 +721,6 @@ textarea.input:focus{
   .topbar{ grid-template-columns: 1fr; }
   .topbar-brand{ justify-self: start; }
   .topbar-title{ text-align:left; }
-  .topbar-right{ align-items: flex-start; }
   .topbar-user{ justify-content:flex-start; }
   .grid{ grid-template-columns: 1fr; }
   .t-head{ display:none; }
