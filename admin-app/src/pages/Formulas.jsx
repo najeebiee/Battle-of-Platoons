@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "../styles/pages/formulas.css";
 import {
   listAllFormulasForSuperAdmin,
   listPublishedFormulas,
@@ -831,8 +832,8 @@ export default function ScoringFormulas() {
           </div>
         </div>
       )}
-      <div className="grid two" style={{ gap: "16px" }}>
-        <div className="card">
+      <div className="grid two formulas-grid">
+        <div className="card formula-library">
           <div className="card-title">Formulas</div>
           {profileError && <div className="error">{profileError}</div>}
           {formulasError && !formulasLoading && <div className="error">{formulasError}</div>}
@@ -842,12 +843,12 @@ export default function ScoringFormulas() {
           )}
           <div className="stack lg">
             {grouped.map(section => (
-              <div key={section.key} className="stack sm" style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12 }}>
-                <div className="row between" style={{ alignItems: "center" }}>
-                  <div className="card-title" style={{ margin: 0 }}>{section.title}</div>
+              <div key={section.key} className="formula-section">
+                <div className="formula-section__header">
+                  <div className="formula-section__title">{section.title}</div>
                   {isSuperAdmin && (
                     <button
-                      className="btn primary"
+                      className="btn primary formula-create-btn"
                       onClick={() =>
                         setCreateModal({
                           open: true,
@@ -865,27 +866,27 @@ export default function ScoringFormulas() {
                     </button>
                   )}
                 </div>
-                <div className="stack xs">
+                <div className="formula-list">
                   {section.items.map(formula => {
                     const isSelected = formula.id === selectedId;
                     const start = formula.effective_start_week_key || formula.start_week_key || "—";
                     const end = formula.effective_end_week_key || formula.end_week_key || "∞";
+                    const statusLabel = (formula.status || "unknown").toString();
                     return (
                       <button
                         key={formula.id}
-                        className={`btn ${isSelected ? "primary" : "ghost"}`}
+                        className={`formula-item${isSelected ? " is-active" : ""}`}
                         onClick={() => setSelectedId(formula.id)}
-                        style={{ justifyContent: "flex-start" }}
                       >
-                        <div className="stack xs" style={{ alignItems: "flex-start" }}>
-                          <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                        <div className="formula-item__body">
+                          <div className="formula-item__meta">
                             <span>{formula.label || "(Untitled)"}</span>
-                            <span className="badge">{formula.status || "unknown"}</span>
+                            <span className="formula-badge">{statusLabel}</span>
                             <span className="muted">
                               v{formula.version ?? formula.revision ?? "—"}
                             </span>
                           </div>
-                          <div className="muted" style={{ fontSize: 12 }}>
+                          <div className="formula-item__range">
                             {start} → {end || "∞"}
                           </div>
                         </div>
