@@ -1206,7 +1206,7 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
       <div className="pagination">
         <div className="pagination__row">
           <div className="pagination__meta">
-            Showing {rangeStart}-{rangeEnd} of {total}
+            Showing {rangeStart} - {rangeEnd} of {total}
           </div>
           {pageCount > 1 && (
             <div className="pagination__controls">

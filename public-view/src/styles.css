@@ -1099,10 +1099,10 @@ button {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 12px;
-  max-width: 980px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .pagination__meta {
@@ -1124,7 +1124,7 @@ button {
   background: #ffffff;
   color: #0b1770;
   border: 1px solid rgba(11, 26, 165, 0.28);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 7px 12px;
   font-weight: 700;
   font-size: 12px;
@@ -1145,14 +1145,14 @@ button {
   justify-content: center;
   background: #ffffff;
   border: 1px solid rgba(11, 26, 165, 0.25);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 3px;
   box-shadow: 0 8px 18px rgba(11, 26, 165, 0.08);
 }
 
 .pagination__pages .pagination__btn {
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 6px 8px;
   min-width: 28px;
 }
@@ -1353,10 +1353,6 @@ button {
 
   .rank-card__points {
     padding: 0 6px 0 0;
-  }
-
-  .pagination {
-    padding: 8px 0 16px;
   }
 
   .pagination__btn {
