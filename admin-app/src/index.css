@@ -12,7 +12,8 @@
 html, body{ height: 100%; }
 body{
   margin:0;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   background: linear-gradient(to bottom, #f5f6ff 0%, #ffffff 40%);
   color: var(--text);
   overflow: hidden;
@@ -165,16 +166,12 @@ body{
   text-overflow: ellipsis;
 }
 
-.topbar-separator{
-  color: #cfd5f5;
-  font-weight: 700;
-}
-
 .topbar-title{
   text-align:center;
   font-family: Oswald, system-ui;
   font-size: clamp(1.35rem, 3.2vw, 2.4rem);
   letter-spacing: .04em;
+  font-weight: 900;
   color: var(--blue2);
 }
 
@@ -184,11 +181,7 @@ body{
   align-items:center;
   gap: 10px;
   justify-self: end;
-  padding: 6px 10px;
-  background: #ffffff;
-  border: 1px solid #e6eaf5;
-  border-radius: 999px;
-  box-shadow: 0 8px 18px rgba(11, 26, 165, 0.08);
+  padding: 2px 0;
 }
 
 .topbar-avatar{
@@ -204,12 +197,17 @@ body{
 
 .topbar-logout{
   border: none;
-  background: #eef1ff;
-  color: var(--blue2);
+  background: #ffffff;
+  color: #262a3d;
+  border: 1px solid #d6d9e6;
   font-weight: 900;
-  padding: 6px 8px;
+  padding: 6px 7px;
   border-radius: 999px;
   cursor: pointer;
+}
+
+.topbar-logout:hover{
+  background: #f5f6ff;
 }
 
 /* ----- Common UI blocks ----- */

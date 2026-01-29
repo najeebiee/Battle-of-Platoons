@@ -9,7 +9,6 @@ export default function TopBar() {
       <div className="topbar-brand">
         <img src="/gg-logo.png" alt="Grinders Guild logo" className="topbar-brand-logo" />
         <div className="topbar-brand-text">Grinders Guild</div>
-        <span className="topbar-separator" aria-hidden="true">|</span>
       </div>
       <div className="topbar-title">Battle of Platoons</div>
 
