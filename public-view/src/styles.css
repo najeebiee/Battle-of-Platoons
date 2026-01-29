@@ -992,7 +992,7 @@ button {
 .rank-header__metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
   justify-items: center;
 }
 
@@ -1041,7 +1041,7 @@ button {
 .rank-card__metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
   justify-items: center;
   align-items: center;
   padding: 5px 0px 5px 0px;
@@ -1156,7 +1156,7 @@ button {
   }
 
   .rank-header__metrics {
-    gap: 8px;
+    gap: 6px;
   }
 
   .rank-card {
@@ -1174,7 +1174,7 @@ button {
   /* keep leads/payins/sales centered + compact */
   .rank-card__metrics {
     min-width: 0;
-    gap: 8px;
+    gap: 6px;
   }
 
   /* slightly smaller typography so it fits */
@@ -1216,7 +1216,7 @@ button {
   }
 
   .rank-header__metrics {
-    gap: 6px;
+    gap: 4px;
   }
 
   .rank-card__rank {
@@ -1249,7 +1249,7 @@ button {
 
   .rank-card__metrics {
     font-size: 12px;
-    gap: 6px;
+    gap: 4px;
     padding: 0;
   }
 
@@ -1341,7 +1341,7 @@ button {
   }
 
   .rank-card__metrics {
-    gap: 4px;
+    gap: 3px;
   }
 
   .rank-card__points {
