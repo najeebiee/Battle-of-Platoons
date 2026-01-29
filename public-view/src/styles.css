@@ -58,6 +58,13 @@ button {
   font-size: inherit;
 }
 
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(11, 26, 165, 0.4);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(11, 26, 165, 0.15);
+}
+
 .page {
   min-height: 100vh;
   background: linear-gradient(to bottom, #f5f6ff 0%, #ffffff 40%);
