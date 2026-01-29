@@ -1,0 +1,253 @@
+.p-page{ display:flex; flex-direction:column; gap: 14px; }
+.p-head{
+  background:#fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(11, 26, 165, 0.08);
+  padding: 14px 16px;
+}
+
+.p-tabs{
+  display:inline-flex;
+  border-radius: 12px;
+  overflow:hidden;
+  background: #f4f6ff;
+  box-shadow: inset 0 0 0 1px #e6eaf5;
+}
+
+.p-tab{
+  border:none;
+  background:transparent;
+  padding: 10px 16px;
+  cursor:pointer;
+  color: #5c64a8;
+  font-weight:700;
+}
+
+.p-tab.active{
+  background: var(--blue);
+  color:#fff;
+  box-shadow: 0 10px 20px rgba(11, 26, 165, 0.22);
+}
+
+.p-title-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-top: 12px;
+}
+
+.p-title{ margin:0; font-size: 18px; font-weight: 800; color: var(--blue); }
+
+.p-status{ 
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.p-status.ok{ background:#ecfff1; border:1px solid #b8f0c6; color:#167a35; }
+.p-status.error{ background:#fff0f0; border:1px solid #ffd0d0; color:#b01818; }
+.p-status.warn{ background:#fff8e6; border:1px solid #ffd48a; color:#a05a00; }
+
+.tabs{
+  display:inline-flex;
+  gap:8px;
+  background:#f5f6ff;
+  padding: 6px;
+  border-radius: 12px;
+}
+
+.tab-button{
+  border:none;
+  background:transparent;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight:800;
+  color: var(--muted);
+  cursor:pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.tab-button.active{
+  background: var(--blue);
+  color:#fff;
+  box-shadow: 0 8px 24px rgba(5,15,90,0.25);
+}
+
+/* Table-like rows */
+.table{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+.t-head, .t-row{
+  display:grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr .8fr;
+  gap: 10px;
+  align-items:center;
+}
+
+.t-head{
+  color: var(--muted);
+  font-weight:800;
+  font-size: 12px;
+  padding: 0 6px 6px;
+}
+
+.t-row{
+  border: 1px solid #eef1ff;
+  background: #fafbff;
+  border-radius: 14px;
+  padding: 12px 10px;
+}
+
+.t-leader{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.avatar{
+  width:40px;
+  height:40px;
+  border-radius: 999px;
+  overflow:hidden;
+  background: #d9ddff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+
+.avatar img{ width:100%; height:100%; object-fit:cover; }
+.initials{ font-weight:900; color: var(--blue); }
+
+.t-name{ font-weight:800; }
+.t-right{ text-align:right; }
+
+/* Participants page table styling to match target UI */
+.p-page .card{
+  border-radius: 16px;
+  box-shadow: 0 12px 26px rgba(11, 26, 165, 0.08);
+  border: 1px solid #eef1ff;
+}
+
+.p-page .card-title{
+  color: var(--blue);
+}
+
+.p-page .table{
+  gap: 12px;
+}
+
+.p-page .t-head{
+  color: #5c64a8;
+  font-weight: 800;
+  border-bottom: 1px solid #e9ecff;
+  padding: 0 8px 10px;
+}
+
+.p-page .t-row{
+  background: #ffffff;
+  border: 1px solid #e6eaf5;
+  border-radius: 12px;
+  padding: 10px 6px;
+  box-shadow: 0 8px 18px rgba(11, 26, 165, 0.06);
+}
+
+.p-page .t-row > div{
+  padding: 6px 12px;
+}
+
+.p-page .t-row > div:not(:last-child){
+  border-right: 1px solid #e6eaf5;
+}
+
+.p-page .t-leader{
+  gap: 12px;
+}
+
+.p-page .t-name{
+  color: var(--blue);
+}
+
+.p-page .btn-link{
+  color: var(--blue);
+}
+
+@media (max-width: 900px){
+  .t-head{ display:none; }
+  .t-row{ grid-template-columns: 1fr; gap: 6px; }
+  .t-right{ text-align:left; }
+}
+
+.photo-section{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+.photo-mode-toggle{
+  display:inline-flex;
+  gap: 6px;
+  background:#f4f5ff;
+  border-radius: 999px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.photo-mode-pill{
+  border:none;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.photo-mode-pill.active{
+  background: var(--blue);
+  color:#fff;
+}
+
+.photo-input-row{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.photo-input-row input[type="file"],
+.photo-input-row input[type="text"],
+.photo-input-row input:not([type]){
+  flex: 1 1 260px;
+}
+
+.photo-preview{
+  width:50px;
+  height:50px;
+  border-radius: 999px;
+  background:#eef1ff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex-shrink:0;
+}
+
+.photo-preview img{ width:100%; height:100%; object-fit:cover; }
+
+.photo-error{
+  color:#b01818;
+  background:#fff0f0;
+  border: 1px solid #ffd0d0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.photo-hint{
+  font-size:12px;
+  color: var(--muted);
+}

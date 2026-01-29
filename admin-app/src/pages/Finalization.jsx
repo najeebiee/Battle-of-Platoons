@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import "./finalization.css";
 import { Navigate } from "react-router-dom";
 import {
   finalizeWeek,

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import "./upload.css";
 import { ModalForm } from "../components/ModalForm";
 import {
   mergeRawDataRowsByIdentity,

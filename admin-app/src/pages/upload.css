@@ -1,0 +1,21 @@
+.dropzone{
+  border: 2px dashed #d8dcff;
+  border-radius: 14px;
+  padding: 18px;
+  min-height: 150px;
+  display:flex;
+  gap: 14px;
+  align-items:center;
+  background:#f9faff;
+  cursor:pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.dropzone--dragging{ border-color: var(--blue2); background:#eef1ff; }
+
+.dropzone__title{ font-weight:800; font-size: 16px; }
+.dropzone__sub{ color: var(--muted); font-size: 13px; margin-top: 4px; }
+.upload-actions-row{ display:flex; align-items:center; gap: 10px; margin-top: 12px; }
+
+.upload-icon{ font-size: 26px; }
+.upload-title{ font-weight:800; }

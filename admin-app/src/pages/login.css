@@ -1,0 +1,28 @@
+.login-wrap{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 16px;
+}
+
+.login-card{
+  width: 100%;
+  max-width: 420px;
+  background:#fff;
+  padding: 22px;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.12);
+}
+
+.login-title{
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--blue);
+}
+
+.login-sub{
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 600;
+}

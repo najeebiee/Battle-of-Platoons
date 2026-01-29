@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ModalForm } from "../components/ModalForm";
+import "./participants.css";
 import { listAgents, upsertAgent } from "../services/agents.service";
 import { listDepotsDetailed, upsertDepot } from "../services/depots.service";
 import { listCompanies, upsertCompany } from "../services/companies.service";
