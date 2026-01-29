@@ -946,7 +946,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  --rank-cols: 44px minmax(120px, 1fr) minmax(200px, 1fr) minmax(60px, auto);
+  --rank-cols: 44px minmax(160px, 320px) minmax(220px, 1fr) minmax(60px, auto);
   --rank-gap: 14px;
   --rank-header-pad: 8px 0;
 }
