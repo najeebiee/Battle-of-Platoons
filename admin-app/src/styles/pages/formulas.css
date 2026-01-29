@@ -2,6 +2,10 @@
   gap: 16px;
 }
 
+.formulas-page{
+  font-family: inherit;
+}
+
 .formula-library{
   padding: 16px;
 }
@@ -94,4 +98,198 @@
 .formula-item.is-active .formula-item__range,
 .formula-item.is-active .muted{
   color: rgba(255,255,255,0.8);
+}
+
+.details-panel{
+  display:flex;
+  flex-direction:column;
+  gap: 16px;
+}
+
+.details-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef1ff;
+}
+
+.details-title{
+  font-weight: 800;
+  font-size: 16px;
+  color: #1b1f2d;
+}
+
+.details-note{
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.details-summary__status{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap: 6px;
+}
+
+.details-meta{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.details-meta__item{
+  background: #f7f8ff;
+  border: 1px solid #e6eaf5;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.details-label{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.details-value{
+  font-size: 14px;
+  font-weight: 800;
+  color: #1b1f2d;
+}
+
+.details-section{
+  display:flex;
+  flex-direction:column;
+  gap: 12px;
+}
+
+.details-section__title{
+  font-weight: 800;
+  color: #1b1f2d;
+}
+
+.details-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.details-field input,
+.details-field textarea{
+  width:100%;
+}
+
+.metrics-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.metric-card{
+  border: 1px solid #e6eaf5;
+  border-radius: 12px;
+  padding: 12px;
+  background:#ffffff;
+}
+
+.metric-card__header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom: 8px;
+}
+
+.metric-card__name{
+  font-weight: 800;
+  color: #1b1f2d;
+}
+
+.metric-card__weight{
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.metric-card__values{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.details-total{
+  border: 1px solid #e6eaf5;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8faff;
+}
+
+.details-total.is-error{
+  border-color: #ffd0d0;
+  background: #fff0f0;
+}
+
+.details-actions{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.calculator-card{
+  border: 1px solid #e6eaf5;
+  border-radius: 12px;
+  padding: 12px;
+  background:#ffffff;
+  display:flex;
+  flex-direction:column;
+  gap: 12px;
+}
+
+.calculator-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.calculator-total{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-top: 1px solid #eef1ff;
+  padding-top: 8px;
+}
+
+.details-accordion{
+  border: 1px solid #e6eaf5;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background:#ffffff;
+}
+
+.details-accordion summary{
+  font-weight: 800;
+  cursor: pointer;
+  color: #1b1f2d;
+}
+
+.breakdown-list{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.breakdown-card{
+  border: 1px solid #eef1ff;
+  border-radius: 10px;
+  padding: 10px;
+  background:#f8faff;
+}
+
+.breakdown-card__row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 6px;
 }

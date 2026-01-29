@@ -374,10 +374,21 @@ export default function ScoringFormulas() {
       return <div className="muted">Select a formula to view details.</div>;
     }
 
-    const fields = [
+    const startWeek =
+      selectedFormula.effective_start_week_key ||
+      selectedFormula.start_week_key ||
+      selectedFormula.start_week ||
+      "—";
+    const endWeek =
+      selectedFormula.effective_end_week_key ||
+      selectedFormula.end_week_key ||
+      selectedFormula.end_week ||
+      "∞";
+
+    const summaryFields = [
       { label: "Label", value: selectedFormula.label || "(Untitled)" },
-      { label: "Status", value: selectedFormula.status || "unknown" },
       { label: "Version", value: selectedFormula.version ?? selectedFormula.revision ?? "—" },
+      { label: "Effective Weeks", value: `${startWeek} → ${endWeek}` },
     ];
 
     const displayMetrics = isEditable ? draftMetrics : normalizeMetrics(selectedFormula);
@@ -391,124 +402,136 @@ export default function ScoringFormulas() {
       displayMetrics.length;
 
     return (
-      <div className="stack">
-        <div className="muted">
-          {isSuperAdmin
-            ? isPublished
-              ? "Published formulas are read-only."
-              : "Super Admin view — edit draft details and publish when ready."
-            : "Read-only view — contact a Super Admin for changes."}
+      <div className="details-panel">
+        <div className="details-summary">
+          <div className="details-summary__info">
+            <div className="details-title">Details</div>
+            <div className="details-note">
+              {isSuperAdmin
+                ? isPublished
+                  ? "Published formulas are read-only."
+                  : "Super Admin view — edit draft details and publish when ready."
+                : "Read-only view — contact a Super Admin for changes."}
+            </div>
+          </div>
+          <div className="details-summary__status">
+            <div className="details-label">Status</div>
+            <span className={`formula-badge is-${(selectedFormula.status || "unknown").toString()}`}>
+              {selectedFormula.status || "unknown"}
+            </span>
+          </div>
         </div>
-        <div className="grid two">
-          {fields.map(field => (
-            <div key={field.label} className="stack xs">
-              <div className="label">{field.label}</div>
-              <div className="value">{field.value}</div>
+
+        <div className="details-meta">
+          {summaryFields.map(field => (
+            <div key={field.label} className="details-meta__item">
+              <div className="details-label">{field.label}</div>
+              <div className="details-value">{field.value}</div>
             </div>
           ))}
         </div>
+
         {isEditable ? (
-          <div className="stack sm">
-            <div className="stack xs">
-              <label className="label" htmlFor="formula-name">
-                Label
-              </label>
-              <input
-                id="formula-name"
-                type="text"
-                value={draftLabel}
-                onChange={e => setDraftLabel(e.target.value)}
-              />
-            </div>
-            <div className="grid two" style={{ gap: "12px" }}>
-              <div className="stack xs">
-                <div className="label">Effective Start Week</div>
+          <div className="details-section">
+            <div className="details-form">
+              <div className="details-field">
+                <label className="details-label" htmlFor="formula-name">
+                  Label
+                </label>
                 <input
+                  id="formula-name"
                   type="text"
-                  value={draftStartWeekKey}
-                  onChange={e => setDraftStartWeekKey(e.target.value)}
-                  disabled={!isEditable}
+                  value={draftLabel}
+                  onChange={e => setDraftLabel(e.target.value)}
                 />
               </div>
-              <div className="stack xs">
-                <div className="label">Effective End Week</div>
-                <input
-                  type="text"
-                  value={draftEndWeekKey}
-                  onChange={e => setDraftEndWeekKey(e.target.value)}
-                  disabled={!isEditable}
-                />
-              </div>
-            </div>
-            <div className="stack sm">
-              <div className="label">Metrics</div>
-              <div className="stack sm">
-                {displayMetrics.map(metric => {
-                  const percent =
-                    totalPoints > 0
-                      ? (((Number(metric.maxPoints) || 0) / totalPoints) * 100).toFixed(2)
-                      : "0.00";
-                  const name =
-                    metric.key === "leads"
-                      ? "Leads"
-                      : metric.key === "payins"
-                        ? "Pay-ins"
-                        : "Sales";
-                  return (
-                    <div key={metric.key} className="card" style={{ padding: "12px" }}>
-                      <div className="row between" style={{ marginBottom: "8px" }}>
-                        <div className="label">{name}</div>
-                        <div className="muted">{percent}% of total</div>
-                      </div>
-                      <div className="grid two" style={{ gap: "12px" }}>
-                        <div className="stack xs">
-                          <label className="label" htmlFor={`divisor-${metric.key}`}>
-                            Divisor
-                          </label>
-                          <Stepper
-                            id={`divisor-${metric.key}`}
-                            value={metric.divisor}
-                            step={metric.key === "sales" ? 10000 : 10}
-                            min={0}
-                            disabled={!isEditable}
-                            onChange={val => handleMetricChange(metric.key, "divisor", val)}
-                          />
-                        </div>
-                        <div className="stack xs">
-                          <label className="label" htmlFor={`max-${metric.key}`}>
-                            Max Points
-                          </label>
-                          <Stepper
-                            id={`max-${metric.key}`}
-                            value={metric.maxPoints}
-                            step={50}
-                            min={0}
-                            disabled={!isEditable}
-                            onChange={val => handleMetricChange(metric.key, "maxPoints", val)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className={`card ${totalPointsValid ? "muted" : "error"}`} style={{ padding: "12px" }}>
-              <div className="row between">
-                <div className="label">Total Points</div>
-                <div className="value">
-                  {totalPoints} / 1000
+              <div className="details-grid">
+                <div className="details-field">
+                  <div className="details-label">Effective Start Week</div>
+                  <input
+                    type="text"
+                    value={draftStartWeekKey}
+                    onChange={e => setDraftStartWeekKey(e.target.value)}
+                    disabled={!isEditable}
+                  />
+                </div>
+                <div className="details-field">
+                  <div className="details-label">Effective End Week</div>
+                  <input
+                    type="text"
+                    value={draftEndWeekKey}
+                    onChange={e => setDraftEndWeekKey(e.target.value)}
+                    disabled={!isEditable}
+                  />
                 </div>
               </div>
+            </div>
+
+            <div className="details-section__title">Metrics</div>
+            <div className="metrics-grid">
+              {displayMetrics.map(metric => {
+                const percent =
+                  totalPoints > 0
+                    ? (((Number(metric.maxPoints) || 0) / totalPoints) * 100).toFixed(2)
+                    : "0.00";
+                const name =
+                  metric.key === "leads"
+                    ? "Leads"
+                    : metric.key === "payins"
+                      ? "Pay-ins"
+                      : "Sales";
+                return (
+                  <div key={metric.key} className="metric-card">
+                    <div className="metric-card__header">
+                      <div className="metric-card__name">{name}</div>
+                      <div className="metric-card__weight">{percent}% of total</div>
+                    </div>
+                    <div className="details-grid">
+                      <div className="details-field">
+                        <label className="details-label" htmlFor={`divisor-${metric.key}`}>
+                          Divisor
+                        </label>
+                        <Stepper
+                          id={`divisor-${metric.key}`}
+                          value={metric.divisor}
+                          step={metric.key === "sales" ? 10000 : 10}
+                          min={0}
+                          disabled={!isEditable}
+                          onChange={val => handleMetricChange(metric.key, "divisor", val)}
+                        />
+                      </div>
+                      <div className="details-field">
+                        <label className="details-label" htmlFor={`max-${metric.key}`}>
+                          Max Points
+                        </label>
+                        <Stepper
+                          id={`max-${metric.key}`}
+                          value={metric.maxPoints}
+                          step={50}
+                          min={0}
+                          disabled={!isEditable}
+                          onChange={val => handleMetricChange(metric.key, "maxPoints", val)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className={`details-total ${totalPointsValid ? "is-ok" : "is-error"}`}>
+              <div className="details-label">Total Points</div>
+              <div className="details-value">{totalPoints} / 1000</div>
               {!totalPointsValid && (
-                <div className="muted">Total points must equal 1000 to save or publish.</div>
+                <div className="details-note">Total points must equal 1000 to save or publish.</div>
               )}
               {!divisorsValid && (
-                <div className="muted">Divisors must be greater than 0.</div>
+                <div className="details-note">Divisors must be greater than 0.</div>
               )}
             </div>
-            <div className="stack xs">
-              <label className="label" htmlFor="reason">
+
+            <div className="details-field">
+              <label className="details-label" htmlFor="reason">
                 Reason (required)
               </label>
               <textarea
@@ -521,7 +544,7 @@ export default function ScoringFormulas() {
             </div>
             {saveError && <div className="error">{saveError}</div>}
             {publishError && <div className="error">{publishError}</div>}
-            <div className="row" style={{ gap: "8px" }}>
+            <div className="details-actions">
               <button
                 className="btn primary"
                 onClick={handleSaveDraft}
@@ -547,9 +570,9 @@ export default function ScoringFormulas() {
             </div>
           </div>
         ) : (
-          <div className="stack sm">
-            <div className="label">Metrics</div>
-            <div className="stack sm">
+          <div className="details-section">
+            <div className="details-section__title">Metrics</div>
+            <div className="metrics-grid">
               {displayMetrics.map(metric => {
                 const percent =
                   totalPoints > 0
@@ -562,19 +585,19 @@ export default function ScoringFormulas() {
                       ? "Pay-ins"
                       : "Sales";
                 return (
-                  <div key={metric.key} className="card muted" style={{ padding: "12px" }}>
-                    <div className="row between" style={{ marginBottom: "8px" }}>
-                      <div className="label">{name}</div>
-                      <div className="muted">{percent}% of total</div>
+                  <div key={metric.key} className="metric-card">
+                    <div className="metric-card__header">
+                      <div className="metric-card__name">{name}</div>
+                      <div className="metric-card__weight">{percent}% of total</div>
                     </div>
-                    <div className="grid two" style={{ gap: "12px" }}>
-                      <div className="stack xs">
-                        <div className="label">Divisor</div>
-                        <div className="value">{metric.divisor}</div>
+                    <div className="metric-card__values">
+                      <div>
+                        <div className="details-label">Divisor</div>
+                        <div className="details-value">{metric.divisor}</div>
                       </div>
-                      <div className="stack xs">
-                        <div className="label">Max Points</div>
-                        <div className="value">{metric.maxPoints}</div>
+                      <div>
+                        <div className="details-label">Max Points</div>
+                        <div className="details-value">{metric.maxPoints}</div>
                       </div>
                     </div>
                   </div>
@@ -583,14 +606,14 @@ export default function ScoringFormulas() {
             </div>
           </div>
         )}
-        <div className="stack sm">
-          <div className="label">Preview Calculator</div>
-          <div className="grid three" style={{ gap: "8px" }}>
+        <div className="calculator-card">
+          <div className="details-section__title">Preview Calculator</div>
+          <div className="calculator-grid">
             {["leads", "payins", "sales"]
               .filter(key => !(isDepotBattle && key === "payins"))
               .map(key => (
-                <div className="stack xs" key={key}>
-                  <label className="label" htmlFor={`preview-${key}`}>
+                <div className="details-field" key={key}>
+                  <label className="details-label" htmlFor={`preview-${key}`}>
                     {key.charAt(0).toUpperCase() + key.slice(1)}
                   </label>
                   <input
@@ -608,44 +631,46 @@ export default function ScoringFormulas() {
                 </div>
               ))}
           </div>
+          <div className="calculator-total">
+            <div className="details-label">Total</div>
+            <div className="details-value">{previewTotalScore.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <details className="details-accordion" open={false}>
+          <summary>Per-metric Breakdown</summary>
           {previewMetrics.length === 0 ? (
             <div className="muted">No metrics configured for preview.</div>
           ) : (
-            <div className="stack xs">
-              <div className="label">Per-metric Breakdown</div>
-              <div className="stack xs">
-                {previewMetrics.map(metric => {
-                  const key = metric?.key ?? metric?.name ?? metric?.metric ?? "metric";
-                  const divisor = metric?.divisor ?? metric?.division ?? 0;
-                  const maxPoints = metric?.maxPoints ?? metric?.max_points ?? metric?.points ?? 0;
-                  const actual = previewTotals[key] ?? 0;
-                  const score = computeMetricScore(actual, divisor, maxPoints);
-                  const formulaText =
-                    divisor > 0
-                      ? `${actual} ÷ ${divisor} × ${maxPoints} (cap ${maxPoints})`
-                      : "Divisor must be > 0";
-                  return (
-                    <div key={key} className="card" style={{ padding: "8px" }}>
-                      <div className="row between">
-                        <div>{key}</div>
-                        <div className="muted">
-                          {score.toFixed(2)} / {maxPoints}
-                        </div>
+            <div className="breakdown-list">
+              {previewMetrics.map(metric => {
+                const key = metric?.key ?? metric?.name ?? metric?.metric ?? "metric";
+                const divisor = metric?.divisor ?? metric?.division ?? 0;
+                const maxPoints = metric?.maxPoints ?? metric?.max_points ?? metric?.points ?? 0;
+                const actual = previewTotals[key] ?? 0;
+                const score = computeMetricScore(actual, divisor, maxPoints);
+                const formulaText =
+                  divisor > 0
+                    ? `${actual} ÷ ${divisor} × ${maxPoints} (cap ${maxPoints})`
+                    : "Divisor must be > 0";
+                return (
+                  <div key={key} className="breakdown-card">
+                    <div className="breakdown-card__row">
+                      <div className="details-label">{key}</div>
+                      <div className="details-value">
+                        {score.toFixed(2)} / {maxPoints}
                       </div>
-                      <div className="muted">{formulaText}</div>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="row between">
-                <div className="label">Total</div>
-                <div className="value">{previewTotalScore.toFixed(2)}</div>
-              </div>
+                    <div className="details-note">{formulaText}</div>
+                  </div>
+                );
+              })}
             </div>
           )}
-        </div>
-        <div className="stack sm">
-          <div className="label">Audit Log</div>
+        </details>
+
+        <details className="details-accordion" open={false}>
+          <summary>Audit Log</summary>
           {auditLoading && <div className="muted">Loading audit…</div>}
           {auditError && <div className="error">{auditError}</div>}
           {!auditLoading && !auditError && auditEntries.length === 0 && (
@@ -697,7 +722,7 @@ export default function ScoringFormulas() {
               })}
             </div>
           )}
-        </div>
+        </details>
       </div>
     );
   }
@@ -717,7 +742,7 @@ export default function ScoringFormulas() {
   }));
 
   return (
-    <div style={{ fontFamily: "Inter, system-ui, Arial, sans-serif" }}>
+    <div className="formulas-page">
       {createModal.open && (
         <div
           style={{
