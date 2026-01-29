@@ -123,19 +123,61 @@ body{
 }
 
 .topbar{
-  padding: 18px 18px 6px;
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 1px solid #e6eaf5;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  padding: 14px 18px;
   display:grid;
   grid-template-columns: 1fr auto 1fr;
   align-items:center;
   gap: 12px;
 }
 
+.topbar-brand{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  justify-self: start;
+  min-width: 0;
+}
+
+.topbar-brand-logo{
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  display:block;
+}
+
+.topbar-brand-text{
+  font-size: clamp(0.95rem, 1.4vw, 1.25rem);
+  font-weight: 600;
+  color: var(--blue2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .topbar-title{
   text-align:center;
   font-family: Oswald, system-ui;
-  font-size: 34px;
+  font-size: clamp(1.35rem, 3.2vw, 2.4rem);
   letter-spacing: .04em;
-  color: var(--blue);
+  color: var(--blue2);
+}
+
+.topbar-right{
+  display:flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.topbar-date{
+  font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+  font-weight: 500;
+  color: var(--blue2);
+  white-space: nowrap;
 }
 
 .topbar-user{
@@ -670,7 +712,9 @@ textarea.input:focus{
     overflow: visible;
   }
   .topbar{ grid-template-columns: 1fr; }
-  .topbar-title{ text-align:left; font-size: 26px; }
+  .topbar-brand{ justify-self: start; }
+  .topbar-title{ text-align:left; }
+  .topbar-right{ align-items: flex-start; }
   .topbar-user{ justify-content:flex-start; }
   .grid{ grid-template-columns: 1fr; }
   .t-head{ display:none; }
