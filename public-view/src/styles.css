@@ -1099,8 +1099,8 @@ button {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-start;
+  gap: 12px;
   max-width: 980px;
   margin: 0 auto;
 }
@@ -1124,9 +1124,10 @@ button {
   background: #ffffff;
   color: #0b1770;
   border: 1px solid rgba(11, 26, 165, 0.28);
-  border-radius: 12px;
-  padding: 10px 18px;
+  border-radius: 10px;
+  padding: 7px 12px;
   font-weight: 700;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
@@ -1145,15 +1146,15 @@ button {
   background: #ffffff;
   border: 1px solid rgba(11, 26, 165, 0.25);
   border-radius: 10px;
-  padding: 4px;
+  padding: 3px;
   box-shadow: 0 8px 18px rgba(11, 26, 165, 0.08);
 }
 
 .pagination__pages .pagination__btn {
   border: none;
   border-radius: 8px;
-  padding: 8px 12px;
-  min-width: 36px;
+  padding: 6px 8px;
+  min-width: 28px;
 }
 
 .pagination__btn--active {
@@ -1208,23 +1209,6 @@ button {
   .pagination {
     gap: 10px;
     padding: 8px 0 16px;
-  }
-
-  .pagination__btn {
-    padding: 7px 12px;
-    font-size: 12px;
-    border-radius: 10px;
-  }
-
-  .pagination__pages {
-    padding: 3px;
-    border-radius: 9px;
-  }
-
-  .pagination__pages .pagination__btn {
-    padding: 6px 8px;
-    min-width: 28px;
-    border-radius: 7px;
   }
 
   .pagination__meta {
@@ -1287,10 +1271,16 @@ button {
 
   .pagination__meta {
     text-align: center;
+    order: 2;
+  }
+
+  .pagination__controls {
+    order: 1;
   }
 
   .pagination__btn {
-    padding: 8px 14px;
+    padding: 6px 10px;
+    font-size: 11px;
   }
 
   .pagination__pages {
@@ -1298,8 +1288,8 @@ button {
   }
 
   .pagination__pages .pagination__btn {
-    padding: 6px 10px;
-    min-width: 32px;
+    padding: 5px 7px;
+    min-width: 26px;
   }
 }
 
@@ -1370,13 +1360,13 @@ button {
   }
 
   .pagination__btn {
-    padding: 7px 12px;
-    font-size: 12px;
+    padding: 6px 10px;
+    font-size: 11px;
   }
 
   .pagination__pages .pagination__btn {
-    padding: 6px 8px;
-    min-width: 28px;
+    padding: 5px 7px;
+    min-width: 26px;
   }
 }
 

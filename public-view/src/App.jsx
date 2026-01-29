@@ -1223,7 +1223,7 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
                   if (typeof value !== "number") {
                     return (
                       <span className="pagination__ellipsis" key={value}>
-                        ?
+                        ...
                       </span>
                     );
                   }
