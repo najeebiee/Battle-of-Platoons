@@ -1,5 +1,5 @@
 :root{
-  --blue:#050f5a;
+  --blue:#0b1aa5;
   --blue2:#0b1aa5;
   --soft:#eef1ff;
   --text:#0b0f2a;
@@ -47,14 +47,14 @@ body{
 
 .sidebar{
   position: relative;
-  width: 280px;
+  width: 240px;
   height: auto;
   overflow-y: auto;
   background:#fff;
   border-right: 1px solid #eef1ff;
-  padding: 16px 18px;
+  padding: 18px 14px;
   z-index: 50;
-  flex: 0 0 280px;
+  flex: 0 0 240px;
 }
 
 .sb-header{
@@ -89,7 +89,7 @@ body{
   text-decoration:none;
   color: var(--text);
   font-weight:600;
-  padding: 11px 14px;
+  padding: 11px 18px;
   border-radius: 12px;
   transition: background .15s ease, color .15s ease, box-shadow .15s ease;
   position: relative;
@@ -106,7 +106,7 @@ body{
 .sb-link.active::before{
   content: "";
   position: absolute;
-  left: -14px;
+  left: -10px;
   top: 8px;
   bottom: 8px;
   width: 5px;
@@ -184,7 +184,7 @@ body{
   font-family: Montserrat, system-ui;
   font-size: clamp(1.35rem, 3.2vw, 2.4rem);
   letter-spacing: .04em;
-  font-weight: 900;
+  font-weight: 500;
   color: var(--blue2);
 }
 

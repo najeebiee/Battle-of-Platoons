@@ -40,10 +40,6 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="sb-header">
-        <div className="sb-brand">Grinders Guild</div>
-      </div>
-
       <nav className="sb-nav">
         <NavLink to="/dashboard" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
           <img className="sb-ico" src={ICONS.dashboard} alt="" aria-hidden="true" />
