@@ -19,6 +19,33 @@ body{
   overflow: hidden;
 }
 
+html, body{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(11, 26, 165, 0.55) #eef1ff;
+}
+
+.admin-main{
+  overflow-y: auto;
+}
+
+.admin-main::-webkit-scrollbar{
+  width: 10px;
+}
+
+.admin-main::-webkit-scrollbar-track{
+  background: #eef1ff;
+}
+
+.admin-main::-webkit-scrollbar-thumb{
+  background: rgba(11, 26, 165, 0.55);
+  border-radius: 999px;
+  border: 2px solid #eef1ff;
+}
+
+.admin-main::-webkit-scrollbar-thumb:hover{
+  background: rgba(11, 26, 165, 0.75);
+}
+
 /* ----- Admin Shell (Sidebar + Topbar) ----- */
 .admin-shell{
   display:flex;
