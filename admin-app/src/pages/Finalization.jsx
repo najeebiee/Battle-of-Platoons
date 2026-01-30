@@ -24,6 +24,7 @@ function StatusBadge({ status }) {
 
 export default function Finalization() {
   const [selectedDate, setSelectedDate] = useState(formatDateInput(new Date()));
+  const [selectedWeekKey, setSelectedWeekKey] = useState("");
   const [week, setWeek] = useState(null);
   const [recentWeeks, setRecentWeeks] = useState([]);
   const [loadingWeek, setLoadingWeek] = useState(true);
@@ -78,6 +79,9 @@ export default function Finalization() {
     try {
       const data = await getWeekStatusByDate(dateStr);
       setWeek(data);
+      if (data?.week_key) {
+        setSelectedWeekKey(data.week_key);
+      }
     } catch (e) {
       console.error(e);
       setWeek(null);
@@ -176,21 +180,32 @@ export default function Finalization() {
 
       <div className="finalization-grid">
         <div className="finalization-panel">
-          <label className="form-label" htmlFor="week-date">
-            Pick any date within the week
+          <label className="form-label" htmlFor="week-select">
+            Select week
           </label>
           <div className="finalization-date">
-            <input
-              id="week-date"
-              type="date"
-              value={selectedDate}
+            <select
+              id="week-select"
+              className="input"
+              value={selectedWeekKey}
               onChange={e => {
-                setSelectedDate(e.target.value);
+                const nextKey = e.target.value;
+                setSelectedWeekKey(nextKey);
+                const match = recentWeeks.find(w => w.week_key === nextKey);
+                if (match?.start_date) {
+                  setSelectedDate(match.start_date);
+                }
                 setActionError("");
               }}
-            />
+            >
+              {recentWeeks.map(weekRow => (
+                <option key={weekRow.week_key} value={weekRow.week_key}>
+                  {weekRow.week_key} ({weekRow.start_date} → {weekRow.end_date})
+                </option>
+              ))}
+            </select>
             <div className="muted" style={{ fontSize: 12 }}>
-              Use a date inside the target week to load its status.
+              Choose a week to load its status and actions.
             </div>
           </div>
 
