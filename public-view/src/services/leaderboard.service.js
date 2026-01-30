@@ -47,7 +47,7 @@ export async function getLeaderboard({
     .from("agents")
     .select("id,name,upline_agent_id,company_id,platoon_id,role,photo_url,photoURL");
 
-  // 1) Fetch publishable rows + agents (basic fields only) - rely on RLS for visibility
+  // 1) Fetch publishable rows - rely on RLS for visibility
   const { data: publishableRows, error: publishableError } = await supabase
     .from("publishable_raw_data")
     .select(
@@ -59,17 +59,7 @@ export async function getLeaderboard({
       leads_depot_id,
       sales_depot_id,
       date_real,
-      agent_id,
-      agents:agents (
-        id,
-        name,
-        photoURL,
-        photo_url,
-        company_id,
-        platoon_id,
-        role,
-        upline_agent_id
-      )
+      agent_id
     `
     )
     .gte("date_real", startDate)
@@ -84,17 +74,10 @@ export async function getLeaderboard({
 
   const isDev = Boolean(import.meta.env?.DEV);
   let warnedMissingAgentId = false;
-  let warnedMissingAgentData = false;
-
   const filteredRows = (publishableRows ?? []).filter((r) => {
-    if (isDev) {
-      if (!r?.agent_id && !warnedMissingAgentId) {
-        console.warn("[Leaderboard] Missing agent_id in raw_data row", r?.id ?? r);
-        warnedMissingAgentId = true;
-      } else if (r?.agent_id && !r?.agents && !warnedMissingAgentData) {
-        console.warn("[Leaderboard] Missing agents join data for agent_id", r.agent_id);
-        warnedMissingAgentData = true;
-      }
+    if (isDev && !r?.agent_id && !warnedMissingAgentId) {
+      console.warn("[Leaderboard] Missing agent_id in raw_data row", r?.id ?? r);
+      warnedMissingAgentId = true;
     }
     return true;
   });
@@ -114,8 +97,8 @@ export async function getLeaderboard({
 
   if (groupBy === "leaders" && roleFilter) {
     filtered = filtered.filter((r) => {
-      const agentId = String(r?.agent_id ?? r?.agents?.id ?? "");
-      const role = r?.agents?.role ?? agentsMap.get(agentId)?.role ?? "platoon";
+      const agentId = String(r?.agent_id ?? "");
+      const role = agentsMap.get(agentId)?.role ?? "platoon";
       return role === roleFilter;
     });
   }
