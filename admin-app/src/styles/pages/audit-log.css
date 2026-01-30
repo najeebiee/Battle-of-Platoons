@@ -23,12 +23,6 @@
   margin-top: 12px;
 }
 
-.filter-presets{
-  display:flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .filter-actions__main{
   display:flex;
   gap: 8px;

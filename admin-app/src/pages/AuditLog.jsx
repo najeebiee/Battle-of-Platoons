@@ -798,17 +798,6 @@ export default function AuditLog() {
           ) : null}
         </div>
         <div className="filter-actions">
-          <div className="filter-presets">
-            <button type="button" className="button ghost" onClick={() => applyPreset("today")}>
-              Today
-            </button>
-            <button type="button" className="button ghost" onClick={() => applyPreset("last7")}>
-              Last 7 Days
-            </button>
-            <button type="button" className="button ghost" onClick={() => applyPreset("month")}>
-              This Month
-            </button>
-          </div>
           <div className="filter-actions__main">
           <button type="button" className="button primary" onClick={handleApply} disabled={loading}>
             Apply
