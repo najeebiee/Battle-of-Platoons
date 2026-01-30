@@ -259,6 +259,7 @@ export default function Upload() {
   }
 
   async function handleSave() {
+    setError("");
     setSaveProgress({ done: 0, total: processed.rowsForSave.length });
     setSaveResult(null);
     try {
@@ -282,10 +283,12 @@ export default function Upload() {
       });
     } catch (e) {
       if (!isMountedRef.current) return;
+      const message = e?.message || "Failed to save";
+      setError(message);
       setSaveResult({
         insertedCount: 0,
         upsertedCount: 0,
-        errors: [e.message || "Failed to save"],
+        errors: [message],
         skipped: rows.length - processed.rowsForSave.length,
       });
     }

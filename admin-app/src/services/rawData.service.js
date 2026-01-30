@@ -28,7 +28,7 @@ const HEADER_ALIASES = {
 const REQUIRED_FIELDS = ["date", "leader_name", "leads", "payins", "sales", "leads_depot", "sales_depot"];
 
 const WEEK_FINALIZED_MESSAGE =
-  "This week has been finalized. Only Super Admins can modify or audit rows until it is reopened.";
+  "Upload blocked: this week has been finalized. Reopen the week in Week Finalization or choose a different date.";
 
 function mapWeekFinalizedMessage(message = "") {
   if (message.toLowerCase().includes("week is finalized")) {
