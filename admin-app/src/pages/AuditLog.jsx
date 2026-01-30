@@ -760,21 +760,21 @@ export default function AuditLog() {
         </div>
         <div className="filter-actions">
           <div className="filter-actions__main">
-          <button type="button" className="button primary" onClick={handleApply} disabled={loading}>
-            Apply
-          </button>
-          <button type="button" className="button secondary" onClick={handleReset} disabled={loading}>
-            Reset
-          </button>
+            <button type="button" className="button primary" onClick={handleApply} disabled={loading}>
+              Apply
+            </button>
+            <button type="button" className="button secondary" onClick={handleReset} disabled={loading}>
+              Reset
+            </button>
+            <button
+              type="button"
+              className="button ghost"
+              onClick={() => setShowAdvanced(prev => !prev)}
+            >
+              {showAdvanced ? "Hide Advanced" : "Advanced Filters"}
+            </button>
+            <ExportButton onClick={exportXlsx} loading={exporting} disabled={loading} label="Export XLSX" />
           </div>
-          <button
-            type="button"
-            className="button ghost"
-            onClick={() => setShowAdvanced(prev => !prev)}
-          >
-            {showAdvanced ? "Hide Advanced" : "Advanced Filters"}
-          </button>
-          <ExportButton onClick={exportXlsx} loading={exporting} disabled={loading} label="Export XLSX" />
           {exportProgress ? <div className="muted" style={{ alignSelf: "center" }}>{exportProgress}</div> : null}
         </div>
       </div>

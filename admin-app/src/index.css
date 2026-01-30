@@ -118,7 +118,8 @@ body{
   gap: 12px;
   text-decoration:none;
   color: var(--text);
-  font-weight:600;
+  font-size: 14px;
+  font-weight:400;
   padding: 11px 18px;
   border-radius: 12px;
   transition: background .15s ease, color .15s ease, box-shadow .15s ease;
@@ -166,10 +167,10 @@ body{
 
 .sb-section{
   margin-top: 2px;
-  font-size: 12px;
-  letter-spacing: .08em;
+  font-size: 11px;
+  letter-spacing: .04em;
   color: var(--muted);
-  font-weight: 900;
+  font-weight: 400;
   padding: 12px 12px 8px;
 }
 
