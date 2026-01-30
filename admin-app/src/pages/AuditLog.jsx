@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/audit-log.css";
 import { Navigate } from "react-router-dom";
 import AppPagination from "../components/AppPagination";
+import ExportButton from "../components/ExportButton";
+import { exportToXlsx } from "../services/export.service";
 import {
   getProfilesByIds,
   listFinalizedWeeks,
@@ -160,62 +162,6 @@ function normalizeFinalizedWeek(row) {
     });
   }
   return rows;
-}
-
-function buildCsv(rows) {
-  const header = [
-    "created_at",
-    "entity_type",
-    "entity_id",
-    "action",
-    "reason",
-    "actor_id",
-    "actor_name",
-    "leader_id",
-    "source_table",
-    "before",
-    "after",
-    "meta",
-  ];
-
-  const escape = value => {
-    if (value === null || value === undefined) return "";
-    const str = typeof value === "string" ? value : JSON.stringify(value);
-    const escaped = str.replace(/"/g, '""');
-    return `"${escaped}"`;
-  };
-
-  const lines = [header.join(",")];
-  rows.forEach(row => {
-    const line = [
-      escape(row.created_at),
-      escape(row.entity_type),
-      escape(row.entity_id),
-      escape(row.action),
-      escape(row.reason),
-      escape(row.actor_id),
-      escape(row.actor_name),
-      escape(row.leader_id),
-      escape(row.source_table),
-      escape(row.before),
-      escape(row.after),
-      escape(row.meta),
-    ];
-    lines.push(line.join(","));
-  });
-  return lines.join("\n");
-}
-
-function downloadCsv(content, filename) {
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 function applyClientFilters(rows, filters, resolver = {}) {
@@ -597,89 +543,21 @@ export default function AuditLog() {
     setPage(0);
   }
 
-  async function exportCsv() {
+  async function exportXlsx() {
     setExporting(true);
     setExportProgress("Preparing export…");
-    const { fromTs, toTs } = toIsoRange(appliedFilters.dateFrom, appliedFilters.dateTo);
-
     try {
-      const allRows = [];
-
-      async function fetchAllRaw() {
-        let pageIndex = 0;
-        while (true) {
-          const { from, to } = getPageRange(pageIndex);
-          setExportProgress(`Fetching raw data audit (offset ${from})…`);
-          const result = await listRawDataAudit({
-            fromTs,
-            toTs,
-            actorId: appliedFilters.actorId,
-            action: appliedFilters.action,
-            from,
-            to,
-          });
-          if (result.error) throw result.error;
-          const chunk = result.data || [];
-          allRows.push(...chunk.map(normalizeRawDataRow));
-          if (chunk.length < PAGE_SIZE) break;
-          pageIndex += 1;
-        }
-      }
-
-      async function fetchAllScoring() {
-        let pageIndex = 0;
-        while (true) {
-          const { from, to } = getPageRange(pageIndex);
-          setExportProgress(`Fetching scoring formula audit (offset ${from})…`);
-          const result = await listScoringFormulaAudit({
-            fromTs,
-            toTs,
-            actorId: appliedFilters.actorId,
-            action: appliedFilters.action,
-            from,
-            to,
-          });
-          if (result.error) throw result.error;
-          const chunk = result.data || [];
-          allRows.push(...chunk.map(normalizeScoringFormulaRow));
-          if (chunk.length < PAGE_SIZE) break;
-          pageIndex += 1;
-        }
-      }
-
-      async function fetchAllFinalized() {
-        let pageIndex = 0;
-        while (true) {
-          const { from, to } = getPageRange(pageIndex);
-          setExportProgress(`Fetching week finalizations (offset ${from})…`);
-          const result = await listFinalizedWeeks({ from, to });
-          if (result.error) throw result.error;
-          const chunk = result.data || [];
-          allRows.push(...chunk.flatMap(normalizeFinalizedWeek));
-          if (chunk.length < PAGE_SIZE) break;
-          pageIndex += 1;
-        }
-      }
-
-      if (appliedFilters.entityType === "all" || appliedFilters.entityType === "raw_data") {
-        await fetchAllRaw();
-      }
-      if (appliedFilters.entityType === "all" || appliedFilters.entityType === "scoring_formula") {
-        await fetchAllScoring();
-      }
-      if (appliedFilters.entityType === "all" || appliedFilters.entityType === "finalized_week") {
-        await fetchAllFinalized();
-      }
-
-      const filtered = applyClientFilters(allRows, appliedFilters, actorResolver).sort((a, b) => {
-        const aTime = new Date(a.created_at || 0).getTime();
-        const bTime = new Date(b.created_at || 0).getTime();
-        return bTime - aTime;
-      });
-
-      const csv = buildCsv(filtered);
-      const filename = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
-      downloadCsv(csv, filename);
+      const exportRows = visibleRows.map(row => ({
+        Created: formatDate(row.created_at),
+        Entity: row.entity_type,
+        Action: row.action || "-",
+        Actor: getActorMeta(row).display,
+        Leader: row.leader_id || "-",
+        Reason: row.reason || "-",
+        Source: row.source_table,
+      }));
+      const filename = `audit-log-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      exportToXlsx({ rows: exportRows, filename, sheetName: "Audit Log" });
       setExportProgress("Export complete.");
     } catch (err) {
       setError(err?.message || "Failed to export audit log");
@@ -806,9 +684,7 @@ export default function AuditLog() {
           <button type="button" className="button secondary" onClick={handleReset} disabled={loading}>
             Reset
           </button>
-          <button type="button" className="button secondary" onClick={exportCsv} disabled={exporting || loading}>
-            {exporting ? "Exporting…" : "Export CSV"}
-          </button>
+          <ExportButton onClick={exportXlsx} loading={exporting} disabled={loading} label="Export XLSX" />
           </div>
           <button
             type="button"

@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/pages/upload.css";
 import { ModalForm } from "../components/ModalForm";
 import AppPagination from "../components/AppPagination";
+import ExportButton from "../components/ExportButton";
+import { exportToXlsx } from "../services/export.service";
 import {
   mergeRawDataRowsByIdentity,
   normalizeRawDataRows,
@@ -136,6 +138,35 @@ export default function Upload() {
     return processed.displayRows.slice(start, start + rowsPerPage);
   }, [page, rowsPerPage, processed.displayRows]);
   const baseIndex = (page - 1) * rowsPerPage;
+
+  function exportXlsx() {
+    const exportRows = pagedRows.map((row, idx) => {
+      const warningText = row.displayWarnings?.length
+        ? row.displayWarnings.map(warn => `Warning: ${warn}`)
+        : [];
+      const issueText = [...(row.displayErrors ?? []), ...warningText].join("; ");
+      const duplicateBadges = [
+        row.merge_count > 1 ? `Merged (${row.merge_count})` : null,
+        row.dup_base_row ? "Row exists" : null,
+      ].filter(Boolean);
+
+      return {
+        "#": baseIndex + idx + 1,
+        Date: row.date_real || "-",
+        "Leader Name": row.leader_name_input,
+        "Leads Depot": row.leads_depot_name || "-",
+        "Sales Depot": row.sales_depot_name || "-",
+        Leads: row.leads,
+        Payins: row.payins,
+        Sales: row.sales,
+        "Duplicates / Merge": duplicateBadges.length ? duplicateBadges.join(" / ") : "-",
+        Status: row.displayStatus,
+        Errors: issueText,
+      };
+    });
+    const filename = `upload-preview-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Upload Preview" });
+  }
 
   const parseProgressText = useMemo(() => {
     if (!parseProgress.stage) return "";
@@ -554,6 +585,15 @@ export default function Upload() {
               <div className="summary-label">Invalid</div>
               <div className="summary-value invalid">{processed.summary.invalid}</div>
             </div>
+          </div>
+
+          <div className="table-actions">
+            <ExportButton
+              onClick={exportXlsx}
+              loading={false}
+              disabled={!pagedRows.length || loading}
+              label="Export XLSX"
+            />
           </div>
 
           <div className="table-scroll">

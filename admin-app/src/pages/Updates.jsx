@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/updates.css";
 import { ModalForm } from "../components/ModalForm";
 import AppPagination from "../components/AppPagination";
+import ExportButton from "../components/ExportButton";
+import { exportToXlsx } from "../services/export.service";
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
 import { canEditRow, getRawDataHistory, updateRow } from "../services/rawData.service";
@@ -248,6 +250,22 @@ export default function Updates() {
     return visibleRows.slice(start, start + rowsPerPage);
   }, [page, rowsPerPage, visibleRows]);
 
+  function exportXlsx() {
+    const exportRows = pagedRows.map(row => ({
+      Date: row.date_real,
+      Leader: row.leaderName || "(Restricted)",
+      "Leads Depot": row.leadsDepotName || "-",
+      Leads: row.leads ?? "-",
+      "Sales Depot": row.salesDepotName || "-",
+      Payins: row.payins ?? "-",
+      Sales: row.sales ?? "-",
+      Published: row.published ? "Published" : "Unpublished",
+      Status: row.voided ? "Voided" : "Active",
+    }));
+    const filename = `updates-history-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Updates" });
+  }
+
   // ----------------------
   // Editing
   // ----------------------
@@ -461,6 +479,12 @@ export default function Updates() {
             <button type="button" className="button secondary" onClick={clearFilters} disabled={loading}>
               Clear
             </button>
+            <ExportButton
+              onClick={exportXlsx}
+              loading={false}
+              disabled={loading || !pagedRows.length}
+              label="Export XLSX"
+            />
           </div>
         </div>
       </div>

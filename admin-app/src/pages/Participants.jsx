@@ -1,5 +1,7 @@
 ﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ModalForm } from "../components/ModalForm";
+import ExportButton from "../components/ExportButton";
+import { exportToXlsx } from "../services/export.service";
 import AppPagination from "../components/AppPagination";
 import "../styles/pages/participants.css";
 import { listAgents, upsertAgent } from "../services/agents.service";
@@ -186,6 +188,7 @@ export default function Participants() {
   const companyById = useMemo(() => Object.fromEntries(companies.map(c => [c.id, c])), [companies]);
   const platoonById = useMemo(() => Object.fromEntries(platoons.map(p => [p.id, p])), [platoons]);
   const agentById = useMemo(() => Object.fromEntries(agents.map(a => [a.id, a])), [agents]);
+  const depotById = useMemo(() => Object.fromEntries(depots.map(d => [d.id, d])), [depots]);
 
   useEffect(() => {
     if (tab === "leaders") setLeaderPage(1);
@@ -239,6 +242,50 @@ export default function Participants() {
     const start = (platoonPage - 1) * rowsPerPage;
     return platoons.slice(start, start + rowsPerPage);
   }, [platoons, platoonPage, rowsPerPage]);
+
+  function exportLeadersXlsx() {
+    const exportRows = pagedAgents.map(a => ({
+      "Leader ID": a.id,
+      "Leader Name": a.name,
+      Commander: companyById[a.companyId]?.name || a.companyId || "-",
+      Company: platoonById[a.platoonId]?.name || a.platoonId || "-",
+      Upline: a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-",
+      Depot: depotById[a.depotId]?.name || a.depotId || "-",
+      "Photo URL": a.photoURL || "",
+    }));
+    const filename = `participants-leaders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Leaders" });
+  }
+
+  function exportDepotsXlsx() {
+    const exportRows = pagedDepots.map(d => ({
+      "Depot ID": d.id,
+      Name: d.name,
+      "Photo URL": d.photoURL || "",
+    }));
+    const filename = `participants-depots-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Depots" });
+  }
+
+  function exportCompaniesXlsx() {
+    const exportRows = pagedCompanies.map(c => ({
+      "Commander ID": c.id,
+      Name: c.name,
+      "Photo URL": c.photoURL || "",
+    }));
+    const filename = `participants-commanders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Commanders" });
+  }
+
+  function exportPlatoonsXlsx() {
+    const exportRows = pagedPlatoons.map(p => ({
+      "Company ID": p.id,
+      Name: p.name,
+      "Photo URL": p.photoURL || "",
+    }));
+    const filename = `participants-companies-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Companies" });
+  }
 
   function ok(msg) { setStatus({ type: "ok", msg }); }
   function err(msg) { setStatus({ type: "error", msg }); }
@@ -1234,6 +1281,14 @@ export default function Participants() {
       {/* LIST AREA */}
       {tab === "leaders" && (
         <div className="p-list">
+          <div className="table-actions">
+            <ExportButton
+              onClick={exportLeadersXlsx}
+              loading={false}
+              disabled={!pagedAgents.length}
+              label="Export XLSX"
+            />
+          </div>
           <div className="table-scroll-y">
             <div className="table">
               <div className="t-head">
@@ -1266,6 +1321,14 @@ export default function Participants() {
 
       {tab === "depots" && (
         <div className="p-list">
+          <div className="table-actions">
+            <ExportButton
+              onClick={exportDepotsXlsx}
+              loading={false}
+              disabled={!pagedDepots.length}
+              label="Export XLSX"
+            />
+          </div>
           <div className="table">
             <div className="t-head">
               <div>Depot</div><div>Photo</div><div></div><div></div><div className="t-right">Actions</div>
@@ -1295,6 +1358,14 @@ export default function Participants() {
 
       {tab === "companies" && (
         <div className="p-list">
+          <div className="table-actions">
+            <ExportButton
+              onClick={exportCompaniesXlsx}
+              loading={false}
+              disabled={!pagedCompanies.length}
+              label="Export XLSX"
+            />
+          </div>
           <div className="table">
             <div className="t-head">
               <div>Commander</div><div>Photo</div><div></div><div></div><div className="t-right">Actions</div>
@@ -1324,6 +1395,14 @@ export default function Participants() {
 
       {tab === "platoons" && (
         <div className="p-list">
+          <div className="table-actions">
+            <ExportButton
+              onClick={exportPlatoonsXlsx}
+              loading={false}
+              disabled={!pagedPlatoons.length}
+              label="Export XLSX"
+            />
+          </div>
           <div className="table">
             <div className="t-head">
               <div>Company</div><div></div><div></div><div></div><div className="t-right">Actions</div>

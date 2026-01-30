@@ -498,6 +498,16 @@ textarea.input:focus{
   gap: 8px;
 }
 
+.export-button svg{
+  display: block;
+}
+
+.table-actions{
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 12px;
+}
+
 .button.primary{ background: var(--blue); color: #fff; }
 .button.secondary{ background: #f3f4ff; color: var(--blue); }
 .button:disabled{ opacity:.6; cursor:not-allowed; }

@@ -3,6 +3,8 @@ import "../styles/pages/publishing.css";
 import { Navigate } from "react-router-dom";
 import { ModalForm } from "../components/ModalForm";
 import AppPagination from "../components/AppPagination";
+import ExportButton from "../components/ExportButton";
+import { exportToXlsx } from "../services/export.service";
 import { listAgents } from "../services/agents.service";
 import {
   AuditAction,
@@ -186,6 +188,23 @@ export default function Publishing() {
   }, [page, rows, rowsPerPage]);
 
   const baseIndex = (page - 1) * rowsPerPage;
+
+  function exportXlsx() {
+    const exportRows = pagedRows.map((row, index) => ({
+      "#": baseIndex + index + 1,
+      Date: row.date_real,
+      Leader: row.agent_id,
+      "Leads Depot": row.leads_depot_id,
+      "Sales Depot": row.sales_depot_id,
+      Leads: row.leads,
+      Payins: row.payins,
+      Sales: row.sales,
+      Status: row.voided ? "Voided" : row.published ? "Published" : "Unpublished",
+      "Void Reason": row.void_reason || "-",
+    }));
+    const filename = `publishing-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Publishing" });
+  }
 
   const counters = useMemo(() => {
     const total = rows.length;
@@ -453,6 +472,12 @@ export default function Publishing() {
             <button type="button" className="button secondary" onClick={handleClearFilters} disabled={loading}>
               Clear
             </button>
+            <ExportButton
+              onClick={exportXlsx}
+              loading={false}
+              disabled={loading || !pagedRows.length}
+              label="Export XLSX"
+            />
           </div>
         </div>
       </div>

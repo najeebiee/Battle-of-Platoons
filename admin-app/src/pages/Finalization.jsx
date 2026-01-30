@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/finalization.css";
 import { Navigate } from "react-router-dom";
 import AppPagination from "../components/AppPagination";
+import ExportButton from "../components/ExportButton";
+import { exportToXlsx } from "../services/export.service";
 import {
   finalizeWeek,
   getWeekStatusByDate,
@@ -123,6 +125,26 @@ export default function Finalization() {
     const start = (historyPage - 1) * historyRowsPerPage;
     return recentWeeks.slice(start, start + historyRowsPerPage);
   }, [historyPage, historyRowsPerPage, recentWeeks]);
+
+  function exportHistoryXlsx() {
+    const exportRows = pagedWeeks.map(weekRow => {
+      const displayReason =
+        weekRow.status === "finalized"
+          ? weekRow.finalize_reason
+          : weekRow.reopen_reason || weekRow.finalize_reason;
+
+      return {
+        Week: weekRow.week_key,
+        Range: `${weekRow.start_date} -> ${weekRow.end_date}`,
+        Status: weekRow.status === "finalized" ? "Finalized" : "Open",
+        Finalized: weekRow.finalized_at ? new Date(weekRow.finalized_at).toLocaleString() : "-",
+        Reopened: weekRow.reopened_at ? new Date(weekRow.reopened_at).toLocaleString() : "-",
+        Reason: displayReason || "-",
+      };
+    });
+    const filename = `finalization-history-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Finalization" });
+  }
 
   useEffect(() => {
     if (!selectedWeekKey && weekOptions.length) {
@@ -395,6 +417,12 @@ export default function Finalization() {
         <div className="finalization-history__header">
           <div style={{ fontWeight: 800 }}>Recent weeks</div>
           {loadingHistory ? <div className="muted">Loading…</div> : null}
+          <ExportButton
+            onClick={exportHistoryXlsx}
+            loading={false}
+            disabled={!pagedWeeks.length || loadingHistory}
+            label="Export XLSX"
+          />
         </div>
 
         <div className="table-scroll" style={{ marginTop: 8 }}>
