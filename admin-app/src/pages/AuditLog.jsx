@@ -766,7 +766,6 @@ export default function AuditLog() {
           <button type="button" className="button secondary" onClick={handleReset} disabled={loading}>
             Reset
           </button>
-          <ExportButton onClick={exportXlsx} loading={exporting} disabled={loading} label="Export XLSX" />
           </div>
           <button
             type="button"
@@ -775,6 +774,7 @@ export default function AuditLog() {
           >
             {showAdvanced ? "Hide Advanced" : "Advanced Filters"}
           </button>
+          <ExportButton onClick={exportXlsx} loading={exporting} disabled={loading} label="Export XLSX" />
           {exportProgress ? <div className="muted" style={{ alignSelf: "center" }}>{exportProgress}</div> : null}
         </div>
       </div>
