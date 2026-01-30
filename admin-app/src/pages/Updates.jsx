@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/updates.css";
 import { ModalForm } from "../components/ModalForm";
+import AppPagination from "../components/AppPagination";
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
 import { canEditRow, getRawDataHistory, updateRow } from "../services/rawData.service";
@@ -73,6 +74,8 @@ export default function Updates() {
   const [agents, setAgents] = useState([]);
   const [depots, setDepots] = useState([]);
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
 
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState("");
@@ -229,6 +232,23 @@ export default function Updates() {
 
     return filtered;
   }, [filtersApplied, rows]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [visibleRows.length]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / rowsPerPage));
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return visibleRows.slice(start, start + rowsPerPage);
+  }, [page, rowsPerPage, visibleRows]);
 
   // ----------------------
   // Editing
@@ -493,7 +513,7 @@ export default function Updates() {
           </thead>
 
           <tbody>
-            {visibleRows.map(row => (
+            {pagedRows.map(row => (
               <tr key={row.id}>
                 <td>{row.date_real}</td>
                 <td>
@@ -527,6 +547,8 @@ export default function Updates() {
           </tbody>
         </table>
       </div>
+
+      <AppPagination count={pageCount} page={page} onChange={setPage} />
 
       <ModalForm
         isOpen={Boolean(editingRow)}

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/pages/upload.css";
 import { ModalForm } from "../components/ModalForm";
+import AppPagination from "../components/AppPagination";
 import {
   mergeRawDataRowsByIdentity,
   normalizeRawDataRows,
@@ -13,6 +14,8 @@ import { listDepots } from "../services/depots.service";
 export default function Upload() {
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -115,6 +118,24 @@ export default function Upload() {
       summary: { total, validNew, duplicate, invalid },
     };
   }, [rows, importMode]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [processed.displayRows.length]);
+
+  const pageCount = Math.max(1, Math.ceil(processed.displayRows.length / rowsPerPage));
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return processed.displayRows.slice(start, start + rowsPerPage);
+  }, [page, rowsPerPage, processed.displayRows]);
+  const baseIndex = (page - 1) * rowsPerPage;
 
   const parseProgressText = useMemo(() => {
     if (!parseProgress.stage) return "";
@@ -553,7 +574,7 @@ export default function Upload() {
                 </tr>
               </thead>
               <tbody>
-                {processed.displayRows.map((row, idx) => {
+                {pagedRows.map((row, idx) => {
                   const warningText = row.displayWarnings?.length
                     ? row.displayWarnings.map(warn => `Warning: ${warn}`)
                     : [];
@@ -569,7 +590,7 @@ export default function Upload() {
                       className={row.displayStatus === "Invalid" ? "row-invalid" : ""}
                     >
                     <td>
-                      <div>{idx + 1}</div>
+                      <div>{baseIndex + idx + 1}</div>
                     </td>
                     <td>{row.date_real || "—"}</td>
                     <td>
@@ -614,6 +635,8 @@ export default function Upload() {
               </tbody>
             </table>
           </div>
+
+          <AppPagination count={pageCount} page={page} onChange={setPage} />
 
           <div className="save-bar">
             <button className="button primary" disabled={!processed.rowsForSave.length || loading} onClick={handleSave}>

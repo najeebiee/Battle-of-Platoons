@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/audit-log.css";
 import { Navigate } from "react-router-dom";
+import AppPagination from "../components/AppPagination";
 import {
   getProfilesByIds,
   listFinalizedWeeks,
@@ -883,6 +884,12 @@ export default function AuditLog() {
           </tbody>
         </table>
       </div>
+
+      <AppPagination
+        count={totalPages}
+        page={page + 1}
+        onChange={value => setPage(value - 1)}
+      />
 
       {detailRow ? (
         <div className="modal-backdrop">

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/publishing.css";
 import { Navigate } from "react-router-dom";
 import { ModalForm } from "../components/ModalForm";
+import AppPagination from "../components/AppPagination";
 import { listAgents } from "../services/agents.service";
 import {
   AuditAction,
@@ -47,6 +48,8 @@ export default function Publishing() {
     status: "",
   });
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [agentsLoading, setAgentsLoading] = useState(true);
@@ -154,6 +157,25 @@ export default function Publishing() {
       return next;
     });
   }, [rows]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rows.length]);
+
+  const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return rows.slice(start, start + rowsPerPage);
+  }, [page, rows, rowsPerPage]);
+
+  const baseIndex = (page - 1) * rowsPerPage;
 
   const counters = useMemo(() => {
     const total = rows.length;
@@ -509,7 +531,7 @@ export default function Publishing() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
+            {pagedRows.map((row, index) => (
               <tr key={row.id}>
                 {isSuperAdmin ? (
                   <td>
@@ -522,7 +544,7 @@ export default function Publishing() {
                   </td>
                 ) : null}
                 <td>
-                  <div className="muted" style={{ fontSize: 12 }}>{index + 1}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{baseIndex + index + 1}</div>
                 </td>
                 <td>{row.date_real}</td>
                 <td>{row.agent_id}</td>
@@ -588,6 +610,8 @@ export default function Publishing() {
           </tbody>
         </table>
       </div>
+
+      <AppPagination count={pageCount} page={page} onChange={setPage} />
 
       {auditModalOpen && auditConfig ? (
         <ModalForm

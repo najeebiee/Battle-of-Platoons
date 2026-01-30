@@ -523,6 +523,11 @@ textarea.input:focus{
 .summary-value.invalid{ color: #d73a49; }
 
 .table-scroll{ overflow-x:auto; }
+.table-pagination{
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0 4px;
+}
 .table-scroll th,
 th{
   color: var(--blue);
@@ -609,4 +614,10 @@ th{
   border-radius: 12px;
   width: min(560px, 100%);
   box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 720px){
+  .table-pagination{
+    justify-content: center;
+  }
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/finalization.css";
 import { Navigate } from "react-router-dom";
+import AppPagination from "../components/AppPagination";
 import {
   finalizeWeek,
   getWeekStatusByDate,
@@ -54,6 +55,8 @@ export default function Finalization() {
   const [selectedWeekKey, setSelectedWeekKey] = useState("");
   const [week, setWeek] = useState(null);
   const [recentWeeks, setRecentWeeks] = useState([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyRowsPerPage = 10;
   const [loadingWeek, setLoadingWeek] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -103,6 +106,23 @@ export default function Finalization() {
   const weekOptions = useMemo(() => {
     return [...recentWeeks].sort((a, b) => (a.start_date || "").localeCompare(b.start_date || ""));
   }, [recentWeeks]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [recentWeeks.length]);
+
+  const historyPageCount = Math.max(1, Math.ceil(recentWeeks.length / historyRowsPerPage));
+
+  useEffect(() => {
+    if (historyPage > historyPageCount) {
+      setHistoryPage(historyPageCount);
+    }
+  }, [historyPage, historyPageCount]);
+
+  const pagedWeeks = useMemo(() => {
+    const start = (historyPage - 1) * historyRowsPerPage;
+    return recentWeeks.slice(start, start + historyRowsPerPage);
+  }, [historyPage, historyRowsPerPage, recentWeeks]);
 
   useEffect(() => {
     if (!selectedWeekKey && weekOptions.length) {
@@ -389,7 +409,7 @@ export default function Finalization() {
               </tr>
             </thead>
             <tbody>
-              {recentWeeks.map(weekRow => {
+              {pagedWeeks.map(weekRow => {
                 const displayReason =
                   weekRow.status === "finalized"
                     ? weekRow.finalize_reason
@@ -441,6 +461,8 @@ export default function Finalization() {
             </tbody>
           </table>
         </div>
+
+        <AppPagination count={historyPageCount} page={historyPage} onChange={setHistoryPage} />
       </div>
     </div>
   );

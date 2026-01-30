@@ -10,6 +10,9 @@
     "preview": "node ./node_modules/vite/bin/vite.js preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.3.7",
     "@supabase/supabase-js": "^2.87.3",
     "firebase": "^12.6.0",
     "react": "^19.2.0",
