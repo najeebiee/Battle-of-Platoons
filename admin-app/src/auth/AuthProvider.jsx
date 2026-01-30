@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
-import { supabase } from "../services/supabase";
+import { ensureSession, supabase } from "../services/supabase";
  
 const Ctx = createContext(null);
 
@@ -15,6 +15,15 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+    ensureSession(120)
+      .then(result => {
+        if (!mounted) return;
+        if (!result.ok && result.error?.message !== "No active session") {
+          setSessionError("Session refresh failed. Please sign in again.");
+        }
+      })
+      .catch(() => {});
+
     supabase.auth.getSession().then(({ data, error }) => {
       if (!mounted) return;
       if (error) console.error(error);

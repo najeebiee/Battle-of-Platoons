@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { ensureSessionOrThrow, supabase } from "./supabase";
 
 export async function listCompanies() {
   const { data, error } = await supabase.from("companies").select("*").order("name", { ascending: true });
@@ -7,6 +7,7 @@ export async function listCompanies() {
 }
 
 export async function upsertCompany(id, data) {
+  await ensureSessionOrThrow(120);
   const payload = {
     id,
     name: data?.name ?? "",

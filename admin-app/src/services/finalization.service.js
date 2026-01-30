@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { ensureSessionOrThrow, supabase } from "./supabase";
 
 function todayIsoDate() {
   const d = new Date();
@@ -44,6 +44,7 @@ function computeWeekRange(dateStr) {
 }
 
 async function ensureWeek(dateStr) {
+  await ensureSessionOrThrow(120);
   const targetDate = dateStr || todayIsoDate();
   const { error } = await supabase.rpc("ensure_week_row", { d: targetDate });
   if (error) throw normalizeFinalizationError(error);
@@ -92,6 +93,7 @@ export async function listRecentWeeks(limit = 10) {
 }
 
 export async function finalizeWeek(dateStr, reason) {
+  await ensureSessionOrThrow(120);
   const trimmed = reason?.trim() || "";
   if (trimmed.length < 5) throw new Error("Reason must be at least 5 characters.");
 
@@ -123,6 +125,7 @@ export async function finalizeWeek(dateStr, reason) {
 }
 
 export async function reopenWeek(dateStr, reason) {
+  await ensureSessionOrThrow(120);
   const trimmed = reason?.trim() || "";
   if (trimmed.length < 5) throw new Error("Reason must be at least 5 characters.");
 

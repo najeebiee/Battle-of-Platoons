@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { ensureSessionOrThrow, supabase } from "./supabase";
 
 function normalizeDepotName(name = "") {
   return name
@@ -59,6 +59,7 @@ export function resolveDepotId(input, maps = {}) {
 }
 
 export async function upsertDepot(id, data) {
+  await ensureSessionOrThrow(120);
   const payload = {
     id,
     name: data?.name ?? "",

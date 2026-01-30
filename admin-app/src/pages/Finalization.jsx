@@ -8,7 +8,7 @@ import {
   listRecentWeeks,
   reopenWeek,
 } from "../services/finalization.service";
-import { supabase } from "../services/supabase";
+import { ensureSessionOrThrow, supabase } from "../services/supabase";
 import { getMyProfile } from "../services/profile.service";
 
 function formatDateInput(date) {
@@ -154,6 +154,7 @@ export default function Finalization() {
   async function refreshHistory() {
     setLoadingHistory(true);
     try {
+      await ensureSessionOrThrow(120);
       const today = new Date();
       const prev = new Date(today);
       prev.setDate(today.getDate() - 7);

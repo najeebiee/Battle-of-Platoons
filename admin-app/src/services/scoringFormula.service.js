@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { ensureSessionOrThrow, supabase } from "./supabase";
 
 export async function listPublishedFormulas() {
   const { data, error } = await supabase
@@ -15,16 +15,19 @@ export async function listAllFormulasForSuperAdmin() {
 }
 
 export async function createDraft(payload) {
+  await ensureSessionOrThrow(120);
   const { data, error } = await supabase.rpc("create_draft_scoring_formula", payload);
   return { data, error };
 }
 
 export async function updateDraft(payload) {
+  await ensureSessionOrThrow(120);
   const { data, error } = await supabase.rpc("update_draft_scoring_formula", payload);
   return { data, error };
 }
 
 export async function publishDraft(formula_id, reason) {
+  await ensureSessionOrThrow(120);
   const { data, error } = await supabase.rpc("publish_scoring_formula", {
     formula_id,
     reason,

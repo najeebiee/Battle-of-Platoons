@@ -30,3 +30,9 @@ export async function ensureSession(minValiditySeconds = 60) {
   }
   return { ok: true, session: refreshed.session };
 }
+
+export async function ensureSessionOrThrow(minValiditySeconds = 60) {
+  const result = await ensureSession(minValiditySeconds);
+  if (!result.ok) throw result.error || new Error("Session unavailable");
+  return result.session;
+}

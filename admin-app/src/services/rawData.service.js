@@ -3,7 +3,7 @@ import { listAgents } from "./agents.service";
 import { listCompanies } from "./companies.service";
 import { buildDepotMaps, listDepots, resolveDepotId } from "./depots.service";
 import { listPlatoons } from "./platoons.service";
-import { supabase } from "./supabase";
+import { ensureSessionOrThrow, supabase } from "./supabase";
 
 export const AuditAction = Object.freeze({
   VOID: "VOID",
@@ -609,6 +609,7 @@ export async function parseRawDataWorkbook(file, _options = {}, onProgress = () 
 }
 
 export async function saveRawDataRows(validRows, { mode = "warn" } = {}, onProgress = () => {}) {
+  await ensureSessionOrThrow(120);
   const batchSize = 200;
   let upsertedCount = 0;
   let insertedCount = 0;
@@ -827,6 +828,7 @@ function buildUpsertPayload(row = {}) {
 }
 
 export async function upsertRawData(rows = []) {
+  await ensureSessionOrThrow(120);
   const payload = rows.map(row => buildUpsertPayload(row)).filter(Boolean);
   if (!payload.length) return [];
 
@@ -840,6 +842,7 @@ export async function upsertRawData(rows = []) {
 }
 
 export async function updateRow(id, patch = {}) {
+  await ensureSessionOrThrow(120);
   const payload = sanitizeRawDataPatch(patch);
   const { data, error } = await supabase
     .from("raw_data")
@@ -854,6 +857,7 @@ export async function updateRow(id, patch = {}) {
 
 
 export async function setVoided(id, voided, void_reason = null) {
+  await ensureSessionOrThrow(120);
   const payload = {
     voided: Boolean(voided),
     void_reason: voided ? (void_reason?.trim() || null) : null,
@@ -871,6 +875,7 @@ export async function setVoided(id, voided, void_reason = null) {
 }
 
 export async function unvoidRawData({ id, reason }) {
+  await ensureSessionOrThrow(120);
   const trimmedReason = reason?.trim() || null;
   const { data, error } = await supabase.rpc("unvoid_raw_data", {
     p_id: id,
@@ -881,6 +886,7 @@ export async function unvoidRawData({ id, reason }) {
 }
 
 export async function setPublished(id, published) {
+  await ensureSessionOrThrow(120);
   const { data, error } = await supabase
     .from("raw_data")
     .update({ published: Boolean(published) })
@@ -893,6 +899,7 @@ export async function setPublished(id, published) {
 }
 
 export async function applyRawDataAuditAction({ action, reason, rowIds }) {
+  await ensureSessionOrThrow(120);
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   const ids = (rowIds ?? []).filter(Boolean);
@@ -972,6 +979,7 @@ export async function applyRawDataAuditAction({ action, reason, rowIds }) {
 }
 
 export async function unpublishRowsWithAudit({ rowIds, reason, onProgress }) {
+  await ensureSessionOrThrow(120);
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   const ids = (rowIds ?? []).filter(Boolean);
@@ -1019,6 +1027,7 @@ export async function updateRawData(id, { leads, payins, sales }) {
 }
 
 export async function deleteRawData(id) {
+  await ensureSessionOrThrow(120);
   const { error } = await supabase.from("raw_data").delete().eq("id", id);
   if (error) throw normalizeSupabaseError(error);
 }
@@ -1031,6 +1040,7 @@ async function requireSessionUser() {
 }
 
 export async function updateRawDataWithAudit(rowId, changes, reason, sessionUser) {
+  await ensureSessionOrThrow(120);
   if (!reason || !reason.trim()) throw new Error("Reason is required");
 
   const actorEmail = sessionUser?.email ?? "";
@@ -1093,6 +1103,7 @@ async function logAuditEntriesForPair(beforeRows, afterRows, action, reason, act
 }
 
 export async function voidRawDataWithAudit(rowId, reason, sessionUser) {
+  await ensureSessionOrThrow(120);
   if (!reason || !reason.trim()) throw new Error("Reason is required");
 
   const actorEmail = sessionUser?.email ?? "";
@@ -1136,6 +1147,7 @@ export async function voidRawDataWithAudit(rowId, reason, sessionUser) {
 }
 
 export async function unvoidRawDataWithAudit(rowId, reason, sessionUser) {
+  await ensureSessionOrThrow(120);
   if (!reason || !reason.trim()) throw new Error("Reason is required");
 
   const actorEmail = sessionUser?.email ?? "";
@@ -1185,6 +1197,7 @@ async function enrichSingleRow(row) {
 }
 
 export async function publishPair({ date_real, agent_id, reason }) {
+  await ensureSessionOrThrow(120);
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   if (!date_real || !agent_id) throw new Error("Missing date or agent");
@@ -1218,6 +1231,7 @@ export async function publishPair({ date_real, agent_id, reason }) {
 }
 
 export async function unpublishPair({ date_real, agent_id, reason }) {
+  await ensureSessionOrThrow(120);
   const trimmedReason = reason?.trim();
   if (!trimmedReason) throw new Error("Reason is required");
   if (!date_real || !agent_id) throw new Error("Missing date or agent");

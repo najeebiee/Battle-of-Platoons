@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { ensureSessionOrThrow, supabase } from "./supabase";
 
 export async function listPlatoons() {
   const { data, error } = await supabase.from("platoons").select("*").order("name", { ascending: true });
@@ -7,6 +7,7 @@ export async function listPlatoons() {
 }
 
 export async function upsertPlatoon(id, data) {
+  await ensureSessionOrThrow(120);
   const payload = {
     id,
     name: data?.name ?? "",

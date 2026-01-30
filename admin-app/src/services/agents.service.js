@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { ensureSessionOrThrow, supabase } from "./supabase";
 
 /* ------------------------------ Agents ------------------------------ */
 
@@ -19,6 +19,7 @@ export async function getAgentById(id) {
 }
 
 export async function upsertAgent(agent) {
+  await ensureSessionOrThrow(120);
   // Accept either UI-friendly fields OR DB fields
   const payload = denormalizeAgent(agent);
 
@@ -27,6 +28,7 @@ export async function upsertAgent(agent) {
 }
 
 export async function deleteAgent(id) {
+  await ensureSessionOrThrow(120);
   const { error } = await supabase.from("agents").delete().eq("id", id);
   if (error) throw error;
 }
@@ -53,18 +55,21 @@ export async function listPlatoons() {
 
 // Optional: upsert lookup items (if you want an Admin UI for these)
 export async function upsertDepot({ id, name, photoURL, photo_url }) {
+  await ensureSessionOrThrow(120);
   const payload = { id, name, photoURL: photoURL ?? photo_url ?? null };
   const { error } = await supabase.from("depots").upsert(payload, { onConflict: "id" });
   if (error) throw error;
 }
 
 export async function upsertCompany({ id, name, photoURL, photo_url }) {
+  await ensureSessionOrThrow(120);
   const payload = { id, name, photoURL: photoURL ?? photo_url ?? null };
   const { error } = await supabase.from("companies").upsert(payload, { onConflict: "id" });
   if (error) throw error;
 }
 
 export async function upsertPlatoon({ id, name, photoURL, photo_url }) {
+  await ensureSessionOrThrow(120);
   const payload = { id, name, photoURL: photoURL ?? photo_url ?? null };
   const { error } = await supabase.from("platoons").upsert(payload, { onConflict: "id" });
   if (error) throw error;
