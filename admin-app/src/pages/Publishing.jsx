@@ -47,6 +47,17 @@ function TrashIcon({ size = 16 }) {
   );
 }
 
+function UnvoidIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M7.5 4.5A2.5 2.5 0 0 0 5 7v10a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 19 17V8.5a.75.75 0 0 0-.22-.53l-3.75-3.75A.75.75 0 0 0 14.5 4.5h-7ZM7 7a.75.75 0 0 1 .75-.75h5.75V9a1 1 0 0 0 1 1H17v7a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V7Zm7.5-.94L16.94 8.5H14.5V6.06ZM8.5 12a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 8.5 12Z"
+      />
+    </svg>
+  );
+}
+
 export default function Publishing() {
   const defaults = useMemo(() => getDefaultDateRange(), []);
   const [filters, setFilters] = useState({
@@ -690,24 +701,33 @@ export default function Publishing() {
             </>
           )}
         >
-          <p className="muted" style={{ marginBottom: 12 }}>
-            {auditConfig.description}
-          </p>
+          <div className="audit-modal__head">
+            <div className={`audit-modal__icon ${auditAction === AuditAction.VOID ? "is-danger" : "is-info"}`}>
+              {auditAction === AuditAction.VOID ? <TrashIcon /> : <UnvoidIcon />}
+            </div>
+            <div>
+              <div className="audit-modal__title">{auditConfig.title}</div>
+              <div className="audit-modal__subtitle">{auditConfig.description}</div>
+            </div>
+          </div>
           {auditSubmitting && auditAction === AuditAction.UNPUBLISH && auditProgress?.total ? (
             <div className="muted" style={{ marginBottom: 12 }}>
               {`Unpublishing ${auditProgress.current}/${auditProgress.total}...`}
             </div>
           ) : null}
-          <label className="form-label" htmlFor="audit-reason">
-            Reason
-          </label>
-          <textarea
-            id="audit-reason"
-            value={auditReason}
-            onChange={e => setAuditReason(e.target.value)}
-            style={{ minHeight: 120 }}
-            required
-          />
+          <div className="audit-modal__field">
+            <label className="form-label" htmlFor="audit-reason">
+              Reason <span className="req">*</span>
+            </label>
+            <textarea
+              id="audit-reason"
+              value={auditReason}
+              onChange={e => setAuditReason(e.target.value)}
+              placeholder="Add a clear reason for the audit log."
+              style={{ minHeight: 120 }}
+              required
+            />
+          </div>
           {auditError ? (
             <div className="error" style={{ marginTop: 12 }}>
               {auditError}

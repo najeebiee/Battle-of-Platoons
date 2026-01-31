@@ -12,6 +12,17 @@ import {
 import { getMyProfile } from "../services/profile.service";
 import { computeMetricScore, computeTotalScore } from "../services/scoringEngine";
 
+function PlusIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 5.5a.75.75 0 0 1 .75.75v5h5a.75.75 0 0 1 0 1.5h-5v5a.75.75 0 0 1-1.5 0v-5h-5a.75.75 0 0 1 0-1.5h5v-5a.75.75 0 0 1 .75-.75Z"
+      />
+    </svg>
+  );
+}
+
 export default function ScoringFormulas() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -794,13 +805,6 @@ export default function ScoringFormulas() {
         footer={(
           <>
             <button
-              type="button"
-              className="btn ghost"
-              onClick={closeCreateModal}
-              disabled={createModal.loading}
-            >
-              Cancel
-            </button>
             <button
               type="submit"
               className="btn primary"
@@ -811,11 +815,26 @@ export default function ScoringFormulas() {
                 !createModal.reason.trim()
               }
             >
+              <PlusIcon />
               {createModal.loading ? "Creating..." : "Create"}
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={closeCreateModal}
+              disabled={createModal.loading}
+            >
+              Cancel
             </button>
           </>
         )}
       >
+        <div className="formula-modal__header">
+          <span className="formula-modal__badge">New</span>
+          <div className="formula-modal__hint">
+            Create a draft formula to apply in future weeks.
+          </div>
+        </div>
         {createModal.error && <div className="error">{createModal.error}</div>}
         <div className="stack sm">
           <div className="stack xs">
@@ -883,6 +902,7 @@ export default function ScoringFormulas() {
                         })
                       }
                     >
+                      <PlusIcon />
                       New {section.title.replace(/s$/, "")} Formula
                     </button>
                   )}

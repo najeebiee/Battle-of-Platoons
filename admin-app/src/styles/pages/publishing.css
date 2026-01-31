@@ -89,6 +89,53 @@
   font-variant-numeric: tabular-nums;
 }
 
+.publishing-page .modal-form{
+  max-width: 560px;
+}
+
+.audit-modal__head{
+  display:flex;
+  align-items:flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e6eaf5;
+  border-radius: 12px;
+  background: #f7f8ff;
+  margin-bottom: 12px;
+}
+
+.audit-modal__icon{
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: #e8ebff;
+  color: #2b36b5;
+}
+
+.audit-modal__icon.is-danger{
+  background: #ffecec;
+  color: #b01818;
+}
+
+.audit-modal__title{
+  font-weight: 700;
+  font-size: 14px;
+  color: #1b1f2d;
+}
+
+.audit-modal__subtitle{
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.audit-modal__field .form-label{
+  margin-bottom: 6px;
+}
+
 @media (max-width: 900px){
   .publishing-filter-actions{
     justify-content: flex-start;

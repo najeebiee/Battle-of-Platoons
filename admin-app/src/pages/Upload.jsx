@@ -13,6 +13,50 @@ import {
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
 
+function ReplaceIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 5a7 7 0 0 1 6.6 4.5.75.75 0 0 1-1.4.54A5.5 5.5 0 1 0 17.5 12a.75.75 0 0 1 1.5 0 7 7 0 1 1-7-7Zm5.03-1.28a.75.75 0 0 1 1.05-.07l2.7 2.3a.75.75 0 0 1-.49 1.3h-3.65a.75.75 0 0 1 0-1.5h1.68l-2.06-1.76a.75.75 0 0 1-.23-1.27Z"
+      />
+    </svg>
+  );
+}
+
+function WarnIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 3.5c.3 0 .58.16.72.42l8.2 14.5a.83.83 0 0 1-.72 1.25H3.8a.83.83 0 0 1-.72-1.25l8.2-14.5c.14-.26.42-.42.72-.42Zm0 5.25c.45 0 .8.36.8.8v4.7a.8.8 0 1 1-1.6 0v-4.7c0-.44.35-.8.8-.8Zm0 8.1a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"
+      />
+    </svg>
+  );
+}
+
+function UpsertIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M6.25 4.5a.75.75 0 0 1 .75.75v9.19l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 1 1 1.06-1.06l2.22 2.22V5.25a.75.75 0 0 1 .75-.75ZM12 6.25a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 12 6.25Zm0 4a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Zm0 4a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Z"
+      />
+    </svg>
+  );
+}
+
+function InsertIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M6.5 4.5A2.5 2.5 0 0 0 4 7v10a2.5 2.5 0 0 0 2.5 2.5h11A2.5 2.5 0 0 0 20 17V9.5a.75.75 0 0 0-.22-.53l-4.75-4.75A.75.75 0 0 0 14.5 4.5h-8Zm0 1.5h7.25V9a1 1 0 0 0 1 1H18v7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Zm8.75 1.06L17.94 9h-2.69V7.06Z"
+      />
+    </svg>
+  );
+}
+
 export default function Upload() {
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState([]);
@@ -519,6 +563,7 @@ export default function Upload() {
             {fileName} {meta ? `(Sheet: ${meta.sheetName}, Rows: ${meta.totalRows})` : ""}
           </div>
           <button className="button" type="button" onClick={resetUpload}>
+            <ReplaceIcon />
             Replace file
           </button>
           <ExportButton
@@ -538,6 +583,7 @@ export default function Upload() {
             className={`import-option${importMode === "warn" ? " is-active" : ""}`}
             onClick={() => { setImportMode("warn"); setSaveResult(null); }}
           >
+            <span className="import-option__icon"><WarnIcon /></span>
             Warn (upsert)
             <span>Flag duplicates, overwrite existing rows.</span>
           </button>
@@ -546,6 +592,7 @@ export default function Upload() {
             className={`import-option${importMode === "upsert" ? " is-active" : ""}`}
             onClick={() => { setImportMode("upsert"); setSaveResult(null); }}
           >
+            <span className="import-option__icon"><UpsertIcon /></span>
             Upsert
             <span>Update existing rows or insert new ones.</span>
           </button>
@@ -554,6 +601,7 @@ export default function Upload() {
             className={`import-option${importMode === "insert_only" ? " is-active" : ""}`}
             onClick={() => { setImportMode("insert_only"); setSaveResult(null); }}
           >
+            <span className="import-option__icon"><InsertIcon /></span>
             Insert Only
             <span>Skip duplicates entirely.</span>
           </button>

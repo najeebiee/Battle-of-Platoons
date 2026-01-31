@@ -881,35 +881,57 @@ export default function AuditLog() {
             </button>
           )}
         >
-          <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
-            <div><strong>Source:</strong> {detailRow.source_table}</div>
-            <div><strong>Action:</strong> {detailRow.action || "-"}</div>
-            <div><strong>Reason:</strong> {detailRow.reason || "-"}</div>
-            <div><strong>Actor:</strong> {getActorMeta(detailRow).display}</div>
-            <div><strong>Actor ID:</strong> {detailRow.actor_id || "-"}</div>
-            <div><strong>Entity:</strong> {detailRow.entity_type}</div>
-            <div><strong>Entity ID:</strong> {detailRow.entity_id || "-"}</div>
-            <div><strong>Leader ID:</strong> {detailRow.leader_id || "-"}</div>
-            <div><strong>Created:</strong> {formatDate(detailRow.created_at)}</div>
-          </div>
+          <div className="audit-entry">
+            <div className="audit-entry__pills">
+              <span className="audit-pill audit-pill--primary">{detailRow.action || "-"}</span>
+              <span className="audit-pill">{detailRow.entity_type}</span>
+              <span className="audit-pill">{detailRow.source_table}</span>
+              <span className="audit-pill audit-pill--muted">{formatDate(detailRow.created_at)}</span>
+            </div>
 
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>Before</div>
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {detailRow.before ? JSON.stringify(detailRow.before, null, 2) : "-"}
-            </pre>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>After</div>
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {detailRow.after ? JSON.stringify(detailRow.after, null, 2) : "-"}
-            </pre>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>Meta</div>
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {detailRow.meta ? JSON.stringify(detailRow.meta, null, 2) : "-"}
-            </pre>
+            <div className="audit-entry__grid">
+              <div>
+                <div className="audit-entry__label">Actor</div>
+                <div className="audit-entry__value">{getActorMeta(detailRow).display}</div>
+              </div>
+              <div>
+                <div className="audit-entry__label">Actor ID</div>
+                <div className="audit-entry__value">{detailRow.actor_id || "-"}</div>
+              </div>
+              <div>
+                <div className="audit-entry__label">Entity ID</div>
+                <div className="audit-entry__value">{detailRow.entity_id || "-"}</div>
+              </div>
+              <div>
+                <div className="audit-entry__label">Leader ID</div>
+                <div className="audit-entry__value">{detailRow.leader_id || "-"}</div>
+              </div>
+              <div className="audit-entry__wide">
+                <div className="audit-entry__label">Reason</div>
+                <div className="audit-entry__value">{detailRow.reason || "-"}</div>
+              </div>
+            </div>
+
+            <div className="audit-entry__blocks">
+              <details open>
+                <summary>Before</summary>
+                <pre className="audit-entry__code">
+                  {detailRow.before ? JSON.stringify(detailRow.before, null, 2) : "-"}
+                </pre>
+              </details>
+              <details open>
+                <summary>After</summary>
+                <pre className="audit-entry__code">
+                  {detailRow.after ? JSON.stringify(detailRow.after, null, 2) : "-"}
+                </pre>
+              </details>
+              <details>
+                <summary>Meta</summary>
+                <pre className="audit-entry__code">
+                  {detailRow.meta ? JSON.stringify(detailRow.meta, null, 2) : "-"}
+                </pre>
+              </details>
+            </div>
           </div>
         </ModalForm>
       ) : null}

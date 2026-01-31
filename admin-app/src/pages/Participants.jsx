@@ -377,25 +377,6 @@ export default function Participants() {
     [leaderForm.name]
   );
   const isEditingLeader = !!leaderOriginalId;
-  const leaderNameError = leaderForm.name.trim() ? "" : "Leader name is required.";
-  const leaderCommanderError = leaderForm.companyId ? "" : "Commander is required.";
-  const leaderCompanyError = leaderForm.platoonId ? "" : "Company is required.";
-  const leaderFileError = validateFile(leaderPhotoFile);
-  const canSaveLeader =
-    isSuperAdmin &&
-    !leaderUploading &&
-    !leaderIdConflict &&
-    !leaderFileError &&
-    !leaderNameError &&
-    !leaderCommanderError &&
-    !leaderCompanyError;
-  const leaderSaveDisabledReason = !isSuperAdmin
-    ? "Read-only access."
-    : leaderIdConflict
-      ? "Agent ID already exists."
-      : leaderFileError
-        ? leaderFileError
-        : leaderNameError || leaderCommanderError || leaderCompanyError;
 
   const leaderSuggestedId = useMemo(() => {
     if (isEditingLeader) return leaderOriginalId || leaderBaseSlug;
@@ -421,6 +402,25 @@ export default function Participants() {
     }),
     [agents, isEditingLeader, leaderNameNormalized, leaderOriginalId, leaderSuggestedId]
   );
+  const leaderNameError = leaderForm.name.trim() ? "" : "Leader name is required.";
+  const leaderCommanderError = leaderForm.companyId ? "" : "Commander is required.";
+  const leaderCompanyError = leaderForm.platoonId ? "" : "Company is required.";
+  const leaderFileError = validateFile(leaderPhotoFile);
+  const canSaveLeader =
+    isSuperAdmin &&
+    !leaderUploading &&
+    !leaderIdConflict &&
+    !leaderFileError &&
+    !leaderNameError &&
+    !leaderCommanderError &&
+    !leaderCompanyError;
+  const leaderSaveDisabledReason = !isSuperAdmin
+    ? "Read-only access."
+    : leaderIdConflict
+      ? "Agent ID already exists."
+      : leaderFileError
+        ? leaderFileError
+        : leaderNameError || leaderCommanderError || leaderCompanyError;
 
   const selfIdForUpline = leaderOriginalId || leaderSuggestedId;
 
