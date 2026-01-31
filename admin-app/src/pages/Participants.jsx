@@ -29,6 +29,17 @@ function getInitials(name = "") {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function EditIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M16.862 3.487a1.5 1.5 0 0 1 2.12 0l1.531 1.531a1.5 1.5 0 0 1 0 2.12l-9.94 9.94a1 1 0 0 1-.474.26l-4.12.94a.75.75 0 0 1-.9-.9l.94-4.12a1 1 0 0 1 .26-.474l9.94-9.94Zm1.06 2.12L8.47 15.06l-.51 2.24 2.24-.51 9.45-9.45-1.73-1.73ZM4 20.25c0-.414.336-.75.75-.75h14.5a.75.75 0 0 1 0 1.5H4.75a.75.75 0 0 1-.75-.75Z"
+      />
+    </svg>
+  );
+}
+
 function validateFile(file) {
   if (!file) return "";
   if (!ACCEPTED_TYPES.includes(file.type)) return "Unsupported file type. Use PNG, JPG, or WEBP.";
@@ -66,6 +77,7 @@ export default function Participants() {
   const [depotPage, setDepotPage] = useState(1);
   const [companyPage, setCompanyPage] = useState(1);
   const [platoonPage, setPlatoonPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
   const rowsPerPage = 10;
 
   const [leaderPhotoFile, setLeaderPhotoFile] = useState(null);
@@ -189,6 +201,7 @@ export default function Participants() {
   const platoonById = useMemo(() => Object.fromEntries(platoons.map(p => [p.id, p])), [platoons]);
   const agentById = useMemo(() => Object.fromEntries(agents.map(a => [a.id, a])), [agents]);
   const depotById = useMemo(() => Object.fromEntries(depots.map(d => [d.id, d])), [depots]);
+  const normalizedSearch = useMemo(() => normalizeName(searchTerm), [searchTerm]);
 
   useEffect(() => {
     if (tab === "leaders") setLeaderPage(1);
@@ -201,11 +214,48 @@ export default function Participants() {
   useEffect(() => { setDepotPage(1); }, [depots.length]);
   useEffect(() => { setCompanyPage(1); }, [companies.length]);
   useEffect(() => { setPlatoonPage(1); }, [platoons.length]);
+  useEffect(() => {
+    setLeaderPage(1);
+    setDepotPage(1);
+    setCompanyPage(1);
+    setPlatoonPage(1);
+  }, [normalizedSearch]);
 
-  const leaderPageCount = Math.max(1, Math.ceil(agents.length / rowsPerPage));
-  const depotPageCount = Math.max(1, Math.ceil(depots.length / rowsPerPage));
-  const companyPageCount = Math.max(1, Math.ceil(companies.length / rowsPerPage));
-  const platoonPageCount = Math.max(1, Math.ceil(platoons.length / rowsPerPage));
+  const matchesSearch = (value) => {
+    if (!normalizedSearch) return true;
+    return normalizeName(value || "").includes(normalizedSearch);
+  };
+
+  const filteredAgents = useMemo(() => {
+    if (!normalizedSearch) return agents;
+    return agents.filter(a => {
+      if (matchesSearch(a.name) || matchesSearch(a.id)) return true;
+      const commander = companyById[a.companyId]?.name || "";
+      const company = platoonById[a.platoonId]?.name || "";
+      const upline = a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || "") : "";
+      return matchesSearch(commander) || matchesSearch(company) || matchesSearch(upline);
+    });
+  }, [agents, agentById, companyById, normalizedSearch, platoonById]);
+
+  const filteredDepots = useMemo(() => {
+    if (!normalizedSearch) return depots;
+    return depots.filter(d => matchesSearch(d.name) || matchesSearch(d.id));
+  }, [depots, normalizedSearch]);
+
+  const filteredCompanies = useMemo(() => {
+    if (!normalizedSearch) return companies;
+    return companies.filter(c => matchesSearch(c.name) || matchesSearch(c.id));
+  }, [companies, normalizedSearch]);
+
+  const filteredPlatoons = useMemo(() => {
+    if (!normalizedSearch) return platoons;
+    return platoons.filter(p => matchesSearch(p.name) || matchesSearch(p.id));
+  }, [platoons, normalizedSearch]);
+
+  const leaderPageCount = Math.max(1, Math.ceil(filteredAgents.length / rowsPerPage));
+  const depotPageCount = Math.max(1, Math.ceil(filteredDepots.length / rowsPerPage));
+  const companyPageCount = Math.max(1, Math.ceil(filteredCompanies.length / rowsPerPage));
+  const platoonPageCount = Math.max(1, Math.ceil(filteredPlatoons.length / rowsPerPage));
 
   useEffect(() => {
     if (leaderPage > leaderPageCount) setLeaderPage(leaderPageCount);
@@ -225,23 +275,23 @@ export default function Participants() {
 
   const pagedAgents = useMemo(() => {
     const start = (leaderPage - 1) * rowsPerPage;
-    return agents.slice(start, start + rowsPerPage);
-  }, [agents, leaderPage, rowsPerPage]);
+    return filteredAgents.slice(start, start + rowsPerPage);
+  }, [filteredAgents, leaderPage, rowsPerPage]);
 
   const pagedDepots = useMemo(() => {
     const start = (depotPage - 1) * rowsPerPage;
-    return depots.slice(start, start + rowsPerPage);
-  }, [depots, depotPage, rowsPerPage]);
+    return filteredDepots.slice(start, start + rowsPerPage);
+  }, [filteredDepots, depotPage, rowsPerPage]);
 
   const pagedCompanies = useMemo(() => {
     const start = (companyPage - 1) * rowsPerPage;
-    return companies.slice(start, start + rowsPerPage);
-  }, [companies, companyPage, rowsPerPage]);
+    return filteredCompanies.slice(start, start + rowsPerPage);
+  }, [filteredCompanies, companyPage, rowsPerPage]);
 
   const pagedPlatoons = useMemo(() => {
     const start = (platoonPage - 1) * rowsPerPage;
-    return platoons.slice(start, start + rowsPerPage);
-  }, [platoons, platoonPage, rowsPerPage]);
+    return filteredPlatoons.slice(start, start + rowsPerPage);
+  }, [filteredPlatoons, platoonPage, rowsPerPage]);
 
   function exportLeadersXlsx() {
     const exportRows = agents.map(a => ({
@@ -856,6 +906,15 @@ export default function Participants() {
 
         <div className="p-title-row">
           <h2 className="p-title">Participants</h2>
+          <div className="p-search">
+            <input
+              type="search"
+              placeholder={`Search ${tab}`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label={`Search ${tab}`}
+            />
+          </div>
           <div className="p-title-actions">
             {isSuperAdmin ? (
               <button
@@ -1323,7 +1382,9 @@ export default function Participants() {
                   <div>{a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-"}</div>
                   <div className="t-right">
                     {isSuperAdmin ? (
-                      <button className="btn-link" onClick={() => editLeader(a)}>Edit</button>
+                      <button className="btn-link icon-btn" onClick={() => editLeader(a)} aria-label={`Edit ${a.name}`}>
+                        <EditIcon />
+                      </button>
                     ) : null}
                   </div>
                 </div>
@@ -1353,7 +1414,13 @@ export default function Participants() {
                 <div></div><div></div>
                 <div className="t-right">
                   {isSuperAdmin ? (
-                    <button className="btn-link" onClick={() => { setTab("depots"); editSimple(d); setIsAddDepotOpen(true); }}>Edit</button>
+                    <button
+                      className="btn-link icon-btn"
+                      onClick={() => { setTab("depots"); editSimple(d); setIsAddDepotOpen(true); }}
+                      aria-label={`Edit ${d.name}`}
+                    >
+                      <EditIcon />
+                    </button>
                   ) : null}
                 </div>
               </div>
@@ -1382,7 +1449,13 @@ export default function Participants() {
                 <div></div><div></div>
                 <div className="t-right">
                   {isSuperAdmin ? (
-                    <button className="btn-link" onClick={() => { setTab("companies"); editSimple(c); setIsAddCommanderOpen(true); }}>Edit</button>
+                    <button
+                      className="btn-link icon-btn"
+                      onClick={() => { setTab("companies"); editSimple(c); setIsAddCommanderOpen(true); }}
+                      aria-label={`Edit ${c.name}`}
+                    >
+                      <EditIcon />
+                    </button>
                   ) : null}
                 </div>
               </div>
@@ -1410,7 +1483,9 @@ export default function Participants() {
                 <div></div><div></div><div></div>
                 <div className="t-right">
                   {isSuperAdmin ? (
-                    <button className="btn-link" onClick={() => editPlatoon(p)}>Edit</button>
+                    <button className="btn-link icon-btn" onClick={() => editPlatoon(p)} aria-label={`Edit ${p.name}`}>
+                      <EditIcon />
+                    </button>
                   ) : null}
                 </div>
               </div>
