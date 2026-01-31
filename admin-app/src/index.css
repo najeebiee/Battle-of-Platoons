@@ -440,7 +440,7 @@ textarea.input:focus{
   background: var(--blue);
   color:#fff;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight:400;
   cursor:pointer;
   display:inline-flex;
@@ -452,7 +452,7 @@ textarea.input:focus{
   border:none;
   background: #eef1ff;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight:400;
   cursor:pointer;
   display:inline-flex;
@@ -518,7 +518,7 @@ textarea.input:focus{
 .button{
   border:none;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight:400;
   cursor:pointer;
   text-decoration:none;
@@ -560,7 +560,7 @@ textarea.input:focus{
 
 .export-button{
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .table-actions{

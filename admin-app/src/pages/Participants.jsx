@@ -914,6 +914,14 @@ export default function Participants() {
               onChange={(e) => setSearchTerm(e.target.value)}
               aria-label={`Search ${tab}`}
             />
+            <button
+              type="button"
+              className="button secondary p-search-clear"
+              onClick={() => setSearchTerm("")}
+              disabled={!searchTerm.trim()}
+            >
+              Clear
+            </button>
           </div>
           <div className="p-title-actions">
             {isSuperAdmin ? (
