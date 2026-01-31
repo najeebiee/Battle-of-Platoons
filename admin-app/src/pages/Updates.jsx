@@ -72,6 +72,17 @@ const initialFilters = {
 
 const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
+function EditIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M16.862 3.487a1.5 1.5 0 0 1 2.12 0l1.531 1.531a1.5 1.5 0 0 1 0 2.12l-9.94 9.94a1 1 0 0 1-.474.26l-4.12.94a.75.75 0 0 1-.9-.9l.94-4.12a1 1 0 0 1 .26-.474l9.94-9.94Zm1.06 2.12L8.47 15.06l-.51 2.24 2.24-.51 9.45-9.45-1.73-1.73ZM4 20.25c0-.414.336-.75.75-.75h14.5a.75.75 0 0 1 0 1.5H4.75a.75.75 0 0 1-.75-.75Z"
+      />
+    </svg>
+  );
+}
+
 export default function Updates() {
   const [agents, setAgents] = useState([]);
   const [depots, setDepots] = useState([]);
@@ -551,10 +562,11 @@ export default function Updates() {
                   {canEditRow(row, profile, agentMap[row.agent_id]) && ADMIN_ROLES.has(currentRole) ? (
                     <button
                       type="button"
-                      className="button secondary"
+                      className="btn-link icon-btn"
                       onClick={() => startEdit(row)}
+                      aria-label={`Edit ${row.leaderName || "row"}`}
                     >
-                      Edit
+                      <EditIcon />
                     </button>
                   ) : (
                     <span className="muted">-</span>

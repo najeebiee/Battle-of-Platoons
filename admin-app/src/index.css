@@ -468,6 +468,28 @@ textarea.input:focus{
   cursor:pointer;
 }
 
+.btn-link.icon-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #d4d8f0;
+  background: #f6f7ff;
+  color: var(--blue);
+}
+
+.btn-link.icon-btn:hover{
+  background: #eef1ff;
+}
+
+.btn-link.icon-btn svg{
+  width: 18px;
+  height: 18px;
+}
+
 .btn-primary::before{
   content:"";
   width:18px;
@@ -596,7 +618,7 @@ textarea.input:focus{
 .table-scroll{ overflow-x:auto; }
 .table-pagination{
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   padding: 12px 0 4px;
   gap: 12px;
