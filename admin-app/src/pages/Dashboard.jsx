@@ -214,43 +214,7 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-topbar">
-          <div className="dashboard-topbar-segment dashboard-topbar-segment--controls">
-            <div className="dashboard-topbar-row">
-              <div className="dashboard-topbar-label">Date Range</div>
-              <div className="dashboard-topbar-range">
-                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-                <span className="dashboard-topbar-range__divider">to</span>
-                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-              </div>
-              <div className="dashboard-topbar-updated">{formatRelativeTime(lastUpdatedAt)}</div>
-            </div>
-            <div className="dashboard-topbar-row dashboard-topbar-row--chips">
-              <div className="dashboard-topbar-chips">
-                {presets.map((preset) => (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    className="dashboard-chip"
-                    onClick={() => applyPreset(preset)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="button secondary dashboard-refresh"
-                onClick={loadDashboard}
-                disabled={loading}
-              >
-                <RefreshIcon size={16} />
-                {loading ? "Refreshing..." : "Refresh"}
-              </button>
-            </div>
-          </div>
-
           <div className="dashboard-topbar-metrics">
-            <div className="dashboard-topbar-divider" aria-hidden="true" />
             {kpis.map(({ key, label, icon: Icon, format }, index) => (
               <React.Fragment key={key}>
                 {index > 0 && <div className="dashboard-topbar-divider" aria-hidden="true" />}
@@ -265,6 +229,41 @@ export default function Dashboard() {
                 </div>
               </React.Fragment>
             ))}
+          </div>
+        </div>
+
+        <div className="dashboard-filter-bar">
+          <div className="dashboard-filter-group">
+            <div className="dashboard-filter-label">Date Range</div>
+            <div className="dashboard-topbar-range">
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <span className="dashboard-topbar-range__divider">to</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
+            <div className="dashboard-topbar-chips">
+              {presets.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  className="dashboard-chip"
+                  onClick={() => applyPreset(preset)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="dashboard-filter-meta">
+            <div className="dashboard-topbar-updated">{formatRelativeTime(lastUpdatedAt)}</div>
+            <button
+              type="button"
+              className="button secondary dashboard-refresh"
+              onClick={loadDashboard}
+              disabled={loading}
+            >
+              <RefreshIcon size={16} />
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
           </div>
         </div>
 
