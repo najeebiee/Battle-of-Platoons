@@ -68,6 +68,39 @@ function RefreshIcon({ size = 16 }) {
   );
 }
 
+function formatYmd(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function startOfQuarter(date) {
+  const quarter = Math.floor(date.getMonth() / 3);
+  return new Date(date.getFullYear(), quarter * 3, 1);
+}
+
+function formatRelativeTime(date) {
+  if (!date) return "Updated —";
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+  if (diffSec < 30) return "Updated just now";
+  if (diffSec < 60) return "Updated 1m ago";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Updated ${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `Updated ${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `Updated ${diffDays}d ago`;
+}
+
 function formatNumber(value) {
   if (value === null || value === undefined || value === "") return "—";
   const num = Number(value);
@@ -103,6 +136,8 @@ export default function Dashboard() {
   const [data, setData] = useState({ kpis: {}, rows: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [selectedRow, setSelectedRow] = useState(null);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -114,6 +149,7 @@ export default function Dashboard() {
         dateTo: dateTo || undefined,
       });
       setData(result ?? { kpis: {}, rows: [] });
+      setLastUpdatedAt(new Date());
     } catch (err) {
       setError(err?.message || "Failed to load dashboard.");
     } finally {
@@ -135,15 +171,36 @@ export default function Dashboard() {
   }, [data]);
 
   const topThree = sortedRows.slice(0, 3);
-  const topTen = sortedRows.slice(0, 10);
+  const topTen = sortedRows.slice(3, 13);
+  const hasRows = sortedRows.length > 0;
 
   const kpis = [
+    { key: "totalSales", label: "Total Sales", icon: SalesIcon, format: formatCurrency },
+    { key: "totalLeads", label: "Total Leads", icon: LeadsIcon, format: formatNumber },
     { key: "leadersCount", label: "Leaders", icon: UsersIcon, format: formatNumber },
     { key: "depotsCount", label: "Depots", icon: DepotIcon, format: formatNumber },
     { key: "companiesCount", label: "Companies", icon: CompanyIcon, format: formatNumber },
-    { key: "totalLeads", label: "Total Leads", icon: LeadsIcon, format: formatNumber },
-    { key: "totalSales", label: "Total Sales", icon: SalesIcon, format: formatCurrency },
   ];
+
+  const presets = useMemo(() => {
+    const today = new Date();
+    const todayYmd = formatYmd(today);
+    return [
+      { key: "today", label: "Today", from: todayYmd, to: todayYmd },
+      { key: "last7", label: "Last 7 Days", from: formatYmd(addDays(today, -6)), to: todayYmd },
+      { key: "month", label: "This Month", from: formatYmd(startOfMonth(today)), to: todayYmd },
+      { key: "quarter", label: "This Quarter", from: formatYmd(startOfQuarter(today)), to: todayYmd },
+    ];
+  }, []);
+
+  const applyPreset = (preset) => {
+    setDateFrom(preset.from);
+    setDateTo(preset.to);
+  };
+
+  const handleSelectRow = (row) => {
+    setSelectedRow(row);
+  };
 
   return (
     <div className="dashboard-page">
@@ -153,34 +210,47 @@ export default function Dashboard() {
             <div className="card-title">Dashboard</div>
             <div className="muted">Quick snapshot of the current competition and leaderboards.</div>
           </div>
-          <div className="dashboard-controls">
-            <div className="dashboard-dates">
-              <label className="dashboard-label">
-                From
-                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-              </label>
-              <label className="dashboard-label">
-                To
-                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-              </label>
+        </div>
+
+        <div className="dashboard-toolbar">
+          <div className="dashboard-range">
+            <div className="dashboard-label">Date Range</div>
+            <div className="dashboard-range__inputs">
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <span className="dashboard-range__divider">to</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </div>
-            <div className="dashboard-toggle" role="tablist" aria-label="Ranking scope">
-              {["leaders", "depots", "companies"].map((key) => (
+            <div className="dashboard-presets">
+              {presets.map((preset) => (
                 <button
-                  key={key}
+                  key={preset.key}
                   type="button"
-                  className={`dashboard-toggle__btn ${mode === key ? "is-active" : ""}`}
-                  onClick={() => setMode(key)}
+                  className="dashboard-preset"
+                  onClick={() => applyPreset(preset)}
                 >
-                  {key === "leaders" ? "Leaders" : key === "depots" ? "Depots" : "Companies"}
+                  {preset.label}
                 </button>
               ))}
             </div>
-            <button type="button" className="button secondary dashboard-refresh" onClick={loadDashboard} disabled={loading}>
-              <RefreshIcon size={16} />
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
           </div>
+
+          <div className="dashboard-toggle" role="tablist" aria-label="Ranking scope">
+            {["leaders", "depots", "companies"].map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`dashboard-toggle__btn ${mode === key ? "is-active" : ""}`}
+                onClick={() => setMode(key)}
+              >
+                {key === "leaders" ? "Leaders" : key === "depots" ? "Depots" : "Companies"}
+              </button>
+            ))}
+          </div>
+
+          <button type="button" className="button secondary dashboard-refresh" onClick={loadDashboard} disabled={loading}>
+            <RefreshIcon size={16} />
+            {loading ? "Refreshing..." : formatRelativeTime(lastUpdatedAt)}
+          </button>
         </div>
 
         {error && <div className="dashboard-error">{error}</div>}
@@ -199,13 +269,27 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {!loading && !hasRows && (
+          <div className="dashboard-empty">
+            <div className="dashboard-empty__title">No data for this period</div>
+            <div className="dashboard-empty__text">Try selecting a wider date range or a quick preset.</div>
+            <button type="button" className="button primary" onClick={() => applyPreset(presets[1])}>
+              Use Last 7 Days
+            </button>
+          </div>
+        )}
+
         <div className="dashboard-grid">
           <div className="card dashboard-panel">
             <div className="dashboard-panel__title">Top 3</div>
             <div className="dashboard-podium">
-              {topThree.length === 0 && !loading && <div className="muted">No results for this range.</div>}
               {topThree.map((row, index) => (
-                <div className={`podium-card rank-${index + 1}`} key={`${row?.id || row?.name}-${index}`}>
+                <button
+                  type="button"
+                  className={`podium-card rank-${index + 1} ${selectedRow?.id === row?.id ? "is-selected" : ""}`}
+                  key={`${row?.id || row?.name}-${index}`}
+                  onClick={() => handleSelectRow(row)}
+                >
                   <div className="podium-rank">#{index + 1}</div>
                   <div className="podium-avatar">
                     {row?.photoUrl ? (
@@ -219,7 +303,7 @@ export default function Dashboard() {
                     <span>Leads: {formatNumber(row?.leads)}</span>
                     <span>Sales: {formatCurrency(row?.sales)}</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -246,8 +330,12 @@ export default function Dashboard() {
                     </tr>
                   ) : (
                     topTen.map((row, index) => (
-                      <tr key={`${row?.id || row?.name}-${index}`}>
-                        <td>#{index + 1}</td>
+                      <tr
+                        key={`${row?.id || row?.name}-${index}`}
+                        className={selectedRow?.id === row?.id ? "is-selected" : ""}
+                        onClick={() => handleSelectRow(row)}
+                      >
+                        <td>#{index + 4}</td>
                         <td>{row?.name || "Unknown"}</td>
                         <td>{formatNumber(row?.leads)}</td>
                         <td>{formatNumber(row?.payins)}</td>
@@ -260,6 +348,29 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {selectedRow && (
+          <div className="dashboard-detail">
+            <div>
+              <div className="dashboard-detail__title">Selected {mode === "leaders" ? "Leader" : mode === "depots" ? "Depot" : "Company"}</div>
+              <div className="dashboard-detail__name">{selectedRow?.name || "Unknown"}</div>
+            </div>
+            <div className="dashboard-detail__metrics">
+              <div>
+                <div className="dashboard-detail__label">Leads</div>
+                <div className="dashboard-detail__value">{formatNumber(selectedRow?.leads)}</div>
+              </div>
+              <div>
+                <div className="dashboard-detail__label">Payins</div>
+                <div className="dashboard-detail__value">{formatNumber(selectedRow?.payins)}</div>
+              </div>
+              <div>
+                <div className="dashboard-detail__label">Sales</div>
+                <div className="dashboard-detail__value">{formatCurrency(selectedRow?.sales)}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
