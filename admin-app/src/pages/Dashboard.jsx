@@ -219,13 +219,13 @@ export default function Dashboard() {
               <React.Fragment key={key}>
                 {index > 0 && <div className="dashboard-topbar-divider" aria-hidden="true" />}
                 <div className="dashboard-topbar-segment dashboard-topbar-segment--metric">
-                  <div className="dashboard-metric-icon" aria-hidden="true">
-                    <Icon size={18} />
-                  </div>
-                  <div className="dashboard-metric-meta">
-                    <div className="dashboard-metric-value">{format?.(data?.kpis?.[key])}</div>
+                  <div className="dashboard-metric-header">
                     <div className="dashboard-metric-label">{label}</div>
+                    <div className="dashboard-metric-icon" aria-hidden="true">
+                      <Icon size={18} />
+                    </div>
                   </div>
+                  <div className="dashboard-metric-value">{format?.(data?.kpis?.[key])}</div>
                 </div>
               </React.Fragment>
             ))}

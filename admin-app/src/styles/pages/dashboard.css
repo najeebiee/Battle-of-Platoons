@@ -47,10 +47,10 @@
 .dashboard-topbar-segment--metric{
   flex: 0.9;
   min-width: 140px;
-  align-items: center;
-  text-align: center;
+  align-items: stretch;
+  text-align: left;
+  padding: 16px 18px;
   gap: 10px;
-  padding: 18px 16px;
 }
 
 .dashboard-topbar-divider{
@@ -59,20 +59,21 @@
   align-self: stretch;
 }
 
+.dashboard-metric-header{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .dashboard-metric-icon{
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.18);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.dashboard-metric-meta{
-  display: grid;
-  gap: 4px;
-  text-align: left;
 }
 
 .dashboard-metric-value{
@@ -84,6 +85,7 @@
 .dashboard-metric-label{
   font-size: 12px;
   opacity: 0.8;
+  font-weight: 600;
 }
 
 .dashboard-filter-bar{
