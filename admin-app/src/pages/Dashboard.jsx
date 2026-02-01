@@ -250,6 +250,7 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard-topbar-metrics">
+            <div className="dashboard-topbar-divider" aria-hidden="true" />
             {kpis.map(({ key, label, icon: Icon, format }, index) => (
               <React.Fragment key={key}>
                 {index > 0 && <div className="dashboard-topbar-divider" aria-hidden="true" />}
