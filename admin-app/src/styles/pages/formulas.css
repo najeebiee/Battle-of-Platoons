@@ -35,15 +35,26 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  background: #0b1aa5;
-  color: #ffffff;
+  background: #eef1ff;
+  color: var(--blue);
+  border: 1px solid #cfd5ff;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 .formula-create-btn:hover{
-  background: #08147f;
+  background: #0b1aa5;
+  color: #ffffff;
+}
+
+.formula-create-btn::before{
+  content: none;
+}
+
+.formula-create-btn svg{
+  width: 18px;
+  height: 18px;
 }
 
 .formulas-page .modal-form{
@@ -312,8 +323,42 @@
   font-weight: 800;
   cursor: pointer;
   color: #1b1f2d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
 }
 
+.details-accordion summary::-webkit-details-marker{
+  display: none;
+}
+
+.details-accordion summary::after{
+  content: "";
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid #d8dcf5;
+  background: #f3f4ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='%23000' viewBox='0 0 24 24'><path d='M8.5 9.5 12 13l3.5-3.5 1.4 1.4-4.9 4.9-4.9-4.9z'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='%23000' viewBox='0 0 24 24'><path d='M8.5 9.5 12 13l3.5-3.5 1.4 1.4-4.9 4.9-4.9-4.9z'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: 12px 12px;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: 12px 12px;
+  background-color: var(--blue);
+  transition: transform 0.18s ease;
+}
+
+.details-accordion[open] summary::after{
+  transform: rotate(180deg);
+}
 .breakdown-list{
   display:flex;
   flex-direction:column;
