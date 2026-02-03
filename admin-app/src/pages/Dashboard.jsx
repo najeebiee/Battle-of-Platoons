@@ -269,18 +269,20 @@ export default function Dashboard() {
 
         {error && <div className="dashboard-error">{error}</div>}
 
-        <div className="dashboard-primary-tabs" role="tablist" aria-label="Ranking scope">
-          {["leaders", "depots", "companies"].map((key) => (
-            <button
-              key={key}
-              type="button"
-              className={`dashboard-pill ${mode === key ? "is-active" : ""}`}
-              onClick={() => setMode(key)}
-            >
-              {key === "leaders" ? "Leaders" : key === "depots" ? "Depots" : "Companies"}
-            </button>
-          ))}
-        </div>
+        <section className="view-toggle-section">
+          <div className="view-toggle" role="tablist" aria-label="Ranking scope">
+            {["leaders", "depots", "companies"].map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`view-pill${mode === key ? " view-pill--active" : ""}`}
+                onClick={() => setMode(key)}
+              >
+                {key === "leaders" ? "Leaders" : key === "depots" ? "Depots" : "Companies"}
+              </button>
+            ))}
+          </div>
+        </section>
 
         {!loading && !hasRows && (
           <div className="dashboard-empty">

@@ -25,7 +25,7 @@ export function ModalForm({ isOpen, onOverlayClose, onSubmit, title, onClose, ch
         <div className="modal-body">{children}</div>
         <div className="modal-footer">
           <div className="actions">{footer}</div>
-        </div>
+        </div>  
       </form>
     </div>
   );
