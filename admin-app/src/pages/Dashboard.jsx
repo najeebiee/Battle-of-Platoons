@@ -57,12 +57,12 @@ function SalesIcon({ size = 18 }) {
   );
 }
 
-function XIcon({ size = 14 }) {
+function RefreshIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path
         fill="currentColor"
-        d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 1 0 5.7 7.11L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.41L13.41 12l4.9-4.89a1 1 0 0 0 0-1.4Z"
+        d="M12 5.25a6.75 6.75 0 1 0 6.4 9.08.75.75 0 1 1 1.42.46 8.25 8.25 0 1 1-2.2-8.76l1.1-1.1a.75.75 0 0 1 1.28.53v3.5a.75.75 0 0 1-.75.75h-3.5a.75.75 0 0 1-.53-1.28l1.17-1.18A6.73 6.73 0 0 0 12 5.25Z"
       />
     </svg>
   );
@@ -377,7 +377,7 @@ export default function Dashboard() {
               onClick={loadDashboard}
               disabled={loading}
             >
-              <XIcon size={12} />
+              <RefreshIcon size={16} />
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
@@ -441,7 +441,7 @@ export default function Dashboard() {
           </div>
 
           <div className="card dashboard-panel">
-            <div className="dashboard-panel__title">Top 10</div>
+            <div className="dashboard-panel__title">Top 4 - 13</div>
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
