@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Calculator,
@@ -37,6 +37,17 @@ const LEADER_ROLE_TABS = [
 
 function mergeClassNames(...classes) {
   return classes.filter(Boolean).join(" ");
+}
+
+function RefreshIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 4a8 8 0 1 0 7.9 9.5.75.75 0 1 1 1.48.25A9.5 9.5 0 1 1 19 7.03l.62-.62a.75.75 0 0 1 1.28.53v4a.75.75 0 0 1-.75.75h-4a.75.75 0 0 1-.53-1.28l.77-.77A7.98 7.98 0 0 0 12 4Z"
+      />
+    </svg>
+  );
 }
 
 function formatCurrencyPHP(n) {
@@ -94,6 +105,39 @@ function toYMD(d) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatYmd(date) {
+  return toYMD(date);
+}
+
+function addDays(date, days) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function startOfQuarter(date) {
+  const quarter = Math.floor(date.getMonth() / 3);
+  return new Date(date.getFullYear(), quarter * 3, 1);
+}
+
+function formatRelativeTime(date) {
+  if (!date) return "Updated -";
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+  if (diffSec < 30) return "Updated just now";
+  if (diffSec < 60) return "Updated 1m ago";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Updated ${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `Updated ${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `Updated ${diffDays}d ago`;
 }
 
 function toIsoWeekKey(date) {
@@ -294,6 +338,12 @@ function App() {
   const faqWeekKey = activeWeekTab?.range?.end ? toIsoWeekKey(activeWeekTab.range.end) : null;
   const [activeView, setActiveView] = useState("depots");
   const [leaderRoleFilter, setLeaderRoleFilter] = useState(LEADER_ROLE_TABS[0].key);
+  const [dateFrom, setDateFrom] = useState(() =>
+    activeWeekTab?.range?.start ? toYMD(activeWeekTab.range.start) : toYMD(new Date())
+  );
+  const [dateTo, setDateTo] = useState(() =>
+    activeWeekTab?.range?.end ? toYMD(activeWeekTab.range.end) : toYMD(new Date())
+  );
   // Pagination plan:
   // - paginate ranks 4+ (rows list) at 15 per page
   // - reset page on view/week/filter changes
@@ -302,6 +352,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [faqOpenKey, setFaqOpenKey] = useState("formulas");
   const [formulaOpenKey, setFormulaOpenKey] = useState("depots");
@@ -309,6 +360,22 @@ function App() {
   const [formulasByType, setFormulasByType] = useState({});
   const faqButtonRef = useRef(null);
   const faqCloseRef = useRef(null);
+
+  const presets = useMemo(() => {
+    const today = new Date();
+    const todayYmd = formatYmd(today);
+    return [
+      { key: "today", label: "Today", from: todayYmd, to: todayYmd },
+      { key: "last7", label: "Last 7 Days", from: formatYmd(addDays(today, -6)), to: todayYmd },
+      { key: "month", label: "This Month", from: formatYmd(startOfMonth(today)), to: todayYmd },
+      { key: "quarter", label: "This Quarter", from: formatYmd(startOfQuarter(today)), to: todayYmd },
+    ];
+  }, []);
+
+  const applyPreset = (preset) => {
+    setDateFrom(preset.from);
+    setDateTo(preset.to);
+  };
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -320,8 +387,13 @@ function App() {
   }, [supabaseConfigured]);
 
   useEffect(() => {
-    let isCancelled = false;
-    async function load() {
+    if (!activeWeekTab?.range) return;
+    setDateFrom(toYMD(activeWeekTab.range.start));
+    setDateTo(toYMD(activeWeekTab.range.end));
+  }, [activeWeek, activeWeekTab?.range?.start, activeWeekTab?.range?.end]);
+
+  const loadLeaderboard = useCallback(
+    async ({ isCancelled } = {}) => {
       if (!supabaseConfigured) return;
       setLoading(true);
       setError("");
@@ -331,34 +403,47 @@ function App() {
         const leadersPlatoonView = activeView === "leaders" && leaderRoleFilter === "platoon";
         const groupByView = getGroupByForView(activeView, leaderRoleFilter);
         const battleTypeKey = getBattleTypeForView(activeView, leaderRoleFilter);
-        const weekKey = range?.end ? toIsoWeekKey(range.end) : null;
+        const effectiveStart = dateFrom || (range?.start ? toYMD(range.start) : null);
+        const effectiveEnd = dateTo || (range?.end ? toYMD(range.end) : null);
+        const weekKey = effectiveEnd
+          ? toIsoWeekKey(new Date(effectiveEnd))
+          : range?.end
+          ? toIsoWeekKey(range.end)
+          : null;
 
         const result = await getLeaderboard({
-          startDate: toYMD(range.start),
-          endDate: toYMD(range.end),
+          startDate: effectiveStart,
+          endDate: effectiveEnd,
           groupBy: groupByView,
           roleFilter: activeView === "leaders" && !leadersPlatoonView ? leaderRoleFilter : null,
           battleType: battleTypeKey,
           weekKey,
         });
 
-        if (!isCancelled) setData(result);
+        if (isCancelled?.current) return;
+        setData(result);
+        setLastUpdatedAt(new Date());
       } catch (e) {
         console.error(e);
         const friendly = "Unable to load leaderboard data.";
         const devDetails = e?.message
           ? `${e.message}${e.code ? ` (code: ${e.code})` : ""}`
           : friendly;
-        if (!isCancelled) setError(import.meta.env.DEV ? devDetails : friendly);
+        if (!isCancelled?.current) setError(import.meta.env.DEV ? devDetails : friendly);
       } finally {
-        if (!isCancelled) setLoading(false);
+        if (!isCancelled?.current) setLoading(false);
       }
-    }
-    load();
+    },
+    [activeView, activeWeek, dateFrom, dateTo, leaderRoleFilter, supabaseConfigured, weekTabs]
+  );
+
+  useEffect(() => {
+    const isCancelled = { current: false };
+    loadLeaderboard({ isCancelled });
     return () => {
-      isCancelled = true;
+      isCancelled.current = true;
     };
-  }, [activeWeek, activeView, leaderRoleFilter]);
+  }, [loadLeaderboard]);
 
   const today = new Date().toLocaleDateString("en-US", {
     month: "long",
@@ -426,7 +511,7 @@ function App() {
 
   useEffect(() => {
     setPage(1);
-  }, [activeWeek, activeView, leaderRoleFilter]);
+  }, [activeWeek, activeView, dateFrom, dateTo, leaderRoleFilter]);
 
   useEffect(() => {
     if (page > pageCount) {
@@ -717,6 +802,49 @@ function App() {
             </div>
           </div>
         </section>
+
+        <div className="dashboard-filter-bar">
+          <div className="dashboard-filter-group">
+            <div className="dashboard-filter-label">Date Range</div>
+            <div className="dashboard-topbar-range">
+              <input
+                type="date"
+                value={dateFrom || ""}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <span className="dashboard-topbar-range__divider">to</span>
+              <input
+                type="date"
+                value={dateTo || ""}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+            <div className="dashboard-topbar-chips">
+              {presets.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  className="dashboard-chip"
+                  onClick={() => applyPreset(preset)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="dashboard-filter-meta">
+            <div className="dashboard-topbar-updated">{formatRelativeTime(lastUpdatedAt)}</div>
+            <button
+              type="button"
+              className="button secondary dashboard-refresh"
+              onClick={() => loadLeaderboard()}
+              disabled={loading}
+            >
+              <RefreshIcon size={16} />
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+        </div>
 
         {/* View toggle */}
         <section className="view-toggle-section">
