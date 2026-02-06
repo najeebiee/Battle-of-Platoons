@@ -1022,6 +1022,9 @@
 }
 
 @media (max-width: 640px){
+  .dashboard-filter-label{
+    font-size: clamp(9px, 2.2vw, 11px);
+  }
   .dashboard-filter-bar{
     gap: 10px;
     flex-direction: row;
