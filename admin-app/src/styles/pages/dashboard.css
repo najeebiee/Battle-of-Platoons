@@ -149,6 +149,7 @@
 }
 
 .dashboard-topbar-select{
+  display: none;
   border: 1px solid #d8dcf7;
   background: #ffffff;
   color: var(--blue);
@@ -190,10 +191,7 @@
 }
 
 .dashboard-refresh{
-  gap: 6px;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  gap: 8px;
 }
 
 .button.secondary.dashboard-refresh::before{
@@ -1047,6 +1045,7 @@
   }
 
   .dashboard-topbar-select{
+    display: inline-flex;
     font-size: clamp(10px, 2.4vw, 11px);
     padding: 3px 8px;
   }
@@ -1054,16 +1053,27 @@
   .dashboard-refresh{
     font-size: clamp(10px, 2.4vw, 11px);
     padding: 3px 8px;
+    border-radius: 999px;
   }
 
   .dashboard-filter-meta{
     width: 100%;
     justify-content: flex-end;
   }
+
+  .dashboard-topbar-chips{
+    display: none;
+  }
 }
 
 @media (max-width: 360px){
   .dashboard-topbar-range input{
     width: clamp(80px, 30vw, 110px);
+  }
+}
+
+@media (max-width: 700px){
+  .dashboard-topbar-range{
+    max-width: 340px;
   }
 }

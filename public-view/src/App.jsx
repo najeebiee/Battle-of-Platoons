@@ -825,23 +825,33 @@ function App() {
               />
             </div>
             <div className="dashboard-topbar-chips">
-              <select
-                className="dashboard-topbar-select"
-                value={selectedPresetKey}
-                onChange={(e) => {
-                  const preset = presets.find((item) => item.key === e.target.value);
-                  if (preset) applyPreset(preset);
-                }}
-                aria-label="Quick date range presets"
-              >
-                <option value="">Custom range</option>
-                {presets.map((preset) => (
-                  <option key={preset.key} value={preset.key}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
+              {presets.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  className="dashboard-chip"
+                  onClick={() => applyPreset(preset)}
+                >
+                  {preset.label}
+                </button>
+              ))}
             </div>
+            <select
+              className="dashboard-topbar-select"
+              value={selectedPresetKey}
+              onChange={(e) => {
+                const preset = presets.find((item) => item.key === e.target.value);
+                if (preset) applyPreset(preset);
+              }}
+              aria-label="Quick date range presets"
+            >
+              <option value="">Custom range</option>
+              {presets.map((preset) => (
+                <option key={preset.key} value={preset.key}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="dashboard-filter-meta">
             <button
