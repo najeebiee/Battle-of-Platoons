@@ -1031,10 +1031,29 @@
   .dashboard-topbar-range{
     flex-wrap: nowrap;
     white-space: nowrap;
+    gap: 4px;
+    padding: 4px 8px;
   }
 
   .dashboard-topbar-range input{
-    min-width: 110px;
+    min-width: 0;
+    width: clamp(86px, 28vw, 120px);
+    font-size: clamp(10px, 2.6vw, 12px);
+    padding: 2px 4px;
+  }
+
+  .dashboard-topbar-range__divider{
+    font-size: clamp(10px, 2.4vw, 12px);
+  }
+
+  .dashboard-topbar-select{
+    font-size: clamp(10px, 2.4vw, 11px);
+    padding: 3px 8px;
+  }
+
+  .dashboard-refresh{
+    font-size: clamp(10px, 2.4vw, 11px);
+    padding: 3px 8px;
   }
 
   .dashboard-filter-meta{
@@ -1045,6 +1064,6 @@
 
 @media (max-width: 360px){
   .dashboard-topbar-range input{
-    min-width: 100px;
+    width: clamp(80px, 30vw, 110px);
   }
 }

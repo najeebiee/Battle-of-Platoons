@@ -377,6 +377,11 @@ function App() {
     setDateTo(preset.to);
   };
 
+  const selectedPresetKey = useMemo(() => {
+    const match = presets.find((preset) => preset.from === dateFrom && preset.to === dateTo);
+    return match ? match.key : "";
+  }, [presets, dateFrom, dateTo]);
+
   useEffect(() => {
     if (!supabaseConfigured) {
       setError("Service temporarily unavailable. Please try again later.");
@@ -820,27 +825,32 @@ function App() {
               />
             </div>
             <div className="dashboard-topbar-chips">
-              {presets.map((preset) => (
-                <button
-                  key={preset.key}
-                  type="button"
-                  className="dashboard-chip"
-                  onClick={() => applyPreset(preset)}
-                >
-                  {preset.label}
-                </button>
-              ))}
+              <select
+                className="dashboard-topbar-select"
+                value={selectedPresetKey}
+                onChange={(e) => {
+                  const preset = presets.find((item) => item.key === e.target.value);
+                  if (preset) applyPreset(preset);
+                }}
+                aria-label="Quick date range presets"
+              >
+                <option value="">Custom range</option>
+                {presets.map((preset) => (
+                  <option key={preset.key} value={preset.key}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="dashboard-filter-meta">
-            <div className="dashboard-topbar-updated">{formatRelativeTime(lastUpdatedAt)}</div>
             <button
               type="button"
               className="button secondary dashboard-refresh"
               onClick={() => loadLeaderboard()}
               disabled={loading}
             >
-              <RefreshIcon size={16} />
+              <RefreshIcon size={12} />
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
