@@ -315,6 +315,11 @@ export default function Dashboard() {
     setDateTo(preset.to);
   };
 
+  const selectedPresetKey = useMemo(() => {
+    const match = presets.find((preset) => preset.from === dateFrom && preset.to === dateTo);
+    return match ? match.key : "";
+  }, [presets, dateFrom, dateTo]);
+
   const handleSelectRow = (row) => {
     setSelectedRow(row);
   };
@@ -357,27 +362,32 @@ export default function Dashboard() {
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </div>
             <div className="dashboard-topbar-chips">
-              {presets.map((preset) => (
-                <button
-                  key={preset.key}
-                  type="button"
-                  className="dashboard-chip"
-                  onClick={() => applyPreset(preset)}
-                >
-                  {preset.label}
-                </button>
-              ))}
+              <select
+                className="dashboard-topbar-select"
+                value={selectedPresetKey}
+                onChange={(e) => {
+                  const preset = presets.find((item) => item.key === e.target.value);
+                  if (preset) applyPreset(preset);
+                }}
+                aria-label="Quick date range presets"
+              >
+                <option value="">Custom range</option>
+                {presets.map((preset) => (
+                  <option key={preset.key} value={preset.key}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="dashboard-filter-meta">
-            <div className="dashboard-topbar-updated">{formatRelativeTime(lastUpdatedAt)}</div>
             <button
               type="button"
               className="button secondary dashboard-refresh"
               onClick={loadDashboard}
               disabled={loading}
             >
-              <RefreshIcon size={16} />
+              <RefreshIcon size={12} />
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
