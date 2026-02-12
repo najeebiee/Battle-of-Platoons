@@ -90,6 +90,8 @@ export default function Upload() {
   const [manualError, setManualError] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
   const [manualLeaderAccordionOpen, setManualLeaderAccordionOpen] = useState(false);
+  const [manualLeadsDepotAccordionOpen, setManualLeadsDepotAccordionOpen] = useState(false);
+  const [manualSalesDepotAccordionOpen, setManualSalesDepotAccordionOpen] = useState(false);
 
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -198,6 +200,36 @@ export default function Upload() {
       (agent.id || "").toLowerCase().includes(query)
     );
   }, [agentsOptions, manualLookupInputs.agent]);
+
+  const selectedManualLeadsDepotName = useMemo(() => {
+    if (!manualForm.leads_depot_id) return "";
+    const selected = depotsOptions.find(depot => depot.id === manualForm.leads_depot_id);
+    return selected?.name || "";
+  }, [depotsOptions, manualForm.leads_depot_id]);
+
+  const selectedManualSalesDepotName = useMemo(() => {
+    if (!manualForm.sales_depot_id) return "";
+    const selected = depotsOptions.find(depot => depot.id === manualForm.sales_depot_id);
+    return selected?.name || "";
+  }, [depotsOptions, manualForm.sales_depot_id]);
+
+  const filteredManualLeadsDepots = useMemo(() => {
+    const query = manualLookupInputs.leads_depot_id.trim().toLowerCase();
+    if (!query) return depotsOptions;
+    return depotsOptions.filter(depot =>
+      (depot.name || "").toLowerCase().includes(query) ||
+      (depot.id || "").toLowerCase().includes(query)
+    );
+  }, [depotsOptions, manualLookupInputs.leads_depot_id]);
+
+  const filteredManualSalesDepots = useMemo(() => {
+    const query = manualLookupInputs.sales_depot_id.trim().toLowerCase();
+    if (!query) return depotsOptions;
+    return depotsOptions.filter(depot =>
+      (depot.name || "").toLowerCase().includes(query) ||
+      (depot.id || "").toLowerCase().includes(query)
+    );
+  }, [depotsOptions, manualLookupInputs.sales_depot_id]);
 
   function exportXlsx() {
     const exportRows = processed.displayRows.map((row, idx) => {
@@ -341,6 +373,8 @@ export default function Upload() {
     setImportMode("warn");
     setManualOpen(false);
     setManualLeaderAccordionOpen(false);
+    setManualLeadsDepotAccordionOpen(false);
+    setManualSalesDepotAccordionOpen(false);
     setManualError("");
     setManualForm({
       date_real: "",
@@ -407,24 +441,6 @@ export default function Upload() {
     }
   }
 
-  function parseLookupValue(value) {
-    const cleaned = value?.toString().trim() ?? "";
-    if (!cleaned) return { label: "", id: "" };
-    const parts = cleaned.split(" — ");
-    if (parts.length >= 2) {
-      const id = parts[parts.length - 1]?.trim() ?? "";
-      const label = parts.slice(0, -1).join(" — ").trim();
-      return { label, id };
-    }
-    return { label: cleaned, id: "" };
-  }
-
-  function findDepotByName(name) {
-    const normalized = name.trim().toLowerCase();
-    const matches = depotsOptions.filter(depot => depot.name?.toLowerCase() === normalized);
-    return matches.length === 1 ? matches[0] : null;
-  }
-
   function handleManualAgentChange(value) {
     const normalized = value.trim().toLowerCase();
     const exactMatch = agentsOptions.find(agent =>
@@ -452,23 +468,42 @@ export default function Upload() {
       agent_id: agent.id,
     }));
     setManualLeaderAccordionOpen(false);
+    setManualLeadsDepotAccordionOpen(false);
+    setManualSalesDepotAccordionOpen(false);
   }
 
-  function handleManualDepotChange(field, value) {
-    const parsed = parseLookupValue(value);
-    let depotId = parsed.id;
-    if (!depotId && parsed.label) {
-      const match = findDepotByName(parsed.label);
-      depotId = match?.id ?? "";
-    }
+  function handleManualDepotInputChange(field, value) {
+    const normalized = value.trim().toLowerCase();
+    const exactMatch = depotsOptions.find(depot =>
+      (depot.name || "").trim().toLowerCase() === normalized ||
+      (depot.id || "").trim().toLowerCase() === normalized
+    );
     setManualLookupInputs(prev => ({
       ...prev,
       [field]: value,
     }));
     setManualForm(prev => ({
       ...prev,
-      [field]: depotId,
+      [field]: exactMatch?.id ?? "",
     }));
+  }
+
+  function handleManualDepotSelect(field, depot) {
+    if (!depot) return;
+    setManualLookupInputs(prev => ({
+      ...prev,
+      [field]: depot.name || "",
+    }));
+    setManualForm(prev => ({
+      ...prev,
+      [field]: depot.id,
+    }));
+    if (field === "leads_depot_id") {
+      setManualLeadsDepotAccordionOpen(false);
+    } else {
+      setManualSalesDepotAccordionOpen(false);
+    }
+    setManualLeaderAccordionOpen(false);
   }
 
   async function handleManualSubmit(e) {
@@ -505,6 +540,8 @@ export default function Upload() {
       setRows(prev => mergeRawDataRowsByIdentity([...prev, ...normalizedRows]));
       setManualOpen(false);
       setManualLeaderAccordionOpen(false);
+      setManualLeadsDepotAccordionOpen(false);
+      setManualSalesDepotAccordionOpen(false);
       setManualForm({
         date_real: "",
         agent_id: "",
@@ -539,6 +576,8 @@ export default function Upload() {
             setManualError("");
             setManualOpen(true);
             setManualLeaderAccordionOpen(false);
+            setManualLeadsDepotAccordionOpen(false);
+            setManualSalesDepotAccordionOpen(false);
           }}
           disabled={manualLoading}
         >
@@ -798,10 +837,14 @@ export default function Upload() {
         onClose={() => {
           setManualOpen(false);
           setManualLeaderAccordionOpen(false);
+          setManualLeadsDepotAccordionOpen(false);
+          setManualSalesDepotAccordionOpen(false);
         }}
         onOverlayClose={() => {
           setManualOpen(false);
           setManualLeaderAccordionOpen(false);
+          setManualLeadsDepotAccordionOpen(false);
+          setManualSalesDepotAccordionOpen(false);
         }}
         onSubmit={handleManualSubmit}
         footer={(
@@ -812,6 +855,8 @@ export default function Upload() {
               onClick={() => {
                 setManualOpen(false);
                 setManualLeaderAccordionOpen(false);
+                setManualLeadsDepotAccordionOpen(false);
+                setManualSalesDepotAccordionOpen(false);
               }}
             >
               Cancel
@@ -828,7 +873,7 @@ export default function Upload() {
           </div>
         ) : null}
         <div className="manual-input-grid">
-          <div className="field">
+          <div className="field manual-input-grid__date">
             <label>Date <span className="req">*</span></label>
             <input
               type="date"
@@ -837,7 +882,7 @@ export default function Upload() {
               required
             />
           </div>
-          <div className="field">
+          <div className="field manual-input-grid__leader">
             <label>Leader <span className="req">*</span></label>
             <details
               className="manual-accordion"
@@ -845,6 +890,10 @@ export default function Upload() {
               onToggle={e => {
                 const isOpen = e.currentTarget.open;
                 setManualLeaderAccordionOpen(isOpen);
+                if (isOpen) {
+                  setManualLeadsDepotAccordionOpen(false);
+                  setManualSalesDepotAccordionOpen(false);
+                }
                 if (isOpen && !manualLookupInputs.agent && selectedManualLeaderName) {
                   setManualLookupInputs(prev => ({ ...prev, agent: selectedManualLeaderName }));
                 }
@@ -880,6 +929,16 @@ export default function Upload() {
               </div>
             </details>
           </div>
+          <div className="field manual-input-grid__payins">
+            <label>Payins</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={manualForm.payins}
+              onChange={e => setManualForm(prev => ({ ...prev, payins: e.target.value }))}
+            />
+          </div>
           <div className="field">
             <label>Leads</label>
             <input
@@ -892,24 +951,50 @@ export default function Upload() {
           </div>
           <div className="field">
             <label>Leads Depot <span className="req">*</span></label>
-            <input
-              type="text"
-              list="manual-depots"
-              value={manualLookupInputs.leads_depot_id}
-              onChange={e => handleManualDepotChange("leads_depot_id", e.target.value)}
-              placeholder="Select leads depot"
-              required
-            />
-          </div>
-          <div className="field">
-            <label>Payins</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={manualForm.payins}
-              onChange={e => setManualForm(prev => ({ ...prev, payins: e.target.value }))}
-            />
+            <details
+              className="manual-accordion"
+              open={manualLeadsDepotAccordionOpen}
+              onToggle={e => {
+                const isOpen = e.currentTarget.open;
+                setManualLeadsDepotAccordionOpen(isOpen);
+                if (isOpen) {
+                  setManualLeaderAccordionOpen(false);
+                  setManualSalesDepotAccordionOpen(false);
+                }
+                if (isOpen && !manualLookupInputs.leads_depot_id && selectedManualLeadsDepotName) {
+                  setManualLookupInputs(prev => ({ ...prev, leads_depot_id: selectedManualLeadsDepotName }));
+                }
+              }}
+            >
+              <summary>
+                <span>{selectedManualLeadsDepotName || "Select leads depot"}</span>
+              </summary>
+              <div className="manual-accordion__panel">
+                <input
+                  type="text"
+                  value={manualLookupInputs.leads_depot_id}
+                  onChange={e => handleManualDepotInputChange("leads_depot_id", e.target.value)}
+                  placeholder="Search leads depot"
+                />
+                <div className="manual-accordion__list">
+                  {filteredManualLeadsDepots.length ? (
+                    filteredManualLeadsDepots.map(depot => (
+                      <button
+                        key={depot.id}
+                        type="button"
+                        className={`manual-accordion__item${manualForm.leads_depot_id === depot.id ? " is-active" : ""}`}
+                        onClick={() => handleManualDepotSelect("leads_depot_id", depot)}
+                      >
+                        <span className="manual-accordion__name">{depot.name}</span>
+                        <span className="manual-accordion__id">{depot.id}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="manual-accordion__empty">No depots found.</div>
+                  )}
+                </div>
+              </div>
+            </details>
           </div>
           <div className="field">
             <label>Sales</label>
@@ -923,21 +1008,52 @@ export default function Upload() {
           </div>
           <div className="field">
             <label>Sales Depot <span className="req">*</span></label>
-            <input
-              type="text"
-              list="manual-depots"
-              value={manualLookupInputs.sales_depot_id}
-              onChange={e => handleManualDepotChange("sales_depot_id", e.target.value)}
-              placeholder="Select sales depot"
-              required
-            />
+            <details
+              className="manual-accordion"
+              open={manualSalesDepotAccordionOpen}
+              onToggle={e => {
+                const isOpen = e.currentTarget.open;
+                setManualSalesDepotAccordionOpen(isOpen);
+                if (isOpen) {
+                  setManualLeaderAccordionOpen(false);
+                  setManualLeadsDepotAccordionOpen(false);
+                }
+                if (isOpen && !manualLookupInputs.sales_depot_id && selectedManualSalesDepotName) {
+                  setManualLookupInputs(prev => ({ ...prev, sales_depot_id: selectedManualSalesDepotName }));
+                }
+              }}
+            >
+              <summary>
+                <span>{selectedManualSalesDepotName || "Select sales depot"}</span>
+              </summary>
+              <div className="manual-accordion__panel">
+                <input
+                  type="text"
+                  value={manualLookupInputs.sales_depot_id}
+                  onChange={e => handleManualDepotInputChange("sales_depot_id", e.target.value)}
+                  placeholder="Search sales depot"
+                />
+                <div className="manual-accordion__list">
+                  {filteredManualSalesDepots.length ? (
+                    filteredManualSalesDepots.map(depot => (
+                      <button
+                        key={depot.id}
+                        type="button"
+                        className={`manual-accordion__item${manualForm.sales_depot_id === depot.id ? " is-active" : ""}`}
+                        onClick={() => handleManualDepotSelect("sales_depot_id", depot)}
+                      >
+                        <span className="manual-accordion__name">{depot.name}</span>
+                        <span className="manual-accordion__id">{depot.id}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="manual-accordion__empty">No depots found.</div>
+                  )}
+                </div>
+              </div>
+            </details>
           </div>
         </div>
-        <datalist id="manual-depots">
-          {depotsOptions.map(depot => (
-            <option key={depot.id} value={`${depot.name} — ${depot.id}`} />
-          ))}
-        </datalist>
       </ModalForm>
     </div>
   );
