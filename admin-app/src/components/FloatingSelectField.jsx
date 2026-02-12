@@ -30,11 +30,20 @@ export function FloatingSelectField({
   onSelect,
   emptyText = "No options found.",
   className = "",
+  isOpen,
+  onOpenChange,
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
+  const controlled = typeof isOpen === "boolean";
+  const open = controlled ? isOpen : internalOpen;
+
+  function setOpen(next) {
+    if (!controlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  }
 
   const resolvedLabel = useMemo(() => valueText || placeholder, [placeholder, valueText]);
 
@@ -88,7 +97,7 @@ export function FloatingSelectField({
         <button
           type="button"
           className="floating-select__trigger"
-          onClick={() => setOpen(prev => !prev)}
+          onClick={() => setOpen(!open)}
           aria-expanded={open}
         >
           <span>{resolvedLabel}</span>

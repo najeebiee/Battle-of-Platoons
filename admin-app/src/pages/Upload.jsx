@@ -90,6 +90,7 @@ export default function Upload() {
   const [depotsOptions, setDepotsOptions] = useState([]);
   const [manualError, setManualError] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
+  const [activeManualSelect, setActiveManualSelect] = useState("");
 
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -370,6 +371,7 @@ export default function Upload() {
     setIsDragging(false);
     setImportMode("warn");
     setManualOpen(false);
+    setActiveManualSelect("");
     setManualError("");
     setManualForm({
       date_real: "",
@@ -525,6 +527,7 @@ export default function Upload() {
       const { rows: normalizedRows } = await normalizeRawDataRows([manualRow]);
       setRows(prev => mergeRawDataRowsByIdentity([...prev, ...normalizedRows]));
       setManualOpen(false);
+      setActiveManualSelect("");
       setManualForm({
         date_real: "",
         agent_id: "",
@@ -558,6 +561,7 @@ export default function Upload() {
           onClick={() => {
             setManualError("");
             setManualOpen(true);
+            setActiveManualSelect("");
           }}
           disabled={manualLoading}
         >
@@ -814,15 +818,24 @@ export default function Upload() {
         isOpen={manualOpen}
         title="Manual Input"
         compactHeader
-        onClose={() => setManualOpen(false)}
-        onOverlayClose={() => setManualOpen(false)}
+        onClose={() => {
+          setManualOpen(false);
+          setActiveManualSelect("");
+        }}
+        onOverlayClose={() => {
+          setManualOpen(false);
+          setActiveManualSelect("");
+        }}
         onSubmit={handleManualSubmit}
         footer={(
           <>
             <button
               type="button"
               className="button secondary"
-              onClick={() => setManualOpen(false)}
+              onClick={() => {
+                setManualOpen(false);
+                setActiveManualSelect("");
+              }}
             >
               Cancel
             </button>
@@ -860,6 +873,8 @@ export default function Upload() {
               selectedId={manualForm.agent_id}
               onSelect={handleManualLeaderSelect}
               emptyText="No leaders found."
+              isOpen={activeManualSelect === "leader"}
+              onOpenChange={open => setActiveManualSelect(open ? "leader" : "")}
             />
           </div>
           <div className="field manual-input-grid__payins">
@@ -895,6 +910,8 @@ export default function Upload() {
               selectedId={manualForm.leads_depot_id}
               onSelect={depot => handleManualDepotSelect("leads_depot_id", depot)}
               emptyText="No depots found."
+              isOpen={activeManualSelect === "leads_depot"}
+              onOpenChange={open => setActiveManualSelect(open ? "leads_depot" : "")}
             />
           </div>
           <div className="field manual-input-grid__col manual-input-grid__sales">
@@ -920,6 +937,8 @@ export default function Upload() {
               selectedId={manualForm.sales_depot_id}
               onSelect={depot => handleManualDepotSelect("sales_depot_id", depot)}
               emptyText="No depots found."
+              isOpen={activeManualSelect === "sales_depot"}
+              onOpenChange={open => setActiveManualSelect(open ? "sales_depot" : "")}
             />
           </div>
         </div>
