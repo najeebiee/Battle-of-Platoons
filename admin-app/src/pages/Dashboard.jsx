@@ -366,7 +366,7 @@ export default function Dashboard() {
                 <button
                   key={preset.key}
                   type="button"
-                  className="dashboard-chip"
+                  className={`dashboard-chip${selectedPresetKey === preset.key ? " dashboard-chip--active" : ""}`}
                   onClick={() => applyPreset(preset)}
                 >
                   {preset.label}

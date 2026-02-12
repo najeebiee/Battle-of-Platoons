@@ -112,7 +112,7 @@
 .import-option{
   border: 1px solid #e6eaf5;
   background:#f7f8ff;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 10px 12px;
   text-align: left;
   font-weight: 700;
@@ -137,12 +137,17 @@
   right: 10px;
   color: #5660c7;
   background: #eef1ff;
-  border-radius: 8px;
-  width: 28px;
-  height: 28px;
+  border-radius: 6px;
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.import-option__icon svg{
+  width: 20px;
+  height: 20px;
 }
 
 .import-option.is-active .import-option__icon{

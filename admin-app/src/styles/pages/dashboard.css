@@ -180,6 +180,12 @@
   background: #eef1ff;
 }
 
+.dashboard-chip--active{
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #ffffff;
+}
+
 .dashboard-filter-meta{
   display: flex;
   align-items: center;
