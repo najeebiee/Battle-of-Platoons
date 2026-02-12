@@ -1107,7 +1107,6 @@ export default function Participants() {
                       {leaderIdCopied ? "✓" : "⧉"}
                     </button>
                   </div>
-                  <div className="hint">{leaderIdCopied ? "Copied!" : "Read-only. Click the icon to copy."}</div>
                 </div>
               </div>
             </div>
