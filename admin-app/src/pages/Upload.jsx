@@ -89,6 +89,7 @@ export default function Upload() {
   const [depotsOptions, setDepotsOptions] = useState([]);
   const [manualError, setManualError] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
+  const [manualLeaderAccordionOpen, setManualLeaderAccordionOpen] = useState(false);
 
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -182,6 +183,21 @@ export default function Upload() {
     return processed.displayRows.slice(start, start + rowsPerPage);
   }, [page, rowsPerPage, processed.displayRows]);
   const baseIndex = (page - 1) * rowsPerPage;
+
+  const selectedManualLeaderName = useMemo(() => {
+    if (!manualForm.agent_id) return "";
+    const selected = agentsOptions.find(agent => agent.id === manualForm.agent_id);
+    return selected?.name || "";
+  }, [agentsOptions, manualForm.agent_id]);
+
+  const filteredManualAgents = useMemo(() => {
+    const query = manualLookupInputs.agent.trim().toLowerCase();
+    if (!query) return agentsOptions;
+    return agentsOptions.filter(agent =>
+      (agent.name || "").toLowerCase().includes(query) ||
+      (agent.id || "").toLowerCase().includes(query)
+    );
+  }, [agentsOptions, manualLookupInputs.agent]);
 
   function exportXlsx() {
     const exportRows = processed.displayRows.map((row, idx) => {
@@ -324,6 +340,7 @@ export default function Upload() {
     setIsDragging(false);
     setImportMode("warn");
     setManualOpen(false);
+    setManualLeaderAccordionOpen(false);
     setManualError("");
     setManualForm({
       date_real: "",
@@ -402,12 +419,6 @@ export default function Upload() {
     return { label: cleaned, id: "" };
   }
 
-  function findAgentByName(name) {
-    const normalized = name.trim().toLowerCase();
-    const matches = agentsOptions.filter(agent => agent.name?.toLowerCase() === normalized);
-    return matches.length === 1 ? matches[0] : null;
-  }
-
   function findDepotByName(name) {
     const normalized = name.trim().toLowerCase();
     const matches = depotsOptions.filter(depot => depot.name?.toLowerCase() === normalized);
@@ -415,20 +426,32 @@ export default function Upload() {
   }
 
   function handleManualAgentChange(value) {
-    const parsed = parseLookupValue(value);
-    let agentId = parsed.id;
-    if (!agentId && parsed.label) {
-      const match = findAgentByName(parsed.label);
-      agentId = match?.id ?? "";
-    }
+    const normalized = value.trim().toLowerCase();
+    const exactMatch = agentsOptions.find(agent =>
+      (agent.name || "").trim().toLowerCase() === normalized ||
+      (agent.id || "").trim().toLowerCase() === normalized
+    );
     setManualLookupInputs(prev => ({
       ...prev,
       agent: value,
     }));
     setManualForm(prev => ({
       ...prev,
-      agent_id: agentId,
+      agent_id: exactMatch?.id ?? "",
     }));
+  }
+
+  function handleManualLeaderSelect(agent) {
+    if (!agent) return;
+    setManualLookupInputs(prev => ({
+      ...prev,
+      agent: agent.name || "",
+    }));
+    setManualForm(prev => ({
+      ...prev,
+      agent_id: agent.id,
+    }));
+    setManualLeaderAccordionOpen(false);
   }
 
   function handleManualDepotChange(field, value) {
@@ -481,6 +504,7 @@ export default function Upload() {
       const { rows: normalizedRows } = await normalizeRawDataRows([manualRow]);
       setRows(prev => mergeRawDataRowsByIdentity([...prev, ...normalizedRows]));
       setManualOpen(false);
+      setManualLeaderAccordionOpen(false);
       setManualForm({
         date_real: "",
         agent_id: "",
@@ -510,16 +534,17 @@ export default function Upload() {
       <div className="upload-header-actions" style={{ marginTop: 12 }}>
         <button
           type="button"
-          className="button secondary"
+          className="button secondary upload-manual-btn"
           onClick={() => {
             setManualError("");
             setManualOpen(true);
+            setManualLeaderAccordionOpen(false);
           }}
           disabled={manualLoading}
         >
           Manual Input
         </button>
-        <button type="button" className="button ghost" onClick={downloadTemplate}>
+        <button type="button" className="button ghost upload-template-btn" onClick={downloadTemplate}>
           Download Template
         </button>
       </div>
@@ -534,13 +559,20 @@ export default function Upload() {
         tabIndex={0}
         onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        <div className="upload-icon" aria-hidden>📤</div>
+        <div className="upload-icon" aria-hidden>
+          <svg width="30" height="30" viewBox="0 0 24 24" focusable="false">
+            <path
+              fill="currentColor"
+              d="M6 3.75A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25h12A2.25 2.25 0 0 0 20.25 18V8.19a.75.75 0 0 0-.22-.53l-3.69-3.69a.75.75 0 0 0-.53-.22H6Zm0 1.5h8.5V8a1 1 0 0 0 1 1h3.25V18a.75.75 0 0 1-.75.75H6A.75.75 0 0 1 5.25 18V6A.75.75 0 0 1 6 5.25Zm10 .56L18.69 8H16.5a.5.5 0 0 1-.5-.5V5.81ZM8 11.25a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75Z"
+            />
+          </svg>
+        </div>
         <div className="dropzone__content">
           <div className="dropzone__title">Select or drop an .xlsx file</div>
           <div className="dropzone__sub">.xlsx only. Sheet name "Daily Data" or first sheet.</div>
           <button
             type="button"
-            className="button primary dropzone__cta"
+            className="button primary dropzone__cta upload-browse-btn"
             onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
           >
             Browse files
@@ -762,12 +794,26 @@ export default function Upload() {
       <ModalForm
         isOpen={manualOpen}
         title="Manual Input (Daily Data)"
-        onClose={() => setManualOpen(false)}
-        onOverlayClose={() => setManualOpen(false)}
+        compactHeader
+        onClose={() => {
+          setManualOpen(false);
+          setManualLeaderAccordionOpen(false);
+        }}
+        onOverlayClose={() => {
+          setManualOpen(false);
+          setManualLeaderAccordionOpen(false);
+        }}
         onSubmit={handleManualSubmit}
         footer={(
           <>
-            <button type="button" className="button secondary" onClick={() => setManualOpen(false)}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => {
+                setManualOpen(false);
+                setManualLeaderAccordionOpen(false);
+              }}
+            >
               Cancel
             </button>
             <button type="submit" className="button primary" disabled={manualLoading}>
@@ -781,29 +827,61 @@ export default function Upload() {
             {manualError}
           </div>
         ) : null}
-        <div className="form-grid">
-          <label className="form-field">
-            <span>Date</span>
+        <div className="manual-input-grid">
+          <div className="field">
+            <label>Date <span className="req">*</span></label>
             <input
               type="date"
               value={manualForm.date_real}
               onChange={e => setManualForm(prev => ({ ...prev, date_real: e.target.value }))}
               required
             />
-          </label>
-          <label className="form-field">
-            <span>Leader</span>
-            <input
-              type="text"
-              list="manual-agents"
-              value={manualLookupInputs.agent}
-              onChange={e => handleManualAgentChange(e.target.value)}
-              placeholder="Select leader"
-              required
-            />
-          </label>
-          <label className="form-field">
-            <span>Leads</span>
+          </div>
+          <div className="field">
+            <label>Leader <span className="req">*</span></label>
+            <details
+              className="manual-accordion"
+              open={manualLeaderAccordionOpen}
+              onToggle={e => {
+                const isOpen = e.currentTarget.open;
+                setManualLeaderAccordionOpen(isOpen);
+                if (isOpen && !manualLookupInputs.agent && selectedManualLeaderName) {
+                  setManualLookupInputs(prev => ({ ...prev, agent: selectedManualLeaderName }));
+                }
+              }}
+            >
+              <summary>
+                <span>{selectedManualLeaderName || "Select leader"}</span>
+              </summary>
+              <div className="manual-accordion__panel">
+                <input
+                  type="text"
+                  value={manualLookupInputs.agent}
+                  onChange={e => handleManualAgentChange(e.target.value)}
+                  placeholder="Search leader"
+                />
+                <div className="manual-accordion__list">
+                  {filteredManualAgents.length ? (
+                    filteredManualAgents.map(agent => (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        className={`manual-accordion__item${manualForm.agent_id === agent.id ? " is-active" : ""}`}
+                        onClick={() => handleManualLeaderSelect(agent)}
+                      >
+                        <span className="manual-accordion__name">{agent.name}</span>
+                        <span className="manual-accordion__id">{agent.id}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="manual-accordion__empty">No leaders found.</div>
+                  )}
+                </div>
+              </div>
+            </details>
+          </div>
+          <div className="field">
+            <label>Leads</label>
             <input
               type="number"
               min="0"
@@ -811,9 +889,9 @@ export default function Upload() {
               value={manualForm.leads}
               onChange={e => setManualForm(prev => ({ ...prev, leads: e.target.value }))}
             />
-          </label>
-          <label className="form-field">
-            <span>Leads Depot</span>
+          </div>
+          <div className="field">
+            <label>Leads Depot <span className="req">*</span></label>
             <input
               type="text"
               list="manual-depots"
@@ -822,9 +900,9 @@ export default function Upload() {
               placeholder="Select leads depot"
               required
             />
-          </label>
-          <label className="form-field">
-            <span>Payins</span>
+          </div>
+          <div className="field">
+            <label>Payins</label>
             <input
               type="number"
               min="0"
@@ -832,9 +910,9 @@ export default function Upload() {
               value={manualForm.payins}
               onChange={e => setManualForm(prev => ({ ...prev, payins: e.target.value }))}
             />
-          </label>
-          <label className="form-field">
-            <span>Sales</span>
+          </div>
+          <div className="field">
+            <label>Sales</label>
             <input
               type="number"
               min="0"
@@ -842,9 +920,9 @@ export default function Upload() {
               value={manualForm.sales}
               onChange={e => setManualForm(prev => ({ ...prev, sales: e.target.value }))}
             />
-          </label>
-          <label className="form-field">
-            <span>Sales Depot</span>
+          </div>
+          <div className="field">
+            <label>Sales Depot <span className="req">*</span></label>
             <input
               type="text"
               list="manual-depots"
@@ -853,13 +931,8 @@ export default function Upload() {
               placeholder="Select sales depot"
               required
             />
-          </label>
+          </div>
         </div>
-        <datalist id="manual-agents">
-          {agentsOptions.map(agent => (
-            <option key={agent.id} value={`${agent.name} — ${agent.id}`} />
-          ))}
-        </datalist>
         <datalist id="manual-depots">
           {depotsOptions.map(depot => (
             <option key={depot.id} value={`${depot.name} — ${depot.id}`} />
@@ -869,3 +942,4 @@ export default function Upload() {
     </div>
   );
 }
+

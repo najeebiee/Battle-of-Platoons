@@ -11,12 +11,12 @@ function CloseIcon({ size = 18 }) {
   );
 }
 
-export function ModalForm({ isOpen, onOverlayClose, onSubmit, title, onClose, children, footer }) {
+export function ModalForm({ isOpen, onOverlayClose, onSubmit, title, onClose, children, footer, compactHeader = false }) {
   if (!isOpen) return null;
   return (
     <div className="modal-overlay" onMouseDown={onOverlayClose}>
       <form className="modal-form form" onSubmit={onSubmit} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+        <div className={`modal-header${compactHeader ? " modal-header--compact" : ""}`}>
           <h2>{title}</h2>
           <button type="button" className="modal-close" onClick={onClose} aria-label="Close modal">
             <CloseIcon />

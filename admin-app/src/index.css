@@ -309,6 +309,17 @@ body{
   z-index: 3;
 }
 
+.modal-header h2{
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.modal-header--compact{
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
 .modal-body{
   flex: 1 1 auto;
   overflow-y: auto;
@@ -361,6 +372,11 @@ body{
   .modal-header{
     padding: 14px 16px;
     padding-top: calc(14px + env(safe-area-inset-top));
+  }
+
+  .modal-header--compact{
+    padding: 7px 16px;
+    padding-top: calc(7px + env(safe-area-inset-top));
   }
 
   .modal-body{
