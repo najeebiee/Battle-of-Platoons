@@ -1277,7 +1277,7 @@ a:focus-visible {
   background: #ffffff;
   color: #0b1770;
   box-shadow: 0 12px 24px rgba(11, 23, 112, 0.08);
-  border: 1px solid #C2C0C0;
+  border: 1px solid #e6e6e6;
 }
 
 .rank-card__rank {
