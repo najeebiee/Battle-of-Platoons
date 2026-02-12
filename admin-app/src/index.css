@@ -436,6 +436,7 @@ input, select{
   border: 1px solid #e5e7ff;
   outline:none;
   background:#fff;
+  font-family: inherit;
 }
 
 textarea.input{
@@ -446,6 +447,7 @@ textarea.input{
   outline:none;
   background:#fff;
   resize: vertical;
+  font-family: inherit;
 }
 
 input.input-error, select.input-error{
@@ -505,6 +507,7 @@ textarea.input:focus{
   display:inline-flex;
   align-items:center;
   gap: 8px;
+  font-family: inherit;
 }
 
 .btn{
@@ -517,6 +520,7 @@ textarea.input:focus{
   display:inline-flex;
   align-items:center;
   gap: 8px;
+  font-family: inherit;
 }
 
 .btn-link{
@@ -525,6 +529,7 @@ textarea.input:focus{
   color: var(--blue);
   font-weight:400;
   cursor:pointer;
+  font-family: inherit;
 }
 
 .btn-link.icon-btn{
@@ -606,6 +611,14 @@ textarea.input:focus{
   display:inline-flex;
   align-items:center;
   gap: 8px;
+  font-family: inherit;
+}
+
+button,
+input,
+select,
+textarea{
+  font-family: inherit;
 }
 .button.primary:not(.export-button)::before,
 .button.secondary:not(.export-button)::before,
