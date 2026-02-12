@@ -694,19 +694,19 @@ export default function Updates() {
             <div className="edit-modal__title">Locked fields</div>
             <div className="edit-modal__summary">
               <div>
-                <span>Date</span>
+                <div className="form-label edit-modal__label">Date</div>
                 <strong>{editingRow?.date_real || "-"}</strong>
               </div>
               <div>
-                <span>Leads Depot</span>
+                <div className="form-label edit-modal__label">Leads Depot</div>
                 <strong>{editingRow?.leadsDepotName || "-"}</strong>
               </div>
               <div>
-                <span>Sales Depot</span>
+                <div className="form-label edit-modal__label">Sales Depot</div>
                 <strong>{editingRow?.salesDepotName || "-"}</strong>
               </div>
               <div>
-                <span>Leader</span>
+                <div className="form-label edit-modal__label">Leader</div>
                 <strong>{editingRow?.leaderName || "(Restricted)"}</strong>
               </div>
             </div>
@@ -719,7 +719,7 @@ export default function Updates() {
             <div className="edit-modal__title">Editable metrics</div>
             <div className="edit-modal__grid">
               <label className="form-field">
-                <span>Leads</span>
+                <span className="form-label edit-modal__label">Leads</span>
                 <input
                   type="number"
                   className={`input${leadInvalid ? " input-error" : ""}`}
@@ -730,7 +730,7 @@ export default function Updates() {
                 {leadInvalid && <div className="field-error">Enter 0 or a positive number.</div>}
               </label>
               <label className="form-field">
-                <span>Payins</span>
+                <span className="form-label edit-modal__label">Payins</span>
                 <input
                   type="number"
                   className={`input${payinsInvalid ? " input-error" : ""}`}
@@ -741,7 +741,7 @@ export default function Updates() {
                 {payinsInvalid && <div className="field-error">Enter 0 or a positive number.</div>}
               </label>
               <label className="form-field">
-                <span>Sales</span>
+                <span className="form-label edit-modal__label">Sales</span>
                 <input
                   type="number"
                   className={`input${salesInvalid ? " input-error" : ""}`}

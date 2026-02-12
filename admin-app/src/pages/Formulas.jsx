@@ -23,6 +23,28 @@ function PlusIcon({ size = 16 }) {
   );
 }
 
+function SaveIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M5 3h11l4 4v13a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm1.5 1.5V8h9V4.5H6.5Zm0 15h11V9.5H6.5v10Zm2-6h7v1.5h-7v-1.5Z"
+      />
+    </svg>
+  );
+}
+
+function PublishIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 2a1 1 0 0 1 1 1v10.59l3.3-3.29a1 1 0 1 1 1.4 1.42l-5 4.97a1 1 0 0 1-1.4 0l-5-4.97a1 1 0 1 1 1.4-1.42l3.3 3.3V3a1 1 0 0 1 1-1Zm-7 16a1 1 0 0 1 1 1v.5A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5V19a1 1 0 1 1 2 0v.5a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 19.5V19a1 1 0 0 1 1-1Z"
+      />
+    </svg>
+  );
+}
+
 export default function ScoringFormulas() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -135,28 +157,28 @@ export default function ScoringFormulas() {
 
   function Stepper({ id, value, onChange, step = 50, min = 0, disabled = false }) {
     return (
-      <div className="row" style={{ gap: "8px", alignItems: "center" }}>
+      <div className="stepper">
         <button
           type="button"
-          className="btn ghost"
+          className="btn ghost stepper__btn"
           disabled={disabled || value <= min}
           onClick={() => onChange(Math.max(min, (Number(value) || 0) - step))}
         >
-          −
+          -
         </button>
         <input
           id={id}
           type="number"
+          className="stepper__input"
           min={min}
           step={step}
           value={value}
           onChange={e => onChange(Math.max(min, Number(e.target.value) || 0))}
-          style={{ flex: 1 }}
           disabled={disabled}
         />
         <button
           type="button"
-          className="btn ghost"
+          className="btn ghost stepper__btn"
           disabled={disabled}
           onClick={() => onChange((Number(value) || 0) + step)}
         >
@@ -417,7 +439,6 @@ export default function ScoringFormulas() {
       <div className="details-panel">
         <div className="details-summary">
           <div className="details-summary__info">
-            <div className="details-title">Details</div>
             <div className="details-note">
               {isSuperAdmin
                 ? isPublished
@@ -459,7 +480,7 @@ export default function ScoringFormulas() {
               </div>
               <div className="details-grid">
                 <div className="details-field">
-                  <div className="details-label">Effective Start Week</div>
+                  <label className="details-label">Effective Start Week</label>
                   <input
                     type="text"
                     value={draftStartWeekKey}
@@ -468,7 +489,7 @@ export default function ScoringFormulas() {
                   />
                 </div>
                 <div className="details-field">
-                  <div className="details-label">Effective End Week</div>
+                  <label className="details-label">Effective End Week</label>
                   <input
                     type="text"
                     value={draftEndWeekKey}
@@ -547,6 +568,7 @@ export default function ScoringFormulas() {
                 Reason (required)
               </label>
               <textarea
+                className="input"
                 id="reason"
                 rows={3}
                 value={reasonText}
@@ -558,16 +580,17 @@ export default function ScoringFormulas() {
             {publishError && <div className="error">{publishError}</div>}
             <div className="details-actions">
               <button
-                className="btn primary"
+                className="btn details-action-btn details-action-btn--save"
                 onClick={handleSaveDraft}
                 disabled={
                   saveLoading || !totalPointsValid || !reasonText.trim() || !divisorsValid
                 }
               >
+                <SaveIcon size={16} />
                 {saveLoading ? "Saving…" : "Save Draft"}
               </button>
               <button
-                className="btn"
+                className="btn details-action-btn details-action-btn--publish"
                 onClick={handlePublish}
                 disabled={
                   publishLoading ||
@@ -577,6 +600,7 @@ export default function ScoringFormulas() {
                   !divisorsValid
                 }
               >
+                <PublishIcon size={16} />
                 {publishLoading ? "Publishing…" : "Publish"}
               </button>
             </div>
@@ -956,3 +980,4 @@ export default function ScoringFormulas() {
     </div>
   );
 }
+
