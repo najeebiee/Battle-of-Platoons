@@ -1405,97 +1405,102 @@ export default function Participants() {
                 <input value={simpleForm.name} onChange={(e) => setSimpleForm(s => ({ ...s, name: e.target.value }))} />
               </div>
 
-              <div className="field photo-section">
-                <label>Photo (optional)</label>
-                <div className="photo-mode-toggle">
-                  <button
-                    type="button"
-                    className={`photo-mode-pill ${simplePhotoMode === "upload" ? "active" : ""}`}
-                    onClick={() => handleSimpleModeChange("upload")}
-                  >
-                    Upload Photo
-                  </button>
-                  <button
-                    type="button"
-                    className={`photo-mode-pill ${simplePhotoMode === "url" ? "active" : ""}`}
-                    onClick={() => handleSimpleModeChange("url")}
-                  >
-                    Use Photo URL
-                  </button>
+              <div className="field">
+                <label>ID</label>
+                <input value={simpleIdPreview || "(auto)"} readOnly />
+              </div>
+            </div>
+            <div className="field">
+              <label>Photo (optional)</label>
+              <div className="photo-card">
+                <div className="photo-card__preview">
+                  {simplePhotoPreviewUrl ? (
+                    <img src={simplePhotoPreviewUrl} alt={simpleForm.name || "Preview"} />
+                  ) : (
+                    <span className="initials">{getInitials(simpleForm.name)}</span>
+                  )}
                 </div>
+                <div className="photo-card__body">
+                  <div className="photo-mode-toggle">
+                    <button
+                      type="button"
+                      className={`photo-mode-pill ${simplePhotoMode === "upload" ? "active" : ""}`}
+                      onClick={() => handleSimpleModeChange("upload")}
+                    >
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      className={`photo-mode-pill ${simplePhotoMode === "url" ? "active" : ""}`}
+                      onClick={() => handleSimpleModeChange("url")}
+                    >
+                      URL
+                    </button>
+                  </div>
 
-                <div className="photo-input-row">
-                  <div className="photo-preview">
-                    {simplePhotoPreviewUrl ? (
-                      <img src={simplePhotoPreviewUrl} alt={simpleForm.name || "Preview"} />
-                    ) : (
-                      <span className="initials">{getInitials(simpleForm.name)}</span>
+                  <div className="photo-input-row">
+                    {simplePhotoMode === "upload" && (
+                      <div className="photo-file-input">
+                        <input
+                          id={`simple-photo-file-${simpleFileKey}`}
+                          key={simpleFileKey}
+                          className="photo-file-input__native"
+                          type="file"
+                          accept={ACCEPTED_TYPES.join(",")}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            setSimplePhotoFile(file || null);
+                            setSimplePhotoError("");
+                            if (file) {
+                              setSimplePhotoUrlInput("");
+                              setSimpleForm(s => ({ ...s, photoURL: "" }));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`simple-photo-file-${simpleFileKey}`} className="photo-file-input__button">
+                          <UploadFileIcon size={14} />
+                          Choose File
+                        </label>
+                        <span className="photo-file-input__name">{simplePhotoFile?.name || "No file chosen"}</span>
+                      </div>
+                    )}
+
+                    {simplePhotoMode === "url" && (
+                      <input
+                        value={simplePhotoUrlInput}
+                        placeholder="https://..."
+                        onChange={(e) => {
+                          setSimplePhotoUrlInput(e.target.value);
+                          setSimplePhotoError("");
+                        }}
+                      />
                     )}
                   </div>
 
-                  {simplePhotoMode === "upload" && (
-                    <div className="photo-file-input">
-                      <input
-                        id={`simple-photo-file-${simpleFileKey}`}
-                        key={simpleFileKey}
-                        className="photo-file-input__native"
-                        type="file"
-                        accept={ACCEPTED_TYPES.join(",")}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          setSimplePhotoFile(file || null);
-                          setSimplePhotoError("");
-                          if (file) {
-                            setSimplePhotoUrlInput("");
-                            setSimpleForm(s => ({ ...s, photoURL: "" }));
-                          }
-                        }}
-                      />
-                      <label htmlFor={`simple-photo-file-${simpleFileKey}`} className="photo-file-input__button">
-                        <UploadFileIcon size={14} />
-                        Choose File
-                      </label>
-                      <span className="photo-file-input__name">{simplePhotoFile?.name || "No file chosen"}</span>
-                    </div>
-                  )}
-
-                  {simplePhotoMode === "url" && (
-                    <input
-                      value={simplePhotoUrlInput}
-                      placeholder="https://..."
-                      onChange={(e) => {
-                        setSimplePhotoUrlInput(e.target.value);
+                  <div className="photo-card__actions photo-card__actions--meta">
+                    <button
+                      type="button"
+                      className="btn photo-remove-btn"
+                      onClick={() => {
+                        setSimplePhotoFile(null);
+                        setSimpleFileKey(k => k + 1);
+                        setSimplePhotoUrlInput("");
                         setSimplePhotoError("");
+                        setSimplePhotoMode("upload");
+                        setSimpleForm(s => ({ ...s, photoURL: "" }));
                       }}
-                    />
-                  )}
-                </div>
+                    >
+                      <RemovePhotoIcon size={14} />
+                      Remove Photo
+                    </button>
+                    <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
+                  </div>
 
-                <div className="photo-card__actions photo-card__actions--meta">
-                  <button
-                    type="button"
-                    className="btn photo-remove-btn"
-                    onClick={() => {
-                      setSimplePhotoFile(null);
-                      setSimpleFileKey(k => k + 1);
-                      setSimplePhotoUrlInput("");
-                      setSimplePhotoError("");
-                      setSimplePhotoMode("upload");
-                      setSimpleForm(s => ({ ...s, photoURL: "" }));
-                    }}
-                  >
-                    <RemovePhotoIcon size={14} />
-                    Remove Photo
-                  </button>
-                  <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
+                  {simplePhotoError && <div className="photo-error">{simplePhotoError}</div>}
+                  {simpleUploading && <div className="hint">Uploading...</div>}
                 </div>
-
-                {simplePhotoError && <div className="photo-error">{simplePhotoError}</div>}
-                {simpleUploading && <div className="hint">Uploading...</div>}
               </div>
             </div>
-
-            <div className="hint">ID: <b>{simpleIdPreview || "(auto)"}</b></div>
           </>
         )}
 
@@ -1507,97 +1512,102 @@ export default function Participants() {
                 <input value={platoonForm.name} onChange={(e) => setPlatoonForm(s => ({ ...s, name: e.target.value }))} />
               </div>
 
-              <div className="field photo-section">
-                <label>Photo (optional)</label>
-                <div className="photo-mode-toggle">
-                  <button
-                    type="button"
-                    className={`photo-mode-pill ${platoonPhotoMode === "upload" ? "active" : ""}`}
-                    onClick={() => handlePlatoonModeChange("upload")}
-                  >
-                    Upload Photo
-                  </button>
-                  <button
-                    type="button"
-                    className={`photo-mode-pill ${platoonPhotoMode === "url" ? "active" : ""}`}
-                    onClick={() => handlePlatoonModeChange("url")}
-                  >
-                    Use Photo URL
-                  </button>
+              <div className="field">
+                <label>ID</label>
+                <input value={platoonIdPreview || "(auto)"} readOnly />
+              </div>
+            </div>
+            <div className="field">
+              <label>Photo (optional)</label>
+              <div className="photo-card">
+                <div className="photo-card__preview">
+                  {platoonPhotoPreviewUrl ? (
+                    <img src={platoonPhotoPreviewUrl} alt={platoonForm.name || "Preview"} />
+                  ) : (
+                    <span className="initials">{getInitials(platoonForm.name)}</span>
+                  )}
                 </div>
+                <div className="photo-card__body">
+                  <div className="photo-mode-toggle">
+                    <button
+                      type="button"
+                      className={`photo-mode-pill ${platoonPhotoMode === "upload" ? "active" : ""}`}
+                      onClick={() => handlePlatoonModeChange("upload")}
+                    >
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      className={`photo-mode-pill ${platoonPhotoMode === "url" ? "active" : ""}`}
+                      onClick={() => handlePlatoonModeChange("url")}
+                    >
+                      URL
+                    </button>
+                  </div>
 
-                <div className="photo-input-row">
-                  <div className="photo-preview">
-                    {platoonPhotoPreviewUrl ? (
-                      <img src={platoonPhotoPreviewUrl} alt={platoonForm.name || "Preview"} />
-                    ) : (
-                      <span className="initials">{getInitials(platoonForm.name)}</span>
+                  <div className="photo-input-row">
+                    {platoonPhotoMode === "upload" && (
+                      <div className="photo-file-input">
+                        <input
+                          id={`platoon-photo-file-${platoonFileKey}`}
+                          key={platoonFileKey}
+                          className="photo-file-input__native"
+                          type="file"
+                          accept={ACCEPTED_TYPES.join(",")}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            setPlatoonPhotoFile(file || null);
+                            setPlatoonPhotoError("");
+                            if (file) {
+                              setPlatoonPhotoUrlInput("");
+                              setPlatoonForm(s => ({ ...s, photoURL: "" }));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`platoon-photo-file-${platoonFileKey}`} className="photo-file-input__button">
+                          <UploadFileIcon size={14} />
+                          Choose File
+                        </label>
+                        <span className="photo-file-input__name">{platoonPhotoFile?.name || "No file chosen"}</span>
+                      </div>
+                    )}
+
+                    {platoonPhotoMode === "url" && (
+                      <input
+                        value={platoonPhotoUrlInput}
+                        placeholder="https://..."
+                        onChange={(e) => {
+                          setPlatoonPhotoUrlInput(e.target.value);
+                          setPlatoonPhotoError("");
+                        }}
+                      />
                     )}
                   </div>
 
-                  {platoonPhotoMode === "upload" && (
-                    <div className="photo-file-input">
-                      <input
-                        id={`platoon-photo-file-${platoonFileKey}`}
-                        key={platoonFileKey}
-                        className="photo-file-input__native"
-                        type="file"
-                        accept={ACCEPTED_TYPES.join(",")}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          setPlatoonPhotoFile(file || null);
-                          setPlatoonPhotoError("");
-                          if (file) {
-                            setPlatoonPhotoUrlInput("");
-                            setPlatoonForm(s => ({ ...s, photoURL: "" }));
-                          }
-                        }}
-                      />
-                      <label htmlFor={`platoon-photo-file-${platoonFileKey}`} className="photo-file-input__button">
-                        <UploadFileIcon size={14} />
-                        Choose File
-                      </label>
-                      <span className="photo-file-input__name">{platoonPhotoFile?.name || "No file chosen"}</span>
-                    </div>
-                  )}
-
-                  {platoonPhotoMode === "url" && (
-                    <input
-                      value={platoonPhotoUrlInput}
-                      placeholder="https://..."
-                      onChange={(e) => {
-                        setPlatoonPhotoUrlInput(e.target.value);
+                  <div className="photo-card__actions photo-card__actions--meta">
+                    <button
+                      type="button"
+                      className="btn photo-remove-btn"
+                      onClick={() => {
+                        setPlatoonPhotoFile(null);
+                        setPlatoonFileKey(k => k + 1);
+                        setPlatoonPhotoUrlInput("");
                         setPlatoonPhotoError("");
+                        setPlatoonPhotoMode("upload");
+                        setPlatoonForm(s => ({ ...s, photoURL: "" }));
                       }}
-                    />
-                  )}
-                </div>
+                    >
+                      <RemovePhotoIcon size={14} />
+                      Remove Photo
+                    </button>
+                    <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
+                  </div>
 
-                <div className="photo-card__actions photo-card__actions--meta">
-                  <button
-                    type="button"
-                    className="btn photo-remove-btn"
-                    onClick={() => {
-                      setPlatoonPhotoFile(null);
-                      setPlatoonFileKey(k => k + 1);
-                      setPlatoonPhotoUrlInput("");
-                      setPlatoonPhotoError("");
-                      setPlatoonPhotoMode("upload");
-                      setPlatoonForm(s => ({ ...s, photoURL: "" }));
-                    }}
-                  >
-                    <RemovePhotoIcon size={14} />
-                    Remove Photo
-                  </button>
-                  <div className="photo-hint">PNG, JPG, or WEBP up to 2MB. Upload OR URL, not both.</div>
+                  {platoonPhotoError && <div className="photo-error">{platoonPhotoError}</div>}
+                  {platoonUploading && <div className="hint">Uploading...</div>}
                 </div>
-
-                {platoonPhotoError && <div className="photo-error">{platoonPhotoError}</div>}
-                {platoonUploading && <div className="hint">Uploading...</div>}
               </div>
             </div>
-
-            <div className="hint">ID: <b>{platoonIdPreview || "(auto)"}</b></div>
           </>
         )}
       </ModalForm>
