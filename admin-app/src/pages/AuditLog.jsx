@@ -848,6 +848,13 @@ export default function AuditLog() {
           </div>
         ) : null}
         <div className="filter-actions">
+          <button
+            type="button"
+            className="button ghost"
+            onClick={() => setShowAdvanced(prev => !prev)}
+          >
+            {showAdvanced ? "Hide Advanced" : "Advanced Filters"}
+          </button>
           <div className="filter-actions__main">
             <button type="button" className="button primary" onClick={handleApply} disabled={loading}>
               Apply
@@ -855,15 +862,8 @@ export default function AuditLog() {
             <button type="button" className="button secondary" onClick={handleReset} disabled={loading}>
               Reset
             </button>
-            <button
-              type="button"
-              className="button ghost"
-              onClick={() => setShowAdvanced(prev => !prev)}
-            >
-              {showAdvanced ? "Hide Advanced" : "Advanced Filters"}
-            </button>
+            <ExportButton onClick={exportXlsx} loading={exporting} disabled={loading} label="Export XLSX" />
           </div>
-          <ExportButton onClick={exportXlsx} loading={exporting} disabled={loading} label="Export XLSX" />
           {exportProgress ? <div className="muted" style={{ alignSelf: "center" }}>{exportProgress}</div> : null}
         </div>
       </div>
@@ -993,32 +993,14 @@ export default function AuditLog() {
               <details open>
                 <summary>Before</summary>
                 {renderKeyValueBlock(detailRow.before)}
-                <details className="audit-entry__raw">
-                  <summary>Raw JSON</summary>
-                  <pre className="audit-entry__code">
-                    {detailRow.before ? JSON.stringify(detailRow.before, null, 2) : "-"}
-                  </pre>
-                </details>
               </details>
               <details open>
                 <summary>After</summary>
                 {renderKeyValueBlock(detailRow.after)}
-                <details className="audit-entry__raw">
-                  <summary>Raw JSON</summary>
-                  <pre className="audit-entry__code">
-                    {detailRow.after ? JSON.stringify(detailRow.after, null, 2) : "-"}
-                  </pre>
-                </details>
               </details>
               <details>
                 <summary>Meta</summary>
                 {renderKeyValueBlock(detailRow.meta)}
-                <details className="audit-entry__raw">
-                  <summary>Raw JSON</summary>
-                  <pre className="audit-entry__code">
-                    {detailRow.meta ? JSON.stringify(detailRow.meta, null, 2) : "-"}
-                  </pre>
-                </details>
               </details>
             </div>
           </div>

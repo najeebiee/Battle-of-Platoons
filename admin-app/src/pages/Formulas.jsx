@@ -835,35 +835,40 @@ export default function ScoringFormulas() {
           </div>
         </div>
         {createModal.error && <div className="error">{createModal.error}</div>}
-        <div className="stack sm">
-          <div className="stack xs">
-            <label className="label">Label</label>
+        <div className="formula-modal__form">
+          <div className="formula-modal__field">
+            <label className="form-label">Label</label>
             <input
+              className="input"
               type="text"
               value={createModal.label}
               onChange={e => setCreateModal(prev => ({ ...prev, label: e.target.value }))}
             />
           </div>
-          <div className="stack xs">
-            <label className="label">Effective Start Week</label>
+          <div className="formula-modal__field">
+            <label className="form-label">Effective Start Week</label>
             <input
+              className="input"
               type="text"
               value={createModal.start}
               onChange={e => setCreateModal(prev => ({ ...prev, start: e.target.value }))}
             />
           </div>
-          <div className="stack xs">
-            <label className="label">Effective End Week (optional)</label>
+          <div className="formula-modal__field">
+            <label className="form-label">Effective End Week (optional)</label>
             <input
+              className="input"
               type="text"
               value={createModal.end}
               onChange={e => setCreateModal(prev => ({ ...prev, end: e.target.value }))}
             />
           </div>
-          <div className="stack xs">
-            <label className="label">Reason</label>
+          <div className="formula-modal__field formula-modal__field--full">
+            <label className="form-label">Reason</label>
             <textarea
+              className="input"
               rows={3}
+              placeholder="Reason to finalize"
               value={createModal.reason}
               onChange={e => setCreateModal(prev => ({ ...prev, reason: e.target.value }))}
             />

@@ -8,7 +8,7 @@
 .filter-actions{
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:flex-start;
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 12px;
@@ -18,6 +18,7 @@
   display:flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .filter-chips{
@@ -192,23 +193,12 @@
   word-break: break-word;
 }
 
-.audit-entry__raw{
-  margin-top: 8px;
-}
-
-.audit-entry__code{
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.4;
-  background: #f7f8ff;
-  padding: 10px;
-  border-radius: 10px;
-  overflow-x: auto;
-}
-
 @media (max-width: 900px){
   .filter-actions{
     justify-content:flex-start;
+  }
+  .filter-actions__main{
+    margin-left: 0;
   }
   .audit-entry__kv-row{
     grid-template-columns: 1fr;

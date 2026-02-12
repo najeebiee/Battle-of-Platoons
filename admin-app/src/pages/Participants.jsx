@@ -14,6 +14,11 @@ import { getMyProfile } from "../services/profile.service";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const ROLE_OPTIONS = [
+  { id: "platoon", name: "Platoon Leader" },
+  { id: "squad", name: "Squad Leader" },
+  { id: "team", name: "Team Leader" },
+];
 
 function slugId(input = "") {
   return input.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -99,6 +104,7 @@ export default function Participants() {
   const [leaderCommanderInput, setLeaderCommanderInput] = useState("");
   const [leaderCompanyInput, setLeaderCompanyInput] = useState("");
   const [leaderUplineInput, setLeaderUplineInput] = useState("");
+  const [leaderRoleInput, setLeaderRoleInput] = useState("");
   const [leaderAssignmentOpen, setLeaderAssignmentOpen] = useState("");
   const [leaderIdCopied, setLeaderIdCopied] = useState(false);
 
@@ -448,6 +454,11 @@ export default function Participants() {
     return leaderUplineInput;
   }, [agentById, leaderForm.uplineId, leaderUplineInput]);
 
+  const selectedRoleName = useMemo(() => {
+    const selected = ROLE_OPTIONS.find(role => role.id === (leaderForm.role || "platoon"));
+    return selected?.name || leaderRoleInput || "Platoon Leader";
+  }, [leaderForm.role, leaderRoleInput]);
+
   const filteredCommanderOptions = useMemo(() => {
     const q = leaderCommanderInput.trim().toLowerCase();
     const rows = companies.map(c => ({ id: c.id, name: c.name || c.id }));
@@ -468,6 +479,12 @@ export default function Participants() {
     if (!q) return rows;
     return rows.filter(row => row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q));
   }, [availableUplineLeaders, leaderUplineInput]);
+
+  const filteredRoleOptions = useMemo(() => {
+    const q = leaderRoleInput.trim().toLowerCase();
+    if (!q) return ROLE_OPTIONS;
+    return ROLE_OPTIONS.filter(row => row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q));
+  }, [leaderRoleInput]);
 
   function handleLeaderModeChange(mode) {
     setLeaderPhotoMode(mode);
@@ -502,6 +519,7 @@ export default function Participants() {
     setLeaderCommanderInput("");
     setLeaderCompanyInput("");
     setLeaderUplineInput("");
+    setLeaderRoleInput("");
     setLeaderAssignmentOpen("");
     setLeaderOriginalId("");
     setLeaderPhotoFile(null);
@@ -608,6 +626,7 @@ export default function Participants() {
     setLeaderCommanderInput(companyById[a.companyId]?.name || a.companyId || "");
     setLeaderCompanyInput(platoonById[a.platoonId]?.name || a.platoonId || "");
     setLeaderUplineInput(a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "");
+    setLeaderRoleInput(ROLE_OPTIONS.find(role => role.id === (a.role || "platoon"))?.name || "");
     setLeaderAssignmentOpen("");
     setLeaderOriginalId(a.id);
     setLeaderPhotoFile(null);
@@ -1234,12 +1253,24 @@ export default function Participants() {
                 </div>
 
                 <div className="field">
-                  <label>Role</label>
-                  <select value={leaderForm.role || "platoon"} onChange={(e) => setLeaderForm(s => ({ ...s, role: e.target.value }))}>
-                    <option value="platoon">Platoon Leader</option>
-                    <option value="squad">Squad Leader</option>
-                    <option value="team">Team Leader</option>
-                  </select>
+                  <FloatingSelectField
+                    label="Role"
+                    placeholder="Select role"
+                    searchPlaceholder="Search role"
+                    valueText={selectedRoleName}
+                    searchValue={leaderRoleInput}
+                    onSearchChange={setLeaderRoleInput}
+                    options={filteredRoleOptions}
+                    selectedId={leaderForm.role || "platoon"}
+                    onSelect={(option) => {
+                      setLeaderRoleInput(option.name);
+                      setLeaderForm(s => ({ ...s, role: option.id }));
+                    }}
+                    emptyText="No roles found."
+                    showId={false}
+                    isOpen={leaderAssignmentOpen === "role"}
+                    onOpenChange={open => setLeaderAssignmentOpen(open ? "role" : "")}
+                  />
                 </div>
               </div>
             </div>
