@@ -434,6 +434,8 @@ export default function ScoringFormulas() {
     const divisorsValid =
       displayMetrics.filter(m => Number(m.divisor) > 0 || !isEditable).length ===
       displayMetrics.length;
+    const hasReason = reasonText.trim().length > 0;
+    const canPublishDraft = !publishLoading && !isPublished && hasReason;
 
     return (
       <div className="details-panel">
@@ -583,7 +585,7 @@ export default function ScoringFormulas() {
                 className="btn details-action-btn details-action-btn--save"
                 onClick={handleSaveDraft}
                 disabled={
-                  saveLoading || !totalPointsValid || !reasonText.trim() || !divisorsValid
+                  saveLoading || !totalPointsValid || !hasReason || !divisorsValid
                 }
               >
                 <SaveIcon size={16} />
@@ -592,11 +594,8 @@ export default function ScoringFormulas() {
               <button
                 className="btn details-action-btn details-action-btn--publish"
                 onClick={handlePublish}
-                disabled={
-                  publishLoading ||
-                  isPublished ||
-                  !reasonText.trim()
-                }
+                disabled={!canPublishDraft}
+                title={!canPublishDraft ? "Reason is required to publish." : ""}
               >
                 <PublishIcon size={16} />
                 {publishLoading ? "Publishing…" : "Publish"}
