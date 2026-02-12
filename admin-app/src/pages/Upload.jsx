@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/pages/upload.css";
 import { ModalForm } from "../components/ModalForm";
+import { FloatingSelectField } from "../components/FloatingSelectField";
 import AppPagination from "../components/AppPagination";
 import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
@@ -89,9 +90,6 @@ export default function Upload() {
   const [depotsOptions, setDepotsOptions] = useState([]);
   const [manualError, setManualError] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
-  const [manualLeaderAccordionOpen, setManualLeaderAccordionOpen] = useState(false);
-  const [manualLeadsDepotAccordionOpen, setManualLeadsDepotAccordionOpen] = useState(false);
-  const [manualSalesDepotAccordionOpen, setManualSalesDepotAccordionOpen] = useState(false);
 
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -372,9 +370,6 @@ export default function Upload() {
     setIsDragging(false);
     setImportMode("warn");
     setManualOpen(false);
-    setManualLeaderAccordionOpen(false);
-    setManualLeadsDepotAccordionOpen(false);
-    setManualSalesDepotAccordionOpen(false);
     setManualError("");
     setManualForm({
       date_real: "",
@@ -467,9 +462,6 @@ export default function Upload() {
       ...prev,
       agent_id: agent.id,
     }));
-    setManualLeaderAccordionOpen(false);
-    setManualLeadsDepotAccordionOpen(false);
-    setManualSalesDepotAccordionOpen(false);
   }
 
   function handleManualDepotInputChange(field, value) {
@@ -498,12 +490,6 @@ export default function Upload() {
       ...prev,
       [field]: depot.id,
     }));
-    if (field === "leads_depot_id") {
-      setManualLeadsDepotAccordionOpen(false);
-    } else {
-      setManualSalesDepotAccordionOpen(false);
-    }
-    setManualLeaderAccordionOpen(false);
   }
 
   async function handleManualSubmit(e) {
@@ -539,9 +525,6 @@ export default function Upload() {
       const { rows: normalizedRows } = await normalizeRawDataRows([manualRow]);
       setRows(prev => mergeRawDataRowsByIdentity([...prev, ...normalizedRows]));
       setManualOpen(false);
-      setManualLeaderAccordionOpen(false);
-      setManualLeadsDepotAccordionOpen(false);
-      setManualSalesDepotAccordionOpen(false);
       setManualForm({
         date_real: "",
         agent_id: "",
@@ -575,9 +558,6 @@ export default function Upload() {
           onClick={() => {
             setManualError("");
             setManualOpen(true);
-            setManualLeaderAccordionOpen(false);
-            setManualLeadsDepotAccordionOpen(false);
-            setManualSalesDepotAccordionOpen(false);
           }}
           disabled={manualLoading}
         >
@@ -832,32 +812,17 @@ export default function Upload() {
 
       <ModalForm
         isOpen={manualOpen}
-        title="Manual Input (Daily Data)"
+        title="Manual Input"
         compactHeader
-        onClose={() => {
-          setManualOpen(false);
-          setManualLeaderAccordionOpen(false);
-          setManualLeadsDepotAccordionOpen(false);
-          setManualSalesDepotAccordionOpen(false);
-        }}
-        onOverlayClose={() => {
-          setManualOpen(false);
-          setManualLeaderAccordionOpen(false);
-          setManualLeadsDepotAccordionOpen(false);
-          setManualSalesDepotAccordionOpen(false);
-        }}
+        onClose={() => setManualOpen(false)}
+        onOverlayClose={() => setManualOpen(false)}
         onSubmit={handleManualSubmit}
         footer={(
           <>
             <button
               type="button"
               className="button secondary"
-              onClick={() => {
-                setManualOpen(false);
-                setManualLeaderAccordionOpen(false);
-                setManualLeadsDepotAccordionOpen(false);
-                setManualSalesDepotAccordionOpen(false);
-              }}
+              onClick={() => setManualOpen(false)}
             >
               Cancel
             </button>
@@ -882,52 +847,20 @@ export default function Upload() {
               required
             />
           </div>
-          <div className="field manual-input-grid__leader">
-            <label>Leader <span className="req">*</span></label>
-            <details
-              className="manual-accordion"
-              open={manualLeaderAccordionOpen}
-              onToggle={e => {
-                const isOpen = e.currentTarget.open;
-                setManualLeaderAccordionOpen(isOpen);
-                if (isOpen) {
-                  setManualLeadsDepotAccordionOpen(false);
-                  setManualSalesDepotAccordionOpen(false);
-                }
-                if (isOpen && !manualLookupInputs.agent && selectedManualLeaderName) {
-                  setManualLookupInputs(prev => ({ ...prev, agent: selectedManualLeaderName }));
-                }
-              }}
-            >
-              <summary>
-                <span>{selectedManualLeaderName || "Select leader"}</span>
-              </summary>
-              <div className="manual-accordion__panel">
-                <input
-                  type="text"
-                  value={manualLookupInputs.agent}
-                  onChange={e => handleManualAgentChange(e.target.value)}
-                  placeholder="Search leader"
-                />
-                <div className="manual-accordion__list">
-                  {filteredManualAgents.length ? (
-                    filteredManualAgents.map(agent => (
-                      <button
-                        key={agent.id}
-                        type="button"
-                        className={`manual-accordion__item${manualForm.agent_id === agent.id ? " is-active" : ""}`}
-                        onClick={() => handleManualLeaderSelect(agent)}
-                      >
-                        <span className="manual-accordion__name">{agent.name}</span>
-                        <span className="manual-accordion__id">{agent.id}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="manual-accordion__empty">No leaders found.</div>
-                  )}
-                </div>
-              </div>
-            </details>
+          <div className="manual-input-grid__leader">
+            <FloatingSelectField
+              label="Leader"
+              required
+              placeholder="Select leader"
+              searchPlaceholder="Search leader"
+              valueText={selectedManualLeaderName}
+              searchValue={manualLookupInputs.agent}
+              onSearchChange={handleManualAgentChange}
+              options={filteredManualAgents}
+              selectedId={manualForm.agent_id}
+              onSelect={handleManualLeaderSelect}
+              emptyText="No leaders found."
+            />
           </div>
           <div className="field manual-input-grid__payins">
             <label>Payins</label>
@@ -939,7 +872,7 @@ export default function Upload() {
               onChange={e => setManualForm(prev => ({ ...prev, payins: e.target.value }))}
             />
           </div>
-          <div className="field">
+          <div className="field manual-input-grid__col">
             <label>Leads</label>
             <input
               type="number"
@@ -949,54 +882,22 @@ export default function Upload() {
               onChange={e => setManualForm(prev => ({ ...prev, leads: e.target.value }))}
             />
           </div>
-          <div className="field">
-            <label>Leads Depot <span className="req">*</span></label>
-            <details
-              className="manual-accordion"
-              open={manualLeadsDepotAccordionOpen}
-              onToggle={e => {
-                const isOpen = e.currentTarget.open;
-                setManualLeadsDepotAccordionOpen(isOpen);
-                if (isOpen) {
-                  setManualLeaderAccordionOpen(false);
-                  setManualSalesDepotAccordionOpen(false);
-                }
-                if (isOpen && !manualLookupInputs.leads_depot_id && selectedManualLeadsDepotName) {
-                  setManualLookupInputs(prev => ({ ...prev, leads_depot_id: selectedManualLeadsDepotName }));
-                }
-              }}
-            >
-              <summary>
-                <span>{selectedManualLeadsDepotName || "Select leads depot"}</span>
-              </summary>
-              <div className="manual-accordion__panel">
-                <input
-                  type="text"
-                  value={manualLookupInputs.leads_depot_id}
-                  onChange={e => handleManualDepotInputChange("leads_depot_id", e.target.value)}
-                  placeholder="Search leads depot"
-                />
-                <div className="manual-accordion__list">
-                  {filteredManualLeadsDepots.length ? (
-                    filteredManualLeadsDepots.map(depot => (
-                      <button
-                        key={depot.id}
-                        type="button"
-                        className={`manual-accordion__item${manualForm.leads_depot_id === depot.id ? " is-active" : ""}`}
-                        onClick={() => handleManualDepotSelect("leads_depot_id", depot)}
-                      >
-                        <span className="manual-accordion__name">{depot.name}</span>
-                        <span className="manual-accordion__id">{depot.id}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="manual-accordion__empty">No depots found.</div>
-                  )}
-                </div>
-              </div>
-            </details>
+          <div className="manual-input-grid__col">
+            <FloatingSelectField
+              label="Leads Depot"
+              required
+              placeholder="Select leads depot"
+              searchPlaceholder="Search leads depot"
+              valueText={selectedManualLeadsDepotName}
+              searchValue={manualLookupInputs.leads_depot_id}
+              onSearchChange={value => handleManualDepotInputChange("leads_depot_id", value)}
+              options={filteredManualLeadsDepots}
+              selectedId={manualForm.leads_depot_id}
+              onSelect={depot => handleManualDepotSelect("leads_depot_id", depot)}
+              emptyText="No depots found."
+            />
           </div>
-          <div className="field">
+          <div className="field manual-input-grid__col">
             <label>Sales</label>
             <input
               type="number"
@@ -1006,52 +907,20 @@ export default function Upload() {
               onChange={e => setManualForm(prev => ({ ...prev, sales: e.target.value }))}
             />
           </div>
-          <div className="field">
-            <label>Sales Depot <span className="req">*</span></label>
-            <details
-              className="manual-accordion"
-              open={manualSalesDepotAccordionOpen}
-              onToggle={e => {
-                const isOpen = e.currentTarget.open;
-                setManualSalesDepotAccordionOpen(isOpen);
-                if (isOpen) {
-                  setManualLeaderAccordionOpen(false);
-                  setManualLeadsDepotAccordionOpen(false);
-                }
-                if (isOpen && !manualLookupInputs.sales_depot_id && selectedManualSalesDepotName) {
-                  setManualLookupInputs(prev => ({ ...prev, sales_depot_id: selectedManualSalesDepotName }));
-                }
-              }}
-            >
-              <summary>
-                <span>{selectedManualSalesDepotName || "Select sales depot"}</span>
-              </summary>
-              <div className="manual-accordion__panel">
-                <input
-                  type="text"
-                  value={manualLookupInputs.sales_depot_id}
-                  onChange={e => handleManualDepotInputChange("sales_depot_id", e.target.value)}
-                  placeholder="Search sales depot"
-                />
-                <div className="manual-accordion__list">
-                  {filteredManualSalesDepots.length ? (
-                    filteredManualSalesDepots.map(depot => (
-                      <button
-                        key={depot.id}
-                        type="button"
-                        className={`manual-accordion__item${manualForm.sales_depot_id === depot.id ? " is-active" : ""}`}
-                        onClick={() => handleManualDepotSelect("sales_depot_id", depot)}
-                      >
-                        <span className="manual-accordion__name">{depot.name}</span>
-                        <span className="manual-accordion__id">{depot.id}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="manual-accordion__empty">No depots found.</div>
-                  )}
-                </div>
-              </div>
-            </details>
+          <div className="manual-input-grid__col">
+            <FloatingSelectField
+              label="Sales Depot"
+              required
+              placeholder="Select sales depot"
+              searchPlaceholder="Search sales depot"
+              valueText={selectedManualSalesDepotName}
+              searchValue={manualLookupInputs.sales_depot_id}
+              onSearchChange={value => handleManualDepotInputChange("sales_depot_id", value)}
+              options={filteredManualSalesDepots}
+              selectedId={manualForm.sales_depot_id}
+              onSelect={depot => handleManualDepotSelect("sales_depot_id", depot)}
+              emptyText="No depots found."
+            />
           </div>
         </div>
       </ModalForm>
