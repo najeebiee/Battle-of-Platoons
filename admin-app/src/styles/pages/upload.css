@@ -205,6 +205,14 @@
   grid-column: span 3;
 }
 
+.manual-input-grid__sales{
+  grid-column: span 3;
+}
+
+.manual-input-grid__sales-depot{
+  grid-column: span 3;
+}
+
 .manual-input-grid .req{
   color: #b01818;
   font-weight: 700;

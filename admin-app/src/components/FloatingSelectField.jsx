@@ -42,8 +42,8 @@ export function FloatingSelectField({
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     setPanelStyle({
-      top: rect.bottom + window.scrollY + 6,
-      left: rect.left + window.scrollX,
+      top: rect.bottom + 6,
+      left: rect.left,
       width: rect.width,
     });
   }, [open, searchValue, options.length]);
@@ -54,8 +54,8 @@ export function FloatingSelectField({
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
       setPanelStyle({
-        top: rect.bottom + window.scrollY + 6,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + 6,
+        left: rect.left,
         width: rect.width,
       });
     };
@@ -135,4 +135,3 @@ export function FloatingSelectField({
     </div>
   );
 }
-

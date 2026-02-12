@@ -19,8 +19,8 @@
 }
 
 .floating-select-panel{
-  position: absolute;
-  z-index: 12050;
+  position: fixed;
+  z-index: 2147483000;
   padding: 10px;
   border: 1px solid #e5e7ff;
   border-radius: 12px;
@@ -79,4 +79,3 @@
   font-size: 12px;
   padding: 8px 2px;
 }
-

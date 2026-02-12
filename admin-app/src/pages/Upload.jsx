@@ -897,7 +897,7 @@ export default function Upload() {
               emptyText="No depots found."
             />
           </div>
-          <div className="field manual-input-grid__col">
+          <div className="field manual-input-grid__col manual-input-grid__sales">
             <label>Sales</label>
             <input
               type="number"
@@ -907,7 +907,7 @@ export default function Upload() {
               onChange={e => setManualForm(prev => ({ ...prev, sales: e.target.value }))}
             />
           </div>
-          <div className="manual-input-grid__col">
+          <div className="manual-input-grid__col manual-input-grid__sales-depot">
             <FloatingSelectField
               label="Sales Depot"
               required
