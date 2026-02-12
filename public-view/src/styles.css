@@ -1188,7 +1188,7 @@ a:focus-visible {
   align-items:center;
   gap: 10px;
   padding: 5px 10px 5px 0px;
-  border-right: 1px solid #C2C0C0;
+  border-right: 1px solid #dddddd;
   min-width: 0;
 }
 
@@ -1277,7 +1277,7 @@ a:focus-visible {
   background: #ffffff;
   color: #0b1770;
   box-shadow: 0 12px 24px rgba(11, 23, 112, 0.08);
-  border: 1px solid #e6e6e6;
+  border: 1px solid #dddddd;
 }
 
 .rank-card__rank {
