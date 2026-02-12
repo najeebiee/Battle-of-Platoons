@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import AppPagination from "../components/AppPagination";
 import ExportButton from "../components/ExportButton";
 import { ModalForm } from "../components/ModalForm";
+import { FloatingSelectField } from "../components/FloatingSelectField";
 import { exportToXlsx } from "../services/export.service";
 import {
   getProfilesByIds,
@@ -294,6 +295,7 @@ export default function AuditLog() {
     search: "",
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
+  const [filterSearch, setFilterSearch] = useState({ entityType: "", action: "" });
 
   const isSuperAdmin = profile?.role === "super_admin";
 
@@ -502,6 +504,33 @@ export default function AuditLog() {
     return ["", ...Array.from(actionSet).sort()];
   }, [rows]);
 
+  const selectedEntityLabel = useMemo(() => {
+    if (!filters.entityType || filters.entityType === "all") return "";
+    if (filters.entityType === "raw_data") return "Raw Data";
+    if (filters.entityType === "scoring_formula") return "Scoring Formula";
+    if (filters.entityType === "finalized_week") return "Finalized Week";
+    return "";
+  }, [filters.entityType]);
+
+  const entityFilterOptions = useMemo(() => {
+    const base = [
+      { id: "all", name: "All" },
+      { id: "raw_data", name: "Raw Data" },
+      { id: "scoring_formula", name: "Scoring Formula" },
+      { id: "finalized_week", name: "Finalized Week" },
+    ];
+    const q = filterSearch.entityType.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(option => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q));
+  }, [filterSearch.entityType]);
+
+  const actionFilterOptions = useMemo(() => {
+    const base = actionOptions.filter(Boolean).map(value => ({ id: value, name: value }));
+    const q = filterSearch.action.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(option => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q));
+  }, [actionOptions, filterSearch.action]);
+
   const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 1;
   const hasPrev = page > 0;
   const { from } = getPageRange(page);
@@ -524,6 +553,7 @@ export default function AuditLog() {
     };
     setFilters(cleared);
     setAppliedFilters(cleared);
+    setFilterSearch({ entityType: "", action: "" });
     setPage(0);
   }
 
@@ -747,31 +777,40 @@ export default function AuditLog() {
             />
           </div>
           <div>
-            <label className="form-label">Entity</label>
-            <select
-              className="input"
-              value={filters.entityType}
-              onChange={e => setFilters(prev => ({ ...prev, entityType: e.target.value }))}
-            >
-              <option value="all">All</option>
-              <option value="raw_data">Raw Data</option>
-              <option value="scoring_formula">Scoring Formula</option>
-              <option value="finalized_week">Finalized Week</option>
-            </select>
+            <FloatingSelectField
+              label="Entity"
+              placeholder="All"
+              searchPlaceholder="Search entity"
+              valueText={selectedEntityLabel}
+              searchValue={filterSearch.entityType}
+              onSearchChange={value => setFilterSearch(prev => ({ ...prev, entityType: value }))}
+              options={entityFilterOptions}
+              selectedId={filters.entityType}
+              onSelect={option => {
+                setFilters(prev => ({ ...prev, entityType: option.id }));
+                setFilterSearch(prev => ({ ...prev, entityType: option.name }));
+              }}
+              emptyText="No entity found."
+              showId={false}
+            />
           </div>
           <div>
-            <label className="form-label">Action</label>
-            <select
-              className="input"
-              value={filters.action}
-              onChange={e => setFilters(prev => ({ ...prev, action: e.target.value }))}
-            >
-              {actionOptions.map(option => (
-                <option key={option || "all"} value={option}>
-                  {option || "All"}
-                </option>
-              ))}
-            </select>
+            <FloatingSelectField
+              label="Action"
+              placeholder="All"
+              searchPlaceholder="Search action"
+              valueText={filters.action}
+              searchValue={filterSearch.action}
+              onSearchChange={value => setFilterSearch(prev => ({ ...prev, action: value }))}
+              options={actionFilterOptions}
+              selectedId={filters.action}
+              onSelect={option => {
+                setFilters(prev => ({ ...prev, action: option.id }));
+                setFilterSearch(prev => ({ ...prev, action: option.name }));
+              }}
+              emptyText="No action found."
+              showId={false}
+            />
           </div>
         </div>
         {showAdvanced ? (

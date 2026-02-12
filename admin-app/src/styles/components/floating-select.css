@@ -4,6 +4,15 @@
   background: #fff;
 }
 
+.floating-select.has-error{
+  border-color: #ffb6b6;
+  background: #fff6f6;
+}
+
+.floating-select.is-disabled{
+  opacity: 0.7;
+}
+
 .floating-select__trigger{
   width: 100%;
   border: 0;
@@ -16,6 +25,10 @@
   gap: 10px;
   color: #606489;
   font-size: 14px;
+}
+
+.floating-select__trigger:disabled{
+  cursor: not-allowed;
 }
 
 .floating-select-panel{

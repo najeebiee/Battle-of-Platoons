@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/finalization.css";
 import { Navigate } from "react-router-dom";
+import { FloatingSelectField } from "../components/FloatingSelectField";
 import AppPagination from "../components/AppPagination";
 import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
@@ -55,6 +56,7 @@ function StatusBadge({ status }) {
 export default function Finalization() {
   const [selectedDate, setSelectedDate] = useState(formatDateInput(new Date()));
   const [selectedWeekKey, setSelectedWeekKey] = useState("");
+  const [weekSearch, setWeekSearch] = useState("");
   const [week, setWeek] = useState(null);
   const [recentWeeks, setRecentWeeks] = useState([]);
   const [historyPage, setHistoryPage] = useState(1);
@@ -108,6 +110,22 @@ export default function Finalization() {
   const weekOptions = useMemo(() => {
     return [...recentWeeks].sort((a, b) => (a.start_date || "").localeCompare(b.start_date || ""));
   }, [recentWeeks]);
+
+  const selectedWeekLabel = useMemo(() => {
+    const match = weekOptions.find(w => w.week_key === selectedWeekKey);
+    if (!match) return "";
+    return `${match.week_key} (${match.start_date} -> ${match.end_date})`;
+  }, [selectedWeekKey, weekOptions]);
+
+  const filteredWeekOptions = useMemo(() => {
+    const q = weekSearch.trim().toLowerCase();
+    const base = weekOptions.map(weekRow => ({
+      id: weekRow.week_key,
+      name: `${weekRow.week_key} (${weekRow.start_date} -> ${weekRow.end_date})`,
+    }));
+    if (!q) return base;
+    return base.filter(option => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q));
+  }, [weekOptions, weekSearch]);
 
   useEffect(() => {
     setHistoryPage(1);
@@ -272,24 +290,27 @@ export default function Finalization() {
             Select week
           </label>
           <div className="finalization-date">
-            <select
-              id="week-select"
-              className="input"
-              value={selectedWeekKey}
-              onChange={e => {
-                const nextKey = e.target.value;
+            <FloatingSelectField
+              label=""
+              placeholder="Select week"
+              searchPlaceholder="Search week"
+              valueText={selectedWeekLabel}
+              searchValue={weekSearch}
+              onSearchChange={setWeekSearch}
+              options={filteredWeekOptions}
+              selectedId={selectedWeekKey}
+              onSelect={(option) => {
+                const nextKey = option.id;
                 setSelectedWeekKey(nextKey);
                 const match = weekOptions.find(w => w.week_key === nextKey);
                 if (match?.start_date) setSelectedDate(match.start_date);
+                setWeekSearch(option.name);
                 setActionError("");
               }}
-            >
-              {weekOptions.map(weekRow => (
-                <option key={weekRow.week_key} value={weekRow.week_key}>
-                  {weekRow.week_key} ({weekRow.start_date} → {weekRow.end_date})
-                </option>
-              ))}
-            </select>
+              emptyText="No weeks found."
+              showId={false}
+              className="finalization-week-select"
+            />
             <div className="muted" style={{ fontSize: 12 }}>
               Choose a week to load its status and actions.
             </div>

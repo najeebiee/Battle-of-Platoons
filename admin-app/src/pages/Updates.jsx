@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/updates.css";
 import { ModalForm } from "../components/ModalForm";
+import { FloatingSelectField } from "../components/FloatingSelectField";
 import AppPagination from "../components/AppPagination";
 import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
@@ -100,6 +101,11 @@ export default function Updates() {
   // Two-state filtering: input vs applied
   const [filtersInput, setFiltersInput] = useState(initialFilters);
   const [filtersApplied, setFiltersApplied] = useState(initialFilters);
+  const [filterSearch, setFilterSearch] = useState({
+    leaderId: "",
+    leadsDepotId: "",
+    salesDepotId: "",
+  });
 
   // Editing
   const [editingRow, setEditingRow] = useState(null);
@@ -135,6 +141,51 @@ export default function Updates() {
     for (const depot of depots) map[depot.id] = depot;
     return map;
   }, [depots]);
+
+  const leaderFilterLabel = useMemo(() => {
+    if (!filtersInput.leaderId) return "";
+    const found = agents.find(a => String(a.id) === String(filtersInput.leaderId));
+    return found?.name || "";
+  }, [agents, filtersInput.leaderId]);
+
+  const leadsDepotFilterLabel = useMemo(() => {
+    if (!filtersInput.leadsDepotId) return "";
+    const found = depots.find(d => String(d.id) === String(filtersInput.leadsDepotId));
+    return found?.name || "";
+  }, [depots, filtersInput.leadsDepotId]);
+
+  const salesDepotFilterLabel = useMemo(() => {
+    if (!filtersInput.salesDepotId) return "";
+    const found = depots.find(d => String(d.id) === String(filtersInput.salesDepotId));
+    return found?.name || "";
+  }, [depots, filtersInput.salesDepotId]);
+
+  const leaderFilterOptions = useMemo(() => {
+    const q = filterSearch.leaderId.trim().toLowerCase();
+    const base = agents.map(agent => ({ id: agent.id, name: agent.name || agent.id }));
+    if (!q) return base;
+    return base.filter(option =>
+      option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+    );
+  }, [agents, filterSearch.leaderId]);
+
+  const leadsDepotFilterOptions = useMemo(() => {
+    const q = filterSearch.leadsDepotId.trim().toLowerCase();
+    const base = depots.map(depot => ({ id: depot.id, name: depot.name || depot.id }));
+    if (!q) return base;
+    return base.filter(option =>
+      option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+    );
+  }, [depots, filterSearch.leadsDepotId]);
+
+  const salesDepotFilterOptions = useMemo(() => {
+    const q = filterSearch.salesDepotId.trim().toLowerCase();
+    const base = depots.map(depot => ({ id: depot.id, name: depot.name || depot.id }));
+    if (!q) return base;
+    return base.filter(option =>
+      option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+    );
+  }, [depots, filterSearch.salesDepotId]);
 
   // Load agents once
   useEffect(() => {
@@ -218,6 +269,7 @@ export default function Updates() {
   async function clearFilters() {
     setFiltersInput(initialFilters);
     setFiltersApplied(initialFilters);
+    setFilterSearch({ leaderId: "", leadsDepotId: "", salesDepotId: "" });
     cancelEdit();
     await applyFilters(initialFilters);
   }
@@ -441,51 +493,57 @@ export default function Updates() {
 
         <div className="updates-filter-row">
           <div>
-            <label className="form-label">Leader</label>
-            <select
-              className="input"
-              value={filtersInput.leaderId}
-              onChange={e => setFiltersInput(p => ({ ...p, leaderId: e.target.value }))}
-            >
-              <option value="">All leaders</option>
-              {agents.map(agent => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name} ({agent.id})
-                </option>
-              ))}
-            </select>
+            <FloatingSelectField
+              label="Leader"
+              placeholder="All leaders"
+              searchPlaceholder="Search leader"
+              valueText={leaderFilterLabel}
+              searchValue={filterSearch.leaderId}
+              onSearchChange={value => setFilterSearch(prev => ({ ...prev, leaderId: value }))}
+              options={leaderFilterOptions}
+              selectedId={filtersInput.leaderId}
+              onSelect={option => {
+                setFiltersInput(prev => ({ ...prev, leaderId: option.id }));
+                setFilterSearch(prev => ({ ...prev, leaderId: option.name }));
+              }}
+              emptyText="No leaders found."
+            />
           </div>
 
           <div>
-            <label className="form-label">Leads Depot</label>
-            <select
-              className="input"
-              value={filtersInput.leadsDepotId}
-              onChange={e => setFiltersInput(p => ({ ...p, leadsDepotId: e.target.value }))}
-            >
-              <option value="">All depots</option>
-              {depots.map(d => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+            <FloatingSelectField
+              label="Leads Depot"
+              placeholder="All depots"
+              searchPlaceholder="Search leads depot"
+              valueText={leadsDepotFilterLabel}
+              searchValue={filterSearch.leadsDepotId}
+              onSearchChange={value => setFilterSearch(prev => ({ ...prev, leadsDepotId: value }))}
+              options={leadsDepotFilterOptions}
+              selectedId={filtersInput.leadsDepotId}
+              onSelect={option => {
+                setFiltersInput(prev => ({ ...prev, leadsDepotId: option.id }));
+                setFilterSearch(prev => ({ ...prev, leadsDepotId: option.name }));
+              }}
+              emptyText="No depots found."
+            />
           </div>
 
           <div>
-            <label className="form-label">Sales Depot</label>
-            <select
-              className="input"
-              value={filtersInput.salesDepotId}
-              onChange={e => setFiltersInput(p => ({ ...p, salesDepotId: e.target.value }))}
-            >
-              <option value="">All depots</option>
-              {depots.map(d => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+            <FloatingSelectField
+              label="Sales Depot"
+              placeholder="All depots"
+              searchPlaceholder="Search sales depot"
+              valueText={salesDepotFilterLabel}
+              searchValue={filterSearch.salesDepotId}
+              onSearchChange={value => setFilterSearch(prev => ({ ...prev, salesDepotId: value }))}
+              options={salesDepotFilterOptions}
+              selectedId={filtersInput.salesDepotId}
+              onSelect={option => {
+                setFiltersInput(prev => ({ ...prev, salesDepotId: option.id }));
+                setFilterSearch(prev => ({ ...prev, salesDepotId: option.name }));
+              }}
+              emptyText="No depots found."
+            />
           </div>
 
           <div className="updates-filter-actions">

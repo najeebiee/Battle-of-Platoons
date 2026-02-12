@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "../styles/pages/publishing.css";
 import { Navigate } from "react-router-dom";
 import { ModalForm } from "../components/ModalForm";
+import { FloatingSelectField } from "../components/FloatingSelectField";
 import AppPagination from "../components/AppPagination";
 import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
@@ -66,6 +67,7 @@ export default function Publishing() {
     agentId: "",
     status: "",
   });
+  const [filterSearch, setFilterSearch] = useState({ agentId: "", status: "" });
   const [appliedFilters, setAppliedFilters] = useState({
     dateFrom: defaults.dateFrom,
     dateTo: defaults.dateTo,
@@ -236,6 +238,40 @@ export default function Publishing() {
     return { total, published, unpublished, voided };
   }, [rows]);
 
+  const selectedFilterLeaderName = useMemo(() => {
+    if (!filters.agentId) return "";
+    const found = agents.find(agent => String(agent.id) === String(filters.agentId));
+    return found?.name || "";
+  }, [agents, filters.agentId]);
+
+  const selectedFilterStatusName = useMemo(() => {
+    if (!filters.status) return "";
+    if (filters.status === "published") return "Published";
+    if (filters.status === "unpublished") return "Unpublished";
+    if (filters.status === "voided") return "Voided";
+    return "";
+  }, [filters.status]);
+
+  const leaderFilterOptions = useMemo(() => {
+    const q = filterSearch.agentId.trim().toLowerCase();
+    const base = agents.map(agent => ({ id: agent.id, name: agent.name || agent.id }));
+    if (!q) return base;
+    return base.filter(option =>
+      option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+    );
+  }, [agents, filterSearch.agentId]);
+
+  const statusFilterOptions = useMemo(() => {
+    const base = [
+      { id: "published", name: "Published" },
+      { id: "unpublished", name: "Unpublished" },
+      { id: "voided", name: "Voided" },
+    ];
+    const q = filterSearch.status.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(option => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q));
+  }, [filterSearch.status]);
+
   function handleApplyFilters() {
     setError("");
     setLoading(true);
@@ -245,6 +281,7 @@ export default function Publishing() {
   function handleClearFilters() {
     setFilters({ dateFrom: defaults.dateFrom, dateTo: defaults.dateTo, agentId: "", status: "" });
     setAppliedFilters({ dateFrom: defaults.dateFrom, dateTo: defaults.dateTo, agentId: "", status: "" });
+    setFilterSearch({ agentId: "", status: "" });
   }
 
   const selectableRows = useMemo(() => rows.filter(row => !row.voided), [rows]);
@@ -459,33 +496,40 @@ export default function Publishing() {
         </div>
         <div className="publishing-filter-row">
           <div>
-            <label htmlFor="leader-filter" className="form-label">Leader</label>
-            <select
-              id="leader-filter"
-              value={filters.agentId}
-              onChange={e => setFilters(prev => ({ ...prev, agentId: e.target.value }))}
+            <FloatingSelectField
+              label="Leader"
+              placeholder="All Leaders"
+              searchPlaceholder="Search leader"
+              valueText={selectedFilterLeaderName}
+              searchValue={filterSearch.agentId}
+              onSearchChange={value => setFilterSearch(prev => ({ ...prev, agentId: value }))}
+              options={leaderFilterOptions}
+              selectedId={filters.agentId}
               disabled={agentsLoading}
-            >
-              <option value="">All Leaders</option>
-              {agents.map(agent => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name}
-                </option>
-              ))}
-            </select>
+              onSelect={option => {
+                setFilters(prev => ({ ...prev, agentId: option.id }));
+                setFilterSearch(prev => ({ ...prev, agentId: option.name }));
+              }}
+              emptyText="No leaders found."
+            />
           </div>
           <div>
-            <label htmlFor="status-filter" className="form-label">Status</label>
-            <select
-              id="status-filter"
-              value={filters.status}
-              onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            >
-              <option value="">All</option>
-              <option value="published">Published</option>
-              <option value="unpublished">Unpublished</option>
-              <option value="voided">Voided</option>
-            </select>
+            <FloatingSelectField
+              label="Status"
+              placeholder="All"
+              searchPlaceholder="Search status"
+              valueText={selectedFilterStatusName}
+              searchValue={filterSearch.status}
+              onSearchChange={value => setFilterSearch(prev => ({ ...prev, status: value }))}
+              options={statusFilterOptions}
+              selectedId={filters.status}
+              onSelect={option => {
+                setFilters(prev => ({ ...prev, status: option.id }));
+                setFilterSearch(prev => ({ ...prev, status: option.name }));
+              }}
+              emptyText="No status found."
+              showId={false}
+            />
           </div>
           <div className="publishing-filter-actions">
             <button type="button" className="button primary" onClick={handleApplyFilters} disabled={loading}>

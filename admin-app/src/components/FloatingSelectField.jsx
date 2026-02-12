@@ -32,6 +32,9 @@ export function FloatingSelectField({
   className = "",
   isOpen,
   onOpenChange,
+  disabled = false,
+  hasError = false,
+  showId = true,
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState({ top: 0, left: 0, width: 0 });
@@ -41,6 +44,10 @@ export function FloatingSelectField({
   const open = controlled ? isOpen : internalOpen;
 
   function setOpen(next) {
+    if (disabled) {
+      if (!next) onOpenChange?.(false);
+      return;
+    }
     if (!controlled) setInternalOpen(next);
     onOpenChange?.(next);
   }
@@ -92,13 +99,14 @@ export function FloatingSelectField({
 
   return (
     <div className={`field ${className}`.trim()}>
-      <label>{label} {required ? <span className="req">*</span> : null}</label>
-      <div ref={triggerRef} className={`floating-select${open ? " is-open" : ""}`}>
+      {label ? <label>{label} {required ? <span className="req">*</span> : null}</label> : null}
+      <div ref={triggerRef} className={`floating-select${open ? " is-open" : ""}${hasError ? " has-error" : ""}${disabled ? " is-disabled" : ""}`}>
         <button
           type="button"
           className="floating-select__trigger"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
+          disabled={disabled}
         >
           <span>{resolvedLabel}</span>
           <ChevronIcon open={open} />
@@ -130,7 +138,7 @@ export function FloatingSelectField({
                     }}
                   >
                     <span className="floating-select-panel__name">{option.name}</span>
-                    <span className="floating-select-panel__id">{option.id}</span>
+                    {showId ? <span className="floating-select-panel__id">{option.id}</span> : null}
                   </button>
                 ))
               ) : (

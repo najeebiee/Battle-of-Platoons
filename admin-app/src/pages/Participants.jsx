@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ModalForm } from "../components/ModalForm";
+import { FloatingSelectField } from "../components/FloatingSelectField";
 import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
 import AppPagination from "../components/AppPagination";
@@ -98,6 +99,7 @@ export default function Participants() {
   const [leaderCommanderInput, setLeaderCommanderInput] = useState("");
   const [leaderCompanyInput, setLeaderCompanyInput] = useState("");
   const [leaderUplineInput, setLeaderUplineInput] = useState("");
+  const [leaderAssignmentOpen, setLeaderAssignmentOpen] = useState("");
   const [leaderIdCopied, setLeaderIdCopied] = useState(false);
 
   const [leaderFileKey, setLeaderFileKey] = useState(0);
@@ -431,6 +433,42 @@ export default function Participants() {
     return agents.filter(a => a.id !== selfIdForUpline);
   }, [agents, isEditingLeader, selfIdForUpline]);
 
+  const selectedCommanderName = useMemo(() => {
+    if (leaderForm.companyId) return companyById[leaderForm.companyId]?.name || leaderCommanderInput;
+    return leaderCommanderInput;
+  }, [companyById, leaderCommanderInput, leaderForm.companyId]);
+
+  const selectedCompanyName = useMemo(() => {
+    if (leaderForm.platoonId) return platoonById[leaderForm.platoonId]?.name || leaderCompanyInput;
+    return leaderCompanyInput;
+  }, [leaderCompanyInput, leaderForm.platoonId, platoonById]);
+
+  const selectedUplineName = useMemo(() => {
+    if (leaderForm.uplineId) return agentById[leaderForm.uplineId]?.name || leaderUplineInput;
+    return leaderUplineInput;
+  }, [agentById, leaderForm.uplineId, leaderUplineInput]);
+
+  const filteredCommanderOptions = useMemo(() => {
+    const q = leaderCommanderInput.trim().toLowerCase();
+    const rows = companies.map(c => ({ id: c.id, name: c.name || c.id }));
+    if (!q) return rows;
+    return rows.filter(row => row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q));
+  }, [companies, leaderCommanderInput]);
+
+  const filteredCompanyOptions = useMemo(() => {
+    const q = leaderCompanyInput.trim().toLowerCase();
+    const rows = platoons.map(p => ({ id: p.id, name: p.name || p.id }));
+    if (!q) return rows;
+    return rows.filter(row => row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q));
+  }, [leaderCompanyInput, platoons]);
+
+  const filteredUplineOptions = useMemo(() => {
+    const q = leaderUplineInput.trim().toLowerCase();
+    const rows = availableUplineLeaders.map(l => ({ id: l.id, name: l.name || l.id }));
+    if (!q) return rows;
+    return rows.filter(row => row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q));
+  }, [availableUplineLeaders, leaderUplineInput]);
+
   function handleLeaderModeChange(mode) {
     setLeaderPhotoMode(mode);
     setLeaderPhotoError("");
@@ -464,6 +502,7 @@ export default function Participants() {
     setLeaderCommanderInput("");
     setLeaderCompanyInput("");
     setLeaderUplineInput("");
+    setLeaderAssignmentOpen("");
     setLeaderOriginalId("");
     setLeaderPhotoFile(null);
     setLeaderFileKey(k => k + 1);
@@ -569,6 +608,7 @@ export default function Participants() {
     setLeaderCommanderInput(companyById[a.companyId]?.name || a.companyId || "");
     setLeaderCompanyInput(platoonById[a.platoonId]?.name || a.platoonId || "");
     setLeaderUplineInput(a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "");
+    setLeaderAssignmentOpen("");
     setLeaderOriginalId(a.id);
     setLeaderPhotoFile(null);
     setLeaderFileKey(k => k + 1);
@@ -1115,68 +1155,82 @@ export default function Participants() {
               <div className="modal-section__title">Assignment</div>
               <div className="grid">
                 <div className="field">
-                  <label>Commander <span className="req">*</span></label>
-                  <input
-                    list="leader-commanders"
-                    value={leaderCommanderInput}
-                    className={leaderCommanderError ? "input-error" : ""}
+                  <FloatingSelectField
+                    label="Commander"
+                    required
                     placeholder="Search commander"
-                    onChange={(e) => {
-                      const value = e.target.value;
+                    searchPlaceholder="Search commander"
+                    valueText={selectedCommanderName}
+                    searchValue={leaderCommanderInput}
+                    onSearchChange={(value) => {
                       setLeaderCommanderInput(value);
                       const resolved = resolveIdFromInput(value, companies);
                       setLeaderForm(s => ({ ...s, companyId: resolved }));
                     }}
+                    options={filteredCommanderOptions}
+                    selectedId={leaderForm.companyId}
+                    onSelect={(option) => {
+                      setLeaderCommanderInput(option.name);
+                      setLeaderForm(s => ({ ...s, companyId: option.id }));
+                    }}
+                    emptyText="No commanders found."
+                    hasError={!!leaderCommanderError}
+                    isOpen={leaderAssignmentOpen === "commander"}
+                    onOpenChange={open => setLeaderAssignmentOpen(open ? "commander" : "")}
                   />
-                  <datalist id="leader-commanders">
-                    {companies.map(c => (
-                      <option key={c.id} value={c.name} />
-                    ))}
-                  </datalist>
                   {leaderCommanderError && <div className="field-error">{leaderCommanderError}</div>}
                 </div>
 
                 <div className="field">
-                  <label>Company <span className="req">*</span></label>
-                  <input
-                    list="leader-companies"
-                    value={leaderCompanyInput}
-                    className={leaderCompanyError ? "input-error" : ""}
+                  <FloatingSelectField
+                    label="Company"
+                    required
                     placeholder="Search company"
-                    onChange={(e) => {
-                      const value = e.target.value;
+                    searchPlaceholder="Search company"
+                    valueText={selectedCompanyName}
+                    searchValue={leaderCompanyInput}
+                    onSearchChange={(value) => {
                       setLeaderCompanyInput(value);
                       const resolved = resolveIdFromInput(value, platoons);
                       setLeaderForm(s => ({ ...s, platoonId: resolved }));
                     }}
+                    options={filteredCompanyOptions}
+                    selectedId={leaderForm.platoonId}
+                    onSelect={(option) => {
+                      setLeaderCompanyInput(option.name);
+                      setLeaderForm(s => ({ ...s, platoonId: option.id }));
+                    }}
+                    emptyText="No companies found."
+                    hasError={!!leaderCompanyError}
+                    isOpen={leaderAssignmentOpen === "company"}
+                    onOpenChange={open => setLeaderAssignmentOpen(open ? "company" : "")}
                   />
-                  <datalist id="leader-companies">
-                    {platoons.map(p => (
-                      <option key={p.id} value={p.name} />
-                    ))}
-                  </datalist>
                   {leaderCompanyError && <div className="field-error">{leaderCompanyError}</div>}
                 </div>
 
                 <div className="field">
-                  <label>Upline (optional)</label>
-                  <input
-                    list="leader-uplines"
-                    value={leaderUplineInput}
+                  <FloatingSelectField
+                    label="Upline (optional)"
                     placeholder={availableUplineLeaders.length === 0 ? "No leaders available" : "Search upline"}
+                    searchPlaceholder="Search upline"
+                    valueText={selectedUplineName}
+                    searchValue={leaderUplineInput}
                     disabled={availableUplineLeaders.length === 0}
-                    onChange={(e) => {
-                      const value = e.target.value;
+                    onSearchChange={(value) => {
                       setLeaderUplineInput(value);
                       const resolved = resolveIdFromInput(value, availableUplineLeaders);
                       setLeaderForm(s => ({ ...s, uplineId: resolved }));
                     }}
+                    options={filteredUplineOptions}
+                    selectedId={leaderForm.uplineId}
+                    onSelect={(option) => {
+                      setLeaderUplineInput(option.name);
+                      setLeaderForm(s => ({ ...s, uplineId: option.id }));
+                    }}
+                    emptyText="No uplines found."
+                    isOpen={leaderAssignmentOpen === "upline"}
+                    onOpenChange={open => setLeaderAssignmentOpen(open ? "upline" : "")}
                   />
-                  <datalist id="leader-uplines">
-                    {availableUplineLeaders.map(l => (
-                      <option key={l.id} value={l.name} />
-                    ))}
-                  </datalist>
                 </div>
 
                 <div className="field">
