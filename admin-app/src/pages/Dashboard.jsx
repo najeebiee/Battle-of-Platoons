@@ -87,6 +87,11 @@ function startOfQuarter(date) {
   return new Date(date.getFullYear(), quarter * 3, 1);
 }
 
+function getDefaultStartDate(baseDate = new Date()) {
+  const year = baseDate.getFullYear();
+  const jan5 = new Date(year, 0, 5);
+  return jan5 > baseDate ? new Date(year - 1, 0, 5) : jan5;
+}
 function formatRelativeTime(date) {
   if (!date) return "Updated —";
   const diffMs = Date.now() - date.getTime();
@@ -243,8 +248,8 @@ function Podium({ top3, onSelect, selectedId }) {
 
 export default function Dashboard() {
   const [mode, setMode] = useState("leaders");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => formatYmd(getDefaultStartDate()));
+  const [dateTo, setDateTo] = useState(() => formatYmd(new Date()));
   const [data, setData] = useState({ kpis: {}, rows: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -544,3 +549,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

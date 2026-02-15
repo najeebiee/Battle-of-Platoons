@@ -126,6 +126,12 @@ function startOfQuarter(date) {
   return new Date(date.getFullYear(), quarter * 3, 1);
 }
 
+function getDefaultStartDate(baseDate = new Date()) {
+  const year = baseDate.getFullYear();
+  const jan5 = new Date(year, 0, 5);
+  return jan5 > baseDate ? new Date(year - 1, 0, 5) : jan5;
+}
+
 function formatRelativeTime(date) {
   if (!date) return "Updated -";
   const diffMs = Date.now() - date.getTime();
@@ -338,12 +344,8 @@ function App() {
   const faqWeekKey = activeWeekTab?.range?.end ? toIsoWeekKey(activeWeekTab.range.end) : null;
   const [activeView, setActiveView] = useState("depots");
   const [leaderRoleFilter, setLeaderRoleFilter] = useState(LEADER_ROLE_TABS[0].key);
-  const [dateFrom, setDateFrom] = useState(() =>
-    activeWeekTab?.range?.start ? toYMD(activeWeekTab.range.start) : toYMD(new Date())
-  );
-  const [dateTo, setDateTo] = useState(() =>
-    activeWeekTab?.range?.end ? toYMD(activeWeekTab.range.end) : toYMD(new Date())
-  );
+  const [dateFrom, setDateFrom] = useState(() => toYMD(getDefaultStartDate()));
+  const [dateTo, setDateTo] = useState(() => toYMD(new Date()));
   // Pagination plan:
   // - paginate ranks 4+ (rows list) at 15 per page
   // - reset page on view/week/filter changes
@@ -360,6 +362,7 @@ function App() {
   const [formulasByType, setFormulasByType] = useState({});
   const faqButtonRef = useRef(null);
   const faqCloseRef = useRef(null);
+  const hasSkippedInitialWeekSync = useRef(false);
 
   const presets = useMemo(() => {
     const today = new Date();
@@ -393,6 +396,10 @@ function App() {
 
   useEffect(() => {
     if (!activeWeekTab?.range) return;
+    if (!hasSkippedInitialWeekSync.current) {
+      hasSkippedInitialWeekSync.current = true;
+      return;
+    }
     setDateFrom(toYMD(activeWeekTab.range.start));
     setDateTo(toYMD(activeWeekTab.range.end));
   }, [activeWeek, activeWeekTab?.range?.start, activeWeekTab?.range?.end]);
