@@ -655,15 +655,6 @@ textarea{
 .export-button{
   padding: 8px 10px;
   border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.export-button__label{
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
 }
 
 .table-actions{

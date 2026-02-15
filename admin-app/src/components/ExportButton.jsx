@@ -20,7 +20,6 @@ export default function ExportButton({
   label = "Export XLSX",
   loadingLabel = "Exporting...",
   disabled = false,
-  showText = false,
   className = "",
 }) {
   return (
@@ -33,7 +32,6 @@ export default function ExportButton({
       title={loading ? loadingLabel : label}
     >
       <ExcelIcon size={22} />
-      {showText ? <span className="export-button__label">{loading ? loadingLabel : label}</span> : null}
     </button>
   );
 }

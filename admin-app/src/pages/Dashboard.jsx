@@ -717,6 +717,12 @@ export default function Dashboard() {
                     Selected {selectedEntityLabel}
                   </div>
                   <div className="dashboard-detail__name">{selectedRow?.name || "Unknown"}</div>
+                  <div className="dashboard-history__range">
+                    <span className="dashboard-detail__label">Date range</span>
+                    <span className="dashboard-detail__value">
+                      {dateFrom || "Any"} to {dateTo || "Any"}
+                    </span>
+                  </div>
                 </div>
                 <div className="dashboard-detail__metrics">
                   <div>
@@ -740,19 +746,11 @@ export default function Dashboard() {
 
               <div className="dashboard-history__meta">
                 <div className="dashboard-panel__title">Selected Participant History</div>
-                <div className="dashboard-history__meta-range">
-                  <span className="dashboard-history__meta-range-label">Date range:</span>
-                  <span className="dashboard-history__meta-range-value">
-                    {dateFrom || "Any"} to {dateTo || "Any"}
-                  </span>
-                </div>
                 <ExportButton
                   onClick={exportHistoryXlsx}
                   loading={false}
                   disabled={historyLoading || !historyRows.length}
-                  showText
-                  label="Export XLSX"
-                  className="dashboard-history__export"
+                  label="Export selected history"
                 />
               </div>
 
