@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AppPagination from "../components/AppPagination";
+import ExportButton from "../components/ExportButton";
 import "../styles/pages/dashboard.css";
 import "../styles/pages/updates.css";
 import { getDashboardRankings } from "../services/dashboardRankings.service";
+import { exportToXlsx } from "../services/export.service";
 import { getRawDataHistory } from "../services/rawData.service";
 import { computeTotalScore } from "../services/scoringEngine";
 
@@ -484,6 +486,37 @@ export default function Dashboard() {
     return historyRows.slice(start, start + HISTORY_ROWS_PER_PAGE);
   }, [historyRows, historyPage, HISTORY_ROWS_PER_PAGE]);
 
+  const selectedEntityLabel =
+    mode === "leaders"
+      ? "Leader"
+      : mode === "depots"
+      ? "Depot"
+      : mode === "commanders"
+      ? "Commander"
+      : "Company";
+
+  const exportHistoryXlsx = () => {
+    if (!selectedRow || !historyRows.length) return;
+    const exportRows = historyRows.map((row) => ({
+      Date: row.date_real || "",
+      Leader: row.leaderName || "(Restricted)",
+      "Leads Depot": row.leadsDepotName || "-",
+      Leads: Number(row.leads ?? 0),
+      "Sales Depot": row.salesDepotName || "-",
+      Payins: Number(row.payins ?? 0),
+      Sales: Number(row.sales ?? 0),
+      Points: Number(row.points ?? 0),
+      Status: row.voided ? "Voided" : "Active",
+    }));
+    const safeName = String(selectedRow?.name || "participant")
+      .trim()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase();
+    const filename = `dashboard-history-${safeName || "participant"}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "History" });
+  };
+
   const handleSelectRow = (row) => {
     setSelectedRow(row);
   };
@@ -681,16 +714,12 @@ export default function Dashboard() {
               <div className="dashboard-history__summary">
                 <div>
                   <div className="dashboard-detail__title">
-                    Selected{" "}
-                    {mode === "leaders"
-                      ? "Leader"
-                      : mode === "depots"
-                      ? "Depot"
-                      : mode === "commanders"
-                      ? "Commander"
-                      : "Company"}
+                    Selected {selectedEntityLabel}
                   </div>
                   <div className="dashboard-detail__name">{selectedRow?.name || "Unknown"}</div>
+                  <div className="dashboard-history__range muted">
+                    Date range: {dateFrom || "Any"} to {dateTo || "Any"}
+                  </div>
                 </div>
                 <div className="dashboard-detail__metrics">
                   <div>
@@ -714,9 +743,12 @@ export default function Dashboard() {
 
               <div className="dashboard-history__meta">
                 <div className="dashboard-panel__title">Selected Participant History</div>
-                <div className="muted">
-                  Date range: {dateFrom || "Any"} to {dateTo || "Any"}
-                </div>
+                <ExportButton
+                  onClick={exportHistoryXlsx}
+                  loading={false}
+                  disabled={historyLoading || !historyRows.length}
+                  label="Export selected history"
+                />
               </div>
 
               {historyError ? <div className="dashboard-error">{historyError}</div> : null}

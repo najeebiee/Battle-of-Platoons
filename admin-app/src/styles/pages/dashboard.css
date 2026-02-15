@@ -979,6 +979,11 @@
   gap: 16px;
 }
 
+.dashboard-history__range{
+  margin-top: 4px;
+  font-size: 13px;
+}
+
 .dashboard-history__meta{
   margin-top: 6px;
   display: flex;
@@ -986,6 +991,23 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.dashboard-history .dashboard-detail__metrics{
+  justify-content: center;
+  align-items: center;
+}
+
+.dashboard-history .dashboard-detail__metrics > div{
+  text-align: center;
+}
+
+.dashboard-history .dashboard-detail__label{
+  color: var(--blue);
+}
+
+.dashboard-history .dashboard-detail__value{
+  color: var(--blue);
 }
 
 .data-table tbody tr{
