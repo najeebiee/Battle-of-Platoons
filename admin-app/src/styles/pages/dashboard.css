@@ -374,6 +374,13 @@
   color: var(--blue);
 }
 
+.dashboard-panel__head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .podium {
   display: grid;
   grid-auto-flow: column;
@@ -1093,6 +1100,10 @@
 @media (max-width: 720px){
   .dashboard-header{
     align-items: flex-start;
+  }
+
+  .dashboard-panel__head{
+    flex-wrap: wrap;
   }
 
   .dashboard-label input{

@@ -323,6 +323,8 @@ export default function Dashboard() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
+  const [listPage, setListPage] = useState(1);
+  const LIST_ROWS_PER_PAGE = 10;
   const HISTORY_ROWS_PER_PAGE = 10;
 
   const loadDashboard = async () => {
@@ -363,7 +365,7 @@ export default function Dashboard() {
   }, [data]);
 
   const topThree = sortedRows.slice(0, 3);
-  const topTen = sortedRows.slice(3, 13);
+  const listRows = sortedRows.slice(3);
   const hasRows = sortedRows.length > 0;
 
   const kpis = [
@@ -486,6 +488,33 @@ export default function Dashboard() {
     return historyRows.slice(start, start + HISTORY_ROWS_PER_PAGE);
   }, [historyRows, historyPage, HISTORY_ROWS_PER_PAGE]);
 
+  const listPageCount = Math.max(1, Math.ceil(listRows.length / LIST_ROWS_PER_PAGE));
+  useEffect(() => {
+    if (listPage > listPageCount) {
+      setListPage(listPageCount);
+    }
+  }, [listPage, listPageCount]);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [mode, leaderRole, dateFrom, dateTo]);
+
+  const pagedListRows = useMemo(() => {
+    const start = (listPage - 1) * LIST_ROWS_PER_PAGE;
+    return listRows.slice(start, start + LIST_ROWS_PER_PAGE);
+  }, [listRows, listPage, LIST_ROWS_PER_PAGE]);
+
+  const leaderboardEntityLabel =
+    mode === "leaders"
+      ? "Leader"
+      : mode === "depots"
+      ? "Depot"
+      : mode === "commanders"
+      ? "Commander"
+      : "Company";
+
+  const listRangeTitle = listRows.length ? `Ranks 4 - ${sortedRows.length}` : "Ranks 4+";
+
   const selectedEntityLabel =
     mode === "leaders"
       ? "Leader"
@@ -494,6 +523,23 @@ export default function Dashboard() {
       : mode === "commanders"
       ? "Commander"
       : "Company";
+
+  const exportLeaderboardXlsx = () => {
+    if (!sortedRows.length) return;
+    const exportRows = sortedRows.map((row) => ({
+      Rank: Number(row?.rank ?? 0),
+      [leaderboardEntityLabel]: row?.name || "Unknown",
+      Leads: Number(row?.leads ?? 0),
+      Payins: Number(row?.payins ?? 0),
+      Sales: Number(row?.sales ?? 0),
+      Points: Number(row?.points ?? 0),
+    }));
+    const scope = mode === "leaders" ? `${mode}-${leaderRole}` : mode;
+    const dateFromPart = dateFrom || "any";
+    const dateToPart = dateTo || "any";
+    const filename = `dashboard-leaderboard-${scope}-${dateFromPart}-to-${dateToPart}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToXlsx({ rows: exportRows, filename, sheetName: "Leaderboard" });
+  };
 
   const exportHistoryXlsx = () => {
     if (!selectedRow || !historyRows.length) return;
@@ -658,20 +704,22 @@ export default function Dashboard() {
           </div>
 
           <div className="card dashboard-panel">
-            <div className="dashboard-panel__title">Top 4 - 13</div>
+            <div className="dashboard-panel__head">
+              <div className="dashboard-panel__title">{listRangeTitle}</div>
+              <ExportButton
+                onClick={exportLeaderboardXlsx}
+                loading={false}
+                disabled={loading || !sortedRows.length}
+                label="Export leaderboard"
+              />
+            </div>
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Rank</th>
                     <th>
-                      {mode === "leaders"
-                        ? "Leader"
-                        : mode === "depots"
-                        ? "Depot"
-                        : mode === "commanders"
-                        ? "Commander"
-                        : "Company"}
+                      {leaderboardEntityLabel}
                     </th>
                     <th>Leads</th>
                     <th>Payins</th>
@@ -680,20 +728,20 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {topTen.length === 0 && !loading ? (
+                  {listRows.length === 0 && !loading ? (
                     <tr>
                       <td colSpan={6} className="muted">
-                        No data available for the selected range.
+                        No ranks available below podium for the selected range.
                       </td>
                     </tr>
                   ) : (
-                    topTen.map((row, index) => (
+                    pagedListRows.map((row, index) => (
                       <tr
                         key={`${row?.id || row?.name}-${index}`}
                         className={selectedRow?.id === row?.id ? "is-selected" : ""}
                         onClick={() => handleSelectRow(row)}
                       >
-                        <td>#{row?.rank ?? index + 4}</td>
+                        <td>#{row?.rank ?? index + 1}</td>
                         <td>{row?.name || "Unknown"}</td>
                         <td>{formatNumber(row?.leads)}</td>
                         <td>{formatNumber(row?.payins)}</td>
@@ -705,6 +753,13 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+            <AppPagination
+              count={listPageCount}
+              page={listPage}
+              onChange={setListPage}
+              totalItems={listRows.length}
+              pageSize={LIST_ROWS_PER_PAGE}
+            />
           </div>
         </div>
 
