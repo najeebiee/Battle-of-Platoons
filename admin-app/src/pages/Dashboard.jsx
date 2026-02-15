@@ -677,44 +677,46 @@ export default function Dashboard() {
 
         {selectedRow && (
           <>
-            <div className="dashboard-detail">
-              <div>
-                <div className="dashboard-detail__title">
-                  Selected{" "}
-                  {mode === "leaders"
-                    ? "Leader"
-                    : mode === "depots"
-                    ? "Depot"
-                    : mode === "commanders"
-                    ? "Commander"
-                    : "Company"}
-                </div>
-                <div className="dashboard-detail__name">{selectedRow?.name || "Unknown"}</div>
-              </div>
-              <div className="dashboard-detail__metrics">
-                <div>
-                  <div className="dashboard-detail__label">Leads</div>
-                  <div className="dashboard-detail__value">{formatNumber(selectedRow?.leads)}</div>
-                </div>
-                <div>
-                  <div className="dashboard-detail__label">Payins</div>
-                  <div className="dashboard-detail__value">{formatNumber(selectedRow?.payins)}</div>
-                </div>
-                <div>
-                  <div className="dashboard-detail__label">Sales</div>
-                  <div className="dashboard-detail__value">{formatCurrency(selectedRow?.sales)}</div>
-                </div>
-                <div>
-                  <div className="dashboard-detail__label">Points</div>
-                  <div className="dashboard-detail__value">{formatPoints(selectedRow?.points)}</div>
-                </div>
-              </div>
-            </div>
-
             <div className="card dashboard-panel dashboard-history">
-              <div className="dashboard-panel__title">Selected Participant History</div>
-              <div className="muted">
-                Date range: {dateFrom || "Any"} to {dateTo || "Any"}
+              <div className="dashboard-history__summary">
+                <div>
+                  <div className="dashboard-detail__title">
+                    Selected{" "}
+                    {mode === "leaders"
+                      ? "Leader"
+                      : mode === "depots"
+                      ? "Depot"
+                      : mode === "commanders"
+                      ? "Commander"
+                      : "Company"}
+                  </div>
+                  <div className="dashboard-detail__name">{selectedRow?.name || "Unknown"}</div>
+                </div>
+                <div className="dashboard-detail__metrics">
+                  <div>
+                    <div className="dashboard-detail__label">Leads</div>
+                    <div className="dashboard-detail__value">{formatNumber(selectedRow?.leads)}</div>
+                  </div>
+                  <div>
+                    <div className="dashboard-detail__label">Payins</div>
+                    <div className="dashboard-detail__value">{formatNumber(selectedRow?.payins)}</div>
+                  </div>
+                  <div>
+                    <div className="dashboard-detail__label">Sales</div>
+                    <div className="dashboard-detail__value">{formatCurrency(selectedRow?.sales)}</div>
+                  </div>
+                  <div>
+                    <div className="dashboard-detail__label">Points</div>
+                    <div className="dashboard-detail__value">{formatPoints(selectedRow?.points)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dashboard-history__meta">
+                <div className="dashboard-panel__title">Selected Participant History</div>
+                <div className="muted">
+                  Date range: {dateFrom || "Any"} to {dateTo || "Any"}
+                </div>
               </div>
 
               {historyError ? <div className="dashboard-error">{historyError}</div> : null}
