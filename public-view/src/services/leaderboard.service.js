@@ -292,6 +292,12 @@ function aggregateLeaderboard({
     points: scoringFn(x),
   }));
 
+  // CHANGE THE FIRST TIE BREAKER TO PAYINS, THEN SALES, THEN LEADS, to better reflect business priorities
+  //result.sort(
+  //(a, b) =>
+  //  b.points - a.points || b.payins - a.payins || b.sales - a.sales || b.leads - a.leads
+  //);
+
   result.sort(
     (a, b) =>
       b.points - a.points || b.sales - a.sales || b.leads - a.leads || b.payins - a.payins
