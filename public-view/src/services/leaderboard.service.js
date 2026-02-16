@@ -292,16 +292,36 @@ function aggregateLeaderboard({
     points: scoringFn(x),
   }));
 
-  // CHANGE THE FIRST TIE BREAKER TO PAYINS, THEN SALES, THEN LEADS, to better reflect business priorities
-  //result.sort(
-  //(a, b) =>
-  //  b.points - a.points || b.payins - a.payins || b.sales - a.sales || b.leads - a.leads
-  //);
+  result.sort((a, b) => {
+    const pointsDiff = toNumber(b.points) - toNumber(a.points);
+    if (pointsDiff !== 0) return pointsDiff;
 
-  result.sort(
-    (a, b) =>
-      b.points - a.points || b.sales - a.sales || b.leads - a.leads || b.payins - a.payins
-  );
+    // Temporary depot-only rule:
+    // if both are at 1000+ points, lower sales ranks higher.
+    if (mode === "depots") {
+      if (toNumber(a.points) >= 1000 && toNumber(b.points) >= 1000) {
+        const lowerSalesWins = toNumber(a.sales) - toNumber(b.sales);
+        if (lowerSalesWins !== 0) return lowerSalesWins;
+      } else {
+        const salesDiff = toNumber(b.sales) - toNumber(a.sales);
+        if (salesDiff !== 0) return salesDiff;
+      }
+
+      const leadsDiff = toNumber(b.leads) - toNumber(a.leads);
+      if (leadsDiff !== 0) return leadsDiff;
+
+      return toNumber(b.payins) - toNumber(a.payins);
+    }
+
+    // Leaders/commanders/companies: payins first, then sales, then leads.
+    const payinsDiff = toNumber(b.payins) - toNumber(a.payins);
+    if (payinsDiff !== 0) return payinsDiff;
+
+    const salesDiff = toNumber(b.sales) - toNumber(a.sales);
+    if (salesDiff !== 0) return salesDiff;
+
+    return toNumber(b.leads) - toNumber(a.leads);
+  });
 
   for (let i = 0; i < result.length; i++) result[i].rank = i + 1;
 
