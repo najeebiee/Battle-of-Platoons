@@ -92,14 +92,34 @@ function getRowDate(row) {
   return parseFirestoreTimestampJson(row?.date);
 }
 
-function rankRows(rows = []) {
-  const sorted = [...rows].sort(
-    (a, b) =>
-      toNumber(b.points) - toNumber(a.points) ||
-      toNumber(b.sales) - toNumber(a.sales) ||
-      toNumber(b.leads) - toNumber(a.leads) ||
-      toNumber(b.payins) - toNumber(a.payins)
-  );
+function rankRows(rows = [], mode = "leaders") {
+  const sorted = [...rows].sort((a, b) => {
+    const pointsDiff = toNumber(b.points) - toNumber(a.points);
+    if (pointsDiff !== 0) return pointsDiff;
+
+    if (mode === "depots") {
+      if (toNumber(a.points) >= 1000 && toNumber(b.points) >= 1000) {
+        const lowerSalesWins = toNumber(a.sales) - toNumber(b.sales);
+        if (lowerSalesWins !== 0) return lowerSalesWins;
+      } else {
+        const salesDiff = toNumber(b.sales) - toNumber(a.sales);
+        if (salesDiff !== 0) return salesDiff;
+      }
+
+      const leadsDiff = toNumber(b.leads) - toNumber(a.leads);
+      if (leadsDiff !== 0) return leadsDiff;
+
+      return toNumber(b.payins) - toNumber(a.payins);
+    }
+
+    const payinsDiff = toNumber(b.payins) - toNumber(a.payins);
+    if (payinsDiff !== 0) return payinsDiff;
+
+    const salesDiff = toNumber(b.sales) - toNumber(a.sales);
+    if (salesDiff !== 0) return salesDiff;
+
+    return toNumber(b.leads) - toNumber(a.leads);
+  });
   return sorted.map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
@@ -310,7 +330,8 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
     rows.map((row) => ({
       ...row,
       points: scoreRow(row),
-    }))
+    })),
+    resolvedMode
   );
 
   const totals = rankedRows.reduce(

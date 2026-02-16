@@ -150,6 +150,34 @@ function formatPoints(value) {
   return num.toFixed(1);
 }
 
+function compareRowsByMode(a, b, mode) {
+  const pointsDiff = Number(b?.points || 0) - Number(a?.points || 0);
+  if (pointsDiff !== 0) return pointsDiff;
+
+  if (mode === "depots") {
+    if (Number(a?.points || 0) >= 1000 && Number(b?.points || 0) >= 1000) {
+      const lowerSalesWins = Number(a?.sales || 0) - Number(b?.sales || 0);
+      if (lowerSalesWins !== 0) return lowerSalesWins;
+    } else {
+      const salesDiff = Number(b?.sales || 0) - Number(a?.sales || 0);
+      if (salesDiff !== 0) return salesDiff;
+    }
+
+    const leadsDiff = Number(b?.leads || 0) - Number(a?.leads || 0);
+    if (leadsDiff !== 0) return leadsDiff;
+
+    return Number(b?.payins || 0) - Number(a?.payins || 0);
+  }
+
+  const payinsDiff = Number(b?.payins || 0) - Number(a?.payins || 0);
+  if (payinsDiff !== 0) return payinsDiff;
+
+  const salesDiff = Number(b?.sales || 0) - Number(a?.sales || 0);
+  if (salesDiff !== 0) return salesDiff;
+
+  return Number(b?.leads || 0) - Number(a?.leads || 0);
+}
+
 function isBlankValue(value) {
   return value === null || value === undefined || String(value).trim() === "";
 }
@@ -355,14 +383,9 @@ export default function Dashboard() {
     return [...rows].sort((a, b) => {
       const rankDiff = Number(a?.rank || 0) - Number(b?.rank || 0);
       if (rankDiff !== 0) return rankDiff;
-      return (
-        Number(b?.points || 0) - Number(a?.points || 0) ||
-        Number(b?.sales || 0) - Number(a?.sales || 0) ||
-        Number(b?.leads || 0) - Number(a?.leads || 0) ||
-        Number(b?.payins || 0) - Number(a?.payins || 0)
-      );
+      return compareRowsByMode(a, b, mode);
     });
-  }, [data]);
+  }, [data, mode]);
 
   const topThree = sortedRows.slice(0, 3);
   const listRows = sortedRows.slice(3);
