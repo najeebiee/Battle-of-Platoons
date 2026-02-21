@@ -7,7 +7,7 @@ import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
-import { canEditRow, getRawDataHistory, setVoided, updateRow } from "../services/rawData.service";
+import { canEditRow, getRawDataHistory, updateRow } from "../services/rawData.service";
 import { getMyProfile } from "../services/profile.service";
 
 // ----------------------
@@ -100,17 +100,6 @@ function EditIcon({ size = 16 }) {
   );
 }
 
-function TrashIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        d="M9 3.75A.75.75 0 0 1 9.75 3h4.5a.75.75 0 0 1 .75.75V5H19a.75.75 0 0 1 0 1.5h-1.06l-1.02 12.24A2.25 2.25 0 0 1 14.68 21H9.32a2.25 2.25 0 0 1-2.24-2.26L6.06 6.5H5a.75.75 0 0 1 0-1.5h4V3.75ZM10.5 5h3V4.5h-3V5Zm-1.9 1.5.98 11.86a.75.75 0 0 0 .74.74h5.36a.75.75 0 0 0 .74-.74l.98-11.86H8.6Zm2.15 2.5c.41 0 .75.34.75.75v6a.75.75 0 0 1-1.5 0v-6c0-.41.34-.75.75-.75Zm3 0c.41 0 .75.34.75.75v6a.75.75 0 0 1-1.5 0v-6c0-.41.34-.75.75-.75Z"
-      />
-    </svg>
-  );
-}
-
 export default function Updates() {
   const [agents, setAgents] = useState([]);
   const [depots, setDepots] = useState([]);
@@ -120,7 +109,6 @@ export default function Updates() {
 
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState("");
-  const [actionLoadingId, setActionLoadingId] = useState("");
 
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -459,88 +447,6 @@ export default function Updates() {
     }
   }
 
-  async function handleVoidRow(row) {
-    if (!row?.id) return;
-    if (!canManageRow(row)) {
-      setError("You do not have permission to void this entry.");
-      return;
-    }
-
-    const reason = window.prompt("Enter void reason:", "Voided by user");
-    if (reason === null) return;
-    const trimmedReason = reason.trim();
-    if (!trimmedReason) {
-      setError("Void reason is required.");
-      return;
-    }
-
-    setActionLoadingId(row.id);
-    setError("");
-    setStatus("");
-    try {
-      await setVoided(row.id, true, trimmedReason);
-      setRows(prev => prev.filter(item => item.id !== row.id));
-      if (editingRow?.id === row.id) cancelEdit();
-      setStatus("Entry voided.");
-    } catch (e) {
-      console.error(e);
-      setError(e?.message || "Failed to void entry");
-    } finally {
-      setActionLoadingId("");
-    }
-  }
-
-  // Render helpers for tab identity column
-  // ----------------------
-  function renderIdentityCell(row) {
-    const a = agentMap[row.agent_id];
-
-    return (
-      <div>
-        <div>{row.leaderName || a?.name || "N/A"}</div>
-        <div className="muted" style={{ fontSize: 12 }}>
-          {row.agent_id}
-        </div>
-      </div>
-    );
-  }
-
-  function renderStatus(row) {
-    if (row.voided) {
-      return (
-        <span
-          style={{
-            display: "inline-block",
-            padding: "2px 8px",
-            background: "#ffe8e8",
-            color: "#b00020",
-            borderRadius: 12,
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          Voided
-        </span>
-      );
-    }
-
-    return (
-      <span
-        style={{
-          display: "inline-block",
-          padding: "2px 8px",
-          background: "#e6f5e6",
-          color: "#1b6b1b",
-          borderRadius: 12,
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        Active
-      </span>
-    );
-  }
-
   const tableColumnCount = 10;
 
   return (
@@ -548,12 +454,12 @@ export default function Updates() {
       <div className="card-title">{isUser ? "My Updates" : "Updates History"}</div>
       <div className="muted">
         {isUser
-          ? "Review, edit, or void your own entries for today and yesterday."
+          ? "Review your entries and apply filters."
           : "Review and edit uploaded daily performance data."}
       </div>
       {isUser ? (
         <div className="updates-user-note">
-          You can only <strong>edit</strong> or <strong>void</strong> rows dated today/yesterday (PH timezone).
+          You can only <strong>edit</strong> rows dated today/yesterday (PH timezone).
         </div>
       ) : null}
 
@@ -728,18 +634,8 @@ export default function Updates() {
                         className="btn-link icon-btn"
                         onClick={() => startEdit(row)}
                         aria-label={`Edit ${row.leaderName || "entry"}`}
-                        disabled={actionLoadingId === row.id}
                       >
                         <EditIcon />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-link icon-btn"
-                        onClick={() => handleVoidRow(row)}
-                        aria-label={`Void ${row.leaderName || "entry"}`}
-                        disabled={actionLoadingId === row.id}
-                      >
-                        <TrashIcon />
                       </button>
                     </div>
                   ) : (

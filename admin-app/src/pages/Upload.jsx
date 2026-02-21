@@ -96,6 +96,7 @@ export default function Upload() {
   const [importMode, setImportMode] = useState("warn");
   const [manualOpen, setManualOpen] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [manualForm, setManualForm] = useState(buildManualDefaults(""));
   const [manualLookupInputs, setManualLookupInputs] = useState({
     agent: "",
@@ -111,6 +112,7 @@ export default function Upload() {
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
   const isUser = profile?.role === "user";
+  const isAdminView = profile?.role === "admin" || profile?.role === "super_admin";
   const todayPh = useMemo(() => getPhDateYmd(0), []);
   const yesterdayPh = useMemo(() => getPhDateYmd(-1), []);
   const allowedDateOptions = useMemo(
@@ -305,6 +307,7 @@ export default function Upload() {
   useEffect(() => {
     let mounted = true;
     setManualLoading(true);
+    setProfileLoading(true);
     Promise.all([listAgents(), listDepots(), getMyProfile()])
       .then(([agents, depots, myProfile]) => {
         if (!mounted) return;
@@ -331,7 +334,10 @@ export default function Upload() {
         setManualError(err.message || "Failed to load dropdown options");
       })
       .finally(() => {
-        if (mounted) setManualLoading(false);
+        if (mounted) {
+          setManualLoading(false);
+          setProfileLoading(false);
+        }
       });
 
     return () => {
@@ -583,7 +589,17 @@ export default function Upload() {
 
   return (
     <div className="card upload-page">
-      <div className="card-title">{isUser ? "My Input" : "Upload Raw Data"}</div>
+      <div className="card-title">
+        {profileLoading ? "Loading Input" : isUser ? "My Input" : "Upload Raw Data"}
+      </div>
+      {profileLoading ? (
+        <div className="muted">Loading your access...</div>
+      ) : null}
+      {!profileLoading && !isUser && !isAdminView ? (
+        <div className="error-box" role="alert">Unable to resolve your role. Contact admin.</div>
+      ) : null}
+      {!profileLoading ? (
+        <>
       <div className="muted">
         {isUser
           ? "Encode your own data for today or yesterday."
@@ -1031,6 +1047,8 @@ export default function Upload() {
           </div>
         </div>
       </ModalForm>
+        </>
+      ) : null}
     </div>
   );
 }

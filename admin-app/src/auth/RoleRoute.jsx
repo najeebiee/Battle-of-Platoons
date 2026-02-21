@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { getMyProfile } from "../services/profile.service";
 
-export default function RoleRoute({ allowedRoles = [], children }) {
+export default function RoleRoute({ allowedRoles = [], redirectTo = "/dashboard", children }) {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState("");
 
@@ -27,6 +27,6 @@ export default function RoleRoute({ allowedRoles = [], children }) {
   }, []);
 
   if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
-  if (!allowedRoles.includes(role)) return <Navigate to="/dashboard" replace />;
+  if (!allowedRoles.includes(role)) return <Navigate to={redirectTo} replace />;
   return children;
 }

@@ -32,11 +32,18 @@ export default function App() {
             }
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route
+              path="dashboard"
+              element={(
+                <RoleRoute allowedRoles={["admin", "super_admin"]} redirectTo="/upload">
+                  <Dashboard />
+                </RoleRoute>
+              )}
+            />
             <Route
               path="participants"
               element={(
-                <RoleRoute allowedRoles={["admin", "super_admin"]}>
+                <RoleRoute allowedRoles={["admin", "super_admin"]} redirectTo="/upload">
                   <Participants />
                 </RoleRoute>
               )}
@@ -45,7 +52,7 @@ export default function App() {
             <Route
               path="formulas"
               element={(
-                <RoleRoute allowedRoles={["admin", "super_admin"]}>
+                <RoleRoute allowedRoles={["admin", "super_admin"]} redirectTo="/upload">
                   <Formulas />
                 </RoleRoute>
               )}
@@ -53,7 +60,7 @@ export default function App() {
             <Route
               path="scoring-formulas"
               element={(
-                <RoleRoute allowedRoles={["admin", "super_admin"]}>
+                <RoleRoute allowedRoles={["admin", "super_admin"]} redirectTo="/upload">
                   <Formulas />
                 </RoleRoute>
               )}
@@ -63,7 +70,7 @@ export default function App() {
             <Route
               path="finalization"
               element={(
-                <RoleRoute allowedRoles={["super_admin"]}>
+                <RoleRoute allowedRoles={["super_admin"]} redirectTo="/upload">
                   <Finalization />
                 </RoleRoute>
               )}
@@ -71,7 +78,7 @@ export default function App() {
             <Route
               path="audit-log"
               element={(
-                <RoleRoute allowedRoles={["super_admin"]}>
+                <RoleRoute allowedRoles={["super_admin"]} redirectTo="/upload">
                   <AuditLog />
                 </RoleRoute>
               )}

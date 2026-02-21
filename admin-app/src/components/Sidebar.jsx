@@ -43,10 +43,12 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <nav className="sb-nav">
-        <NavLink to="/dashboard" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-          <img className="sb-ico" src={ICONS.dashboard} alt="" aria-hidden="true" />
-          <span>{isUser ? "My Dashboard" : "Dashboard"}</span>
-        </NavLink>
+        {!isUser ? (
+          <NavLink to="/dashboard" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
+            <img className="sb-ico" src={ICONS.dashboard} alt="" aria-hidden="true" />
+            <span>Dashboard</span>
+          </NavLink>
+        ) : null}
 
         {isAdmin ? (
           <NavLink to="/participants" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
