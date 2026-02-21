@@ -96,8 +96,10 @@ export default function Publishing() {
 
   const role = profile?.role ?? "";
   const isSuperAdmin = role === "super_admin";
+  const isUser = role === "user";
   const canViewAudit = ADMIN_ROLES.has(role);
   const canVoid = ADMIN_ROLES.has(role);
+  const canViewPage = canViewAudit || isUser;
 
   const [selectedIds, setSelectedIds] = useState(new Set());
 
@@ -275,12 +277,20 @@ export default function Publishing() {
   function handleApplyFilters() {
     setError("");
     setLoading(true);
-    setAppliedFilters({ ...filters });
+    const nextFilters = { ...filters };
+    if (isUser) nextFilters.agentId = profile?.agent_id ?? "";
+    setAppliedFilters(nextFilters);
   }
 
   function handleClearFilters() {
-    setFilters({ dateFrom: defaults.dateFrom, dateTo: defaults.dateTo, agentId: "", status: "" });
-    setAppliedFilters({ dateFrom: defaults.dateFrom, dateTo: defaults.dateTo, agentId: "", status: "" });
+    const reset = {
+      dateFrom: defaults.dateFrom,
+      dateTo: defaults.dateTo,
+      agentId: isUser ? profile?.agent_id ?? "" : "",
+      status: "",
+    };
+    setFilters(reset);
+    setAppliedFilters(reset);
     setFilterSearch({ agentId: "", status: "" });
   }
 
@@ -454,7 +464,14 @@ export default function Publishing() {
     }
   }
 
-  if (!profileLoading && !canViewAudit) {
+  useEffect(() => {
+    if (!profile?.role) return;
+    if (!isUser) return;
+    setFilters(prev => ({ ...prev, agentId: profile?.agent_id ?? "" }));
+    setAppliedFilters(prev => ({ ...prev, agentId: profile?.agent_id ?? "" }));
+  }, [isUser, profile?.agent_id, profile?.role]);
+
+  if (!profileLoading && !canViewPage) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -462,14 +479,14 @@ export default function Publishing() {
 
   return (
     <div className="card publishing-page">
-      <div className="card-title">Publishing</div>
+      <div className="card-title">{isUser ? "My Publishing" : "Publishing"}</div>
       <div className="muted" style={{ marginBottom: 12 }}>
         Only rows published by a Super Admin appear on the public leaderboard.
       </div>
 
       {!profileLoading && !canViewAudit ? (
         <div className="error-box" role="alert">
-          Only Super Admins can publish or unpublish rows. You can still view the current publish state.
+          You can view publish status, but publish/unpublish actions are restricted to admins.
         </div>
       ) : null}
 
@@ -495,24 +512,31 @@ export default function Publishing() {
           </div>
         </div>
         <div className="publishing-filter-row">
-          <div>
-            <FloatingSelectField
-              label="Leader"
-              placeholder="All Leaders"
-              searchPlaceholder="Search leader"
-              valueText={selectedFilterLeaderName}
-              searchValue={filterSearch.agentId}
-              onSearchChange={value => setFilterSearch(prev => ({ ...prev, agentId: value }))}
-              options={leaderFilterOptions}
-              selectedId={filters.agentId}
-              disabled={agentsLoading}
-              onSelect={option => {
-                setFilters(prev => ({ ...prev, agentId: option.id }));
-                setFilterSearch(prev => ({ ...prev, agentId: option.name }));
-              }}
-              emptyText="No leaders found."
-            />
-          </div>
+          {!isUser ? (
+            <div>
+              <FloatingSelectField
+                label="Leader"
+                placeholder="All Leaders"
+                searchPlaceholder="Search leader"
+                valueText={selectedFilterLeaderName}
+                searchValue={filterSearch.agentId}
+                onSearchChange={value => setFilterSearch(prev => ({ ...prev, agentId: value }))}
+                options={leaderFilterOptions}
+                selectedId={filters.agentId}
+                disabled={agentsLoading}
+                onSelect={option => {
+                  setFilters(prev => ({ ...prev, agentId: option.id }));
+                  setFilterSearch(prev => ({ ...prev, agentId: option.name }));
+                }}
+                emptyText="No leaders found."
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="form-label">Leader</label>
+              <input type="text" value={selectedFilterLeaderName || profile?.agent_id || ""} readOnly />
+            </div>
+          )}
           <div>
             <FloatingSelectField
               label="Status"
@@ -533,10 +557,10 @@ export default function Publishing() {
           </div>
           <div className="publishing-filter-actions">
             <button type="button" className="button primary" onClick={handleApplyFilters} disabled={loading}>
-              Apply
+              Apply Filters
             </button>
             <button type="button" className="button secondary" onClick={handleClearFilters} disabled={loading}>
-              Clear
+              Clear Filters
             </button>
             <ExportButton
               onClick={exportXlsx}

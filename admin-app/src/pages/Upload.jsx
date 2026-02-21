@@ -13,6 +13,7 @@ import {
 } from "../services/rawData.service";
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
+import { getMyProfile } from "../services/profile.service";
 
 function ReplaceIcon({ size = 16 }) {
   return (
@@ -58,6 +59,28 @@ function InsertIcon({ size = 16 }) {
   );
 }
 
+function getPhDateYmd(offsetDays = 0) {
+  const now = Date.now() + offsetDays * 24 * 60 * 60 * 1000;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(now));
+}
+
+function buildManualDefaults(agentId = "") {
+  return {
+    date_real: getPhDateYmd(0),
+    agent_id: agentId,
+    leads_depot_id: "",
+    leads: 0,
+    payins: 0,
+    sales: 0,
+    sales_depot_id: "",
+  };
+}
+
 export default function Upload() {
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState([]);
@@ -72,15 +95,8 @@ export default function Upload() {
   const [isDragging, setIsDragging] = useState(false);
   const [importMode, setImportMode] = useState("warn");
   const [manualOpen, setManualOpen] = useState(false);
-  const [manualForm, setManualForm] = useState({
-    date_real: "",
-    agent_id: "",
-    leads_depot_id: "",
-    leads: 0,
-    payins: 0,
-    sales: 0,
-    sales_depot_id: "",
-  });
+  const [profile, setProfile] = useState(null);
+  const [manualForm, setManualForm] = useState(buildManualDefaults(""));
   const [manualLookupInputs, setManualLookupInputs] = useState({
     agent: "",
     leads_depot_id: "",
@@ -94,6 +110,16 @@ export default function Upload() {
 
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
+  const isUser = profile?.role === "user";
+  const todayPh = useMemo(() => getPhDateYmd(0), []);
+  const yesterdayPh = useMemo(() => getPhDateYmd(-1), []);
+  const allowedDateOptions = useMemo(
+    () => [
+      { id: todayPh, name: "Today" },
+      { id: yesterdayPh, name: "Yesterday" },
+    ],
+    [todayPh, yesterdayPh]
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -186,10 +212,11 @@ export default function Upload() {
   const baseIndex = (page - 1) * rowsPerPage;
 
   const selectedManualLeaderName = useMemo(() => {
-    if (!manualForm.agent_id) return "";
-    const selected = agentsOptions.find(agent => agent.id === manualForm.agent_id);
+    const selectedAgentId = isUser ? profile?.agent_id : manualForm.agent_id;
+    if (!selectedAgentId) return "";
+    const selected = agentsOptions.find(agent => agent.id === selectedAgentId);
     return selected?.name || "";
-  }, [agentsOptions, manualForm.agent_id]);
+  }, [agentsOptions, isUser, manualForm.agent_id, profile?.agent_id]);
 
   const filteredManualAgents = useMemo(() => {
     const query = manualLookupInputs.agent.trim().toLowerCase();
@@ -278,11 +305,26 @@ export default function Upload() {
   useEffect(() => {
     let mounted = true;
     setManualLoading(true);
-    Promise.all([listAgents(), listDepots()])
-      .then(([agents, depots]) => {
+    Promise.all([listAgents(), listDepots(), getMyProfile()])
+      .then(([agents, depots, myProfile]) => {
         if (!mounted) return;
+        setProfile(myProfile);
         setAgentsOptions(agents ?? []);
         setDepotsOptions(depots ?? []);
+        const userAgentId = myProfile?.role === "user" ? myProfile?.agent_id ?? "" : "";
+        setManualForm(prev => ({
+          ...buildManualDefaults(userAgentId),
+          ...prev,
+          agent_id: userAgentId || prev.agent_id || "",
+          date_real:
+            myProfile?.role === "user" && ![todayPh, yesterdayPh].includes(prev.date_real)
+              ? todayPh
+              : prev.date_real || todayPh,
+        }));
+        if (userAgentId) {
+          const selected = (agents ?? []).find(agent => agent.id === userAgentId);
+          setManualLookupInputs(prev => ({ ...prev, agent: selected?.name || "" }));
+        }
       })
       .catch(err => {
         if (!mounted) return;
@@ -295,7 +337,7 @@ export default function Upload() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [todayPh, yesterdayPh]);
 
   async function processFile(file) {
     setLoading(true);
@@ -373,17 +415,10 @@ export default function Upload() {
     setManualOpen(false);
     setActiveManualSelect("");
     setManualError("");
-    setManualForm({
-      date_real: "",
-      agent_id: "",
-      leads_depot_id: "",
-      leads: 0,
-      payins: 0,
-      sales: 0,
-      sales_depot_id: "",
-    });
+    const userAgentId = isUser ? profile?.agent_id ?? "" : "";
+    setManualForm(buildManualDefaults(userAgentId));
     setManualLookupInputs({
-      agent: "",
+      agent: isUser ? selectedManualLeaderName : "",
       leads_depot_id: "",
       sales_depot_id: "",
     });
@@ -439,6 +474,7 @@ export default function Upload() {
   }
 
   function handleManualAgentChange(value) {
+    if (isUser) return;
     const normalized = value.trim().toLowerCase();
     const exactMatch = agentsOptions.find(agent =>
       (agent.name || "").trim().toLowerCase() === normalized ||
@@ -455,6 +491,7 @@ export default function Upload() {
   }
 
   function handleManualLeaderSelect(agent) {
+    if (isUser) return;
     if (!agent) return;
     setManualLookupInputs(prev => ({
       ...prev,
@@ -501,7 +538,10 @@ export default function Upload() {
 
     const errors = [];
     if (!manualForm.date_real) errors.push("Date is required.");
-    if (!manualForm.agent_id) errors.push("Leader is required.");
+    if (isUser && ![todayPh, yesterdayPh].includes(manualForm.date_real)) {
+      errors.push("Date must be current date or yesterday (PH timezone).");
+    }
+    if (!(isUser ? profile?.agent_id : manualForm.agent_id)) errors.push("Leader is required.");
     if (!manualForm.leads_depot_id) errors.push("Leads depot is required.");
     if (!manualForm.sales_depot_id) errors.push("Sales depot is required.");
     if (errors.length) {
@@ -514,7 +554,7 @@ export default function Upload() {
       sourceRowIndex: timestampKey,
       excelRowNumber: "manual",
       date_real: manualForm.date_real,
-      agent_id: manualForm.agent_id,
+      agent_id: isUser ? profile?.agent_id : manualForm.agent_id,
       leads: Number(manualForm.leads) || 0,
       payins: Number(manualForm.payins) || 0,
       sales: Number(manualForm.sales) || 0,
@@ -528,22 +568,14 @@ export default function Upload() {
       setRows(prev => mergeRawDataRowsByIdentity([...prev, ...normalizedRows]));
       setManualOpen(false);
       setActiveManualSelect("");
-      setManualForm({
-        date_real: "",
-        agent_id: "",
-        leads_depot_id: "",
-        leads: 0,
-        payins: 0,
-        sales: 0,
-        sales_depot_id: "",
-      });
+      setManualForm(buildManualDefaults(isUser ? profile?.agent_id ?? "" : ""));
       setManualLookupInputs({
-        agent: "",
+        agent: isUser ? selectedManualLeaderName : "",
         leads_depot_id: "",
         sales_depot_id: "",
       });
     } catch (submitError) {
-      setManualError(submitError.message || "Failed to add manual row");
+      setManualError(submitError.message || "Failed to add entry");
     } finally {
       setManualLoading(false);
     }
@@ -551,8 +583,18 @@ export default function Upload() {
 
   return (
     <div className="card upload-page">
-      <div className="card-title">Upload Raw Data</div>
-      <div className="muted">Import the Daily Data template (.xlsx) and review rows before saving.</div>
+      <div className="card-title">{isUser ? "My Input" : "Upload Raw Data"}</div>
+      <div className="muted">
+        {isUser
+          ? "Encode your own data for today or yesterday."
+          : "Import the Daily Data template (.xlsx) and review rows before saving."}
+      </div>
+      {isUser ? (
+        <div className="user-scope-note">
+          <strong>Reminder:</strong> You are encoding as <strong>{selectedManualLeaderName || profile?.agent_id}</strong>.
+          Date is limited to <strong>Today</strong> and <strong>Yesterday</strong> in PH timezone.
+        </div>
+      ) : null}
 
       <div className="upload-header-actions" style={{ marginTop: 12 }}>
         <button
@@ -560,67 +602,90 @@ export default function Upload() {
           className="button secondary upload-manual-btn"
           onClick={() => {
             setManualError("");
+            if (isUser) {
+              setManualForm(prev => ({
+                ...prev,
+                agent_id: profile?.agent_id ?? prev.agent_id,
+                date_real: [todayPh, yesterdayPh].includes(prev.date_real) ? prev.date_real : todayPh,
+              }));
+            }
             setManualOpen(true);
             setActiveManualSelect("");
           }}
           disabled={manualLoading}
         >
-          Manual Input
+          {isUser ? "Add Entry" : "Manual Entry"}
         </button>
-        <button type="button" className="button ghost upload-template-btn" onClick={downloadTemplate}>
-          Download Template
-        </button>
+        {!isUser ? (
+          <button type="button" className="button ghost upload-template-btn" onClick={downloadTemplate}>
+            Download Template
+          </button>
+        ) : null}
       </div>
 
-      <div
-        className={`dropzone ${isDragging ? "dropzone--dragging" : ""}`}
-        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
-      >
-        <div className="upload-icon" aria-hidden>
-          <svg width="30" height="30" viewBox="0 0 24 24" focusable="false">
-            <path
-              fill="currentColor"
-              d="M6 3.75A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25h12A2.25 2.25 0 0 0 20.25 18V8.19a.75.75 0 0 0-.22-.53l-3.69-3.69a.75.75 0 0 0-.53-.22H6Zm0 1.5h8.5V8a1 1 0 0 0 1 1h3.25V18a.75.75 0 0 1-.75.75H6A.75.75 0 0 1 5.25 18V6A.75.75 0 0 1 6 5.25Zm10 .56L18.69 8H16.5a.5.5 0 0 1-.5-.5V5.81ZM8 11.25a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75Z"
-            />
-          </svg>
+      {!isUser ? (
+        <div
+          className={`dropzone ${isDragging ? "dropzone--dragging" : ""}`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={onDrop}
+          onClick={() => inputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
+        >
+          <div className="upload-icon" aria-hidden>
+            <svg width="30" height="30" viewBox="0 0 24 24" focusable="false">
+              <path
+                fill="currentColor"
+                d="M6 3.75A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25h12A2.25 2.25 0 0 0 20.25 18V8.19a.75.75 0 0 0-.22-.53l-3.69-3.69a.75.75 0 0 0-.53-.22H6Zm0 1.5h8.5V8a1 1 0 0 0 1 1h3.25V18a.75.75 0 0 1-.75.75H6A.75.75 0 0 1 5.25 18V6A.75.75 0 0 1 6 5.25Zm10 .56L18.69 8H16.5a.5.5 0 0 1-.5-.5V5.81ZM8 11.25a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75Z"
+              />
+            </svg>
+          </div>
+          <div className="dropzone__content">
+            <div className="dropzone__title">Select or drop an .xlsx file</div>
+            <div className="dropzone__sub">.xlsx only. Sheet name "Daily Data" or first sheet.</div>
+            <button
+              type="button"
+              className="button primary dropzone__cta upload-browse-btn"
+              onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
+            >
+              Browse files
+            </button>
+          </div>
+          <input
+            ref={inputRef}
+            id="file-input"
+            type="file"
+            accept=".xlsx"
+            onChange={onInputChange}
+            style={{ display: "none" }}
+          />
         </div>
-        <div className="dropzone__content">
-          <div className="dropzone__title">Select or drop an .xlsx file</div>
-          <div className="dropzone__sub">.xlsx only. Sheet name "Daily Data" or first sheet.</div>
-          <button
-            type="button"
-            className="button primary dropzone__cta upload-browse-btn"
-            onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
-          >
-            Browse files
-          </button>
-        </div>
-        <input
-          ref={inputRef}
-          id="file-input"
-          type="file"
-          accept=".xlsx"
-          onChange={onInputChange}
-          style={{ display: "none" }}
-        />
-      </div>
+      ) : null}
 
       {(fileName || rows.length > 0) ? (
         <div className="upload-file-meta">
-          <div className="upload-file-meta__label">File:</div>
-          <div className="upload-file-meta__value">
-            {fileName} {meta ? `(Sheet: ${meta.sheetName}, Rows: ${meta.totalRows})` : ""}
-          </div>
-          <button className="button" type="button" onClick={resetUpload}>
-            <ReplaceIcon />
-            Replace file
-          </button>
+          {!isUser ? (
+            <>
+              <div className="upload-file-meta__label">File:</div>
+              <div className="upload-file-meta__value">
+                {fileName} {meta ? `(Sheet: ${meta.sheetName}, Rows: ${meta.totalRows})` : ""}
+              </div>
+              <button className="button" type="button" onClick={resetUpload}>
+                <ReplaceIcon />
+                Replace file
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="upload-file-meta__label">Entries:</div>
+              <div className="upload-file-meta__value">{processed.displayRows.length}</div>
+              <button className="button" type="button" onClick={resetUpload}>
+                Clear entries
+              </button>
+            </>
+          )}
           <ExportButton
             onClick={exportXlsx}
             loading={false}
@@ -630,38 +695,40 @@ export default function Upload() {
         </div>
       ) : null}
 
-      <div className="upload-import">
-        <div className="upload-import__title">Import Mode</div>
-        <div className="upload-import__options">
-          <button
-            type="button"
-            className={`import-option${importMode === "warn" ? " is-active" : ""}`}
-            onClick={() => { setImportMode("warn"); setSaveResult(null); }}
-          >
-            <span className="import-option__icon"><WarnIcon /></span>
-            Warn (upsert)
-            <span>Flag duplicates, overwrite existing rows.</span>
-          </button>
-          <button
-            type="button"
-            className={`import-option${importMode === "upsert" ? " is-active" : ""}`}
-            onClick={() => { setImportMode("upsert"); setSaveResult(null); }}
-          >
-            <span className="import-option__icon"><UpsertIcon /></span>
-            Upsert
-            <span>Update existing rows or insert new ones.</span>
-          </button>
-          <button
-            type="button"
-            className={`import-option${importMode === "insert_only" ? " is-active" : ""}`}
-            onClick={() => { setImportMode("insert_only"); setSaveResult(null); }}
-          >
-            <span className="import-option__icon"><InsertIcon /></span>
-            Insert Only
-            <span>Skip duplicates entirely.</span>
-          </button>
+      {!isUser ? (
+        <div className="upload-import">
+          <div className="upload-import__title">Import Mode</div>
+          <div className="upload-import__options">
+            <button
+              type="button"
+              className={`import-option${importMode === "warn" ? " is-active" : ""}`}
+              onClick={() => { setImportMode("warn"); setSaveResult(null); }}
+            >
+              <span className="import-option__icon"><WarnIcon /></span>
+              Warn (upsert)
+              <span>Flag duplicates, overwrite existing rows.</span>
+            </button>
+            <button
+              type="button"
+              className={`import-option${importMode === "upsert" ? " is-active" : ""}`}
+              onClick={() => { setImportMode("upsert"); setSaveResult(null); }}
+            >
+              <span className="import-option__icon"><UpsertIcon /></span>
+              Upsert
+              <span>Update existing rows or insert new ones.</span>
+            </button>
+            <button
+              type="button"
+              className={`import-option${importMode === "insert_only" ? " is-active" : ""}`}
+              onClick={() => { setImportMode("insert_only"); setSaveResult(null); }}
+            >
+              <span className="import-option__icon"><InsertIcon /></span>
+              Insert Only
+              <span>Skip duplicates entirely.</span>
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {error ? (
         <div className="error-box" role="alert">
@@ -786,7 +853,7 @@ export default function Upload() {
             />
             <div className="save-bar">
               <button className="button primary" disabled={!processed.rowsForSave.length || loading} onClick={handleSave}>
-                Save to Database
+                {isUser ? "Save Entries" : "Save to Database"}
               </button>
               {saveProgress.total ? (
                 <div className="muted">Saving {saveProgress.done}/{saveProgress.total}…</div>
@@ -816,7 +883,7 @@ export default function Upload() {
 
       <ModalForm
         isOpen={manualOpen}
-        title="Manual Input"
+        title={isUser ? "Add Entry" : "Manual Entry"}
         compactHeader
         onClose={() => {
           setManualOpen(false);
@@ -840,7 +907,7 @@ export default function Upload() {
               Cancel
             </button>
             <button type="submit" className="button primary" disabled={manualLoading}>
-              Add Row
+              {isUser ? "Save Entry" : "Add Entry"}
             </button>
           </>
         )}
@@ -853,30 +920,51 @@ export default function Upload() {
         <div className="manual-input-grid">
           <div className="field manual-input-grid__date">
             <label>Date <span className="req">*</span></label>
-            <input
-              type="date"
-              value={manualForm.date_real}
-              onChange={e => setManualForm(prev => ({ ...prev, date_real: e.target.value }))}
-              required
-            />
+            {isUser ? (
+              <select
+                value={manualForm.date_real}
+                onChange={e => setManualForm(prev => ({ ...prev, date_real: e.target.value }))}
+                required
+              >
+                {allowedDateOptions.map(option => (
+                  <option key={option.id} value={option.id}>
+                    {option.name} ({option.id})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="date"
+                value={manualForm.date_real}
+                onChange={e => setManualForm(prev => ({ ...prev, date_real: e.target.value }))}
+                required
+              />
+            )}
           </div>
-          <div className="manual-input-grid__leader">
-            <FloatingSelectField
-              label="Leader"
-              required
-              placeholder="Select leader"
-              searchPlaceholder="Search leader"
-              valueText={selectedManualLeaderName}
-              searchValue={manualLookupInputs.agent}
-              onSearchChange={handleManualAgentChange}
-              options={filteredManualAgents}
-              selectedId={manualForm.agent_id}
-              onSelect={handleManualLeaderSelect}
-              emptyText="No leaders found."
-              isOpen={activeManualSelect === "leader"}
-              onOpenChange={open => setActiveManualSelect(open ? "leader" : "")}
-            />
-          </div>
+          {!isUser ? (
+            <div className="manual-input-grid__leader">
+              <FloatingSelectField
+                label="Leader"
+                required
+                placeholder="Select leader"
+                searchPlaceholder="Search leader"
+                valueText={selectedManualLeaderName}
+                searchValue={manualLookupInputs.agent}
+                onSearchChange={handleManualAgentChange}
+                options={filteredManualAgents}
+                selectedId={manualForm.agent_id}
+                onSelect={handleManualLeaderSelect}
+                emptyText="No leaders found."
+                isOpen={activeManualSelect === "leader"}
+                onOpenChange={open => setActiveManualSelect(open ? "leader" : "")}
+              />
+            </div>
+          ) : (
+            <div className="field manual-input-grid__leader">
+              <label>Leader</label>
+              <input type="text" value={selectedManualLeaderName || profile?.agent_id || ""} readOnly />
+            </div>
+          )}
           <div className="field manual-input-grid__payins">
             <label>Payins</label>
             <input

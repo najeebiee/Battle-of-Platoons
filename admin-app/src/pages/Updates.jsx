@@ -7,7 +7,7 @@ import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
 import { listAgents } from "../services/agents.service";
 import { listDepots } from "../services/depots.service";
-import { canEditRow, getRawDataHistory, updateRow } from "../services/rawData.service";
+import { canEditRow, getRawDataHistory, setVoided, updateRow } from "../services/rawData.service";
 import { getMyProfile } from "../services/profile.service";
 
 // ----------------------
@@ -73,12 +73,39 @@ const initialFilters = {
 
 const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
+function getPhDateYmd(offsetDays = 0) {
+  const now = Date.now() + offsetDays * 24 * 60 * 60 * 1000;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(now));
+}
+
+function isPhTodayOrYesterday(dateValue) {
+  if (!dateValue) return false;
+  const day = normalizeToYmd(dateValue);
+  return day === getPhDateYmd(0) || day === getPhDateYmd(-1);
+}
+
 function EditIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path
         fill="currentColor"
         d="M16.862 3.487a1.5 1.5 0 0 1 2.12 0l1.531 1.531a1.5 1.5 0 0 1 0 2.12l-9.94 9.94a1 1 0 0 1-.474.26l-4.12.94a.75.75 0 0 1-.9-.9l.94-4.12a1 1 0 0 1 .26-.474l9.94-9.94Zm1.06 2.12L8.47 15.06l-.51 2.24 2.24-.51 9.45-9.45-1.73-1.73ZM4 20.25c0-.414.336-.75.75-.75h14.5a.75.75 0 0 1 0 1.5H4.75a.75.75 0 0 1-.75-.75Z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M9 3.75A.75.75 0 0 1 9.75 3h4.5a.75.75 0 0 1 .75.75V5H19a.75.75 0 0 1 0 1.5h-1.06l-1.02 12.24A2.25 2.25 0 0 1 14.68 21H9.32a2.25 2.25 0 0 1-2.24-2.26L6.06 6.5H5a.75.75 0 0 1 0-1.5h4V3.75ZM10.5 5h3V4.5h-3V5Zm-1.9 1.5.98 11.86a.75.75 0 0 0 .74.74h5.36a.75.75 0 0 0 .74-.74l.98-11.86H8.6Zm2.15 2.5c.41 0 .75.34.75.75v6a.75.75 0 0 1-1.5 0v-6c0-.41.34-.75.75-.75Zm3 0c.41 0 .75.34.75.75v6a.75.75 0 0 1-1.5 0v-6c0-.41.34-.75.75-.75Z"
       />
     </svg>
   );
@@ -130,6 +157,8 @@ export default function Updates() {
   // Auth / session
   const [profile, setProfile] = useState(null);
   const currentRole = profile?.role || "";
+  const isAdmin = ADMIN_ROLES.has(currentRole);
+  const isUser = currentRole === "user";
 
   const agentMap = useMemo(() => {
     const map = {};
@@ -187,6 +216,17 @@ export default function Updates() {
     );
   }, [depots, filterSearch.salesDepotId]);
 
+  function canManageRow(row) {
+    if (!row) return false;
+    if (isAdmin) return canEditRow(row, profile, agentMap[row.agent_id]);
+    if (!isUser) return false;
+    return (
+      String(row.agent_id || "") === String(profile?.agent_id || "") &&
+      isPhTodayOrYesterday(row.date_real) &&
+      !row.voided
+    );
+  }
+
   // Load agents once
   useEffect(() => {
     (async () => {
@@ -226,11 +266,17 @@ export default function Updates() {
     };
   }, []);
 
-  // Initial fetch (no filters)
+  // Initial fetch after profile is known
   useEffect(() => {
-    void applyFilters(initialFilters);
+    if (!profile?.role) return;
+    const seeded = profile.role === "user"
+      ? { ...initialFilters, leaderId: profile.agent_id ?? "" }
+      : initialFilters;
+    setFiltersInput(seeded);
+    setFiltersApplied(seeded);
+    void applyFilters(seeded);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [profile?.role, profile?.agent_id]);
 
   // ----------------------
   // Apply/Clear filters
@@ -239,6 +285,9 @@ export default function Updates() {
     const normalized = { ...initialFilters, ...(customFilters || {}) };
     normalized.dateFrom = normalizeToYmd(normalized.dateFrom);
     normalized.dateTo = normalizeToYmd(normalized.dateTo);
+    if (profile?.role === "user") {
+      normalized.leaderId = profile?.agent_id ?? "";
+    }
 
     setFiltersApplied(normalized);
     setLoading(true);
@@ -267,11 +316,14 @@ export default function Updates() {
   }
 
   async function clearFilters() {
-    setFiltersInput(initialFilters);
-    setFiltersApplied(initialFilters);
+    const resetFilters = profile?.role === "user"
+      ? { ...initialFilters, leaderId: profile?.agent_id ?? "" }
+      : initialFilters;
+    setFiltersInput(resetFilters);
+    setFiltersApplied(resetFilters);
     setFilterSearch({ leaderId: "", leadsDepotId: "", salesDepotId: "" });
     cancelEdit();
-    await applyFilters(initialFilters);
+    await applyFilters(resetFilters);
   }
 
   // ----------------------
@@ -346,9 +398,8 @@ export default function Updates() {
   // ----------------------
   function startEdit(row) {
     if (row.voided) return;
-    const agent = agentMap[row.agent_id];
-    if (!canEditRow(row, profile, agent) || !ADMIN_ROLES.has(currentRole)) {
-      setError("You do not have permission to edit this row.");
+    if (!canManageRow(row)) {
+      setError("You do not have permission to edit this entry.");
       return;
     }
     setEditingRow(row);
@@ -381,9 +432,8 @@ export default function Updates() {
     }
 
     const targetRow = rows.find(r => r.id === rowId);
-    const agent = agentMap[targetRow?.agent_id];
-    if (!targetRow || !canEditRow(targetRow, profile, agent) || !ADMIN_ROLES.has(currentRole)) {
-      setError("You do not have permission to edit this row.");
+    if (!targetRow || !canManageRow(targetRow)) {
+      setError("You do not have permission to edit this entry.");
       return;
     }
 
@@ -399,13 +449,44 @@ export default function Updates() {
       });
 
       setRows(prev => prev.map(r => (r.id === rowId ? updated : r)));
-      setStatus("Row updated.");
+      setStatus("Entry updated.");
       cancelEdit();
     } catch (e) {
       console.error(e);
-      setError(e?.message || "Failed to update row");
+      setError(e?.message || "Failed to update entry");
     } finally {
       setSavingId("");
+    }
+  }
+
+  async function handleVoidRow(row) {
+    if (!row?.id) return;
+    if (!canManageRow(row)) {
+      setError("You do not have permission to void this entry.");
+      return;
+    }
+
+    const reason = window.prompt("Enter void reason:", "Voided by user");
+    if (reason === null) return;
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      setError("Void reason is required.");
+      return;
+    }
+
+    setActionLoadingId(row.id);
+    setError("");
+    setStatus("");
+    try {
+      await setVoided(row.id, true, trimmedReason);
+      setRows(prev => prev.filter(item => item.id !== row.id));
+      if (editingRow?.id === row.id) cancelEdit();
+      setStatus("Entry voided.");
+    } catch (e) {
+      console.error(e);
+      setError(e?.message || "Failed to void entry");
+    } finally {
+      setActionLoadingId("");
     }
   }
 
@@ -464,8 +545,17 @@ export default function Updates() {
 
   return (
     <div className="card updates-page">
-      <div className="card-title">Updates History</div>
-      <div className="muted">Review and edit uploaded daily performance data.</div>
+      <div className="card-title">{isUser ? "My Updates" : "Updates History"}</div>
+      <div className="muted">
+        {isUser
+          ? "Review, edit, or void your own entries for today and yesterday."
+          : "Review and edit uploaded daily performance data."}
+      </div>
+      {isUser ? (
+        <div className="updates-user-note">
+          You can only <strong>edit</strong> or <strong>void</strong> rows dated today/yesterday (PH timezone).
+        </div>
+      ) : null}
 
       {/* Filters */}
       <div className="updates-filters">
@@ -492,23 +582,25 @@ export default function Updates() {
         </div>
 
         <div className="updates-filter-row">
-          <div>
-            <FloatingSelectField
-              label="Leader"
-              placeholder="All leaders"
-              searchPlaceholder="Search leader"
-              valueText={leaderFilterLabel}
-              searchValue={filterSearch.leaderId}
-              onSearchChange={value => setFilterSearch(prev => ({ ...prev, leaderId: value }))}
-              options={leaderFilterOptions}
-              selectedId={filtersInput.leaderId}
-              onSelect={option => {
-                setFiltersInput(prev => ({ ...prev, leaderId: option.id }));
-                setFilterSearch(prev => ({ ...prev, leaderId: option.name }));
-              }}
-              emptyText="No leaders found."
-            />
-          </div>
+          {!isUser ? (
+            <div>
+              <FloatingSelectField
+                label="Leader"
+                placeholder="All leaders"
+                searchPlaceholder="Search leader"
+                valueText={leaderFilterLabel}
+                searchValue={filterSearch.leaderId}
+                onSearchChange={value => setFilterSearch(prev => ({ ...prev, leaderId: value }))}
+                options={leaderFilterOptions}
+                selectedId={filtersInput.leaderId}
+                onSelect={option => {
+                  setFiltersInput(prev => ({ ...prev, leaderId: option.id }));
+                  setFilterSearch(prev => ({ ...prev, leaderId: option.name }));
+                }}
+                emptyText="No leaders found."
+              />
+            </div>
+          ) : null}
 
           <div>
             <FloatingSelectField
@@ -554,11 +646,11 @@ export default function Updates() {
               onClick={() => applyFilters(filtersInput)}
               disabled={loading}
             >
-              Apply
+              Apply Filters
             </button>
 
             <button type="button" className="button secondary" onClick={clearFilters} disabled={loading}>
-              Clear
+              Clear Filters
             </button>
             <ExportButton
               onClick={exportXlsx}
@@ -629,15 +721,27 @@ export default function Updates() {
                   </span>
                 </td>
                 <td className="center">
-                  {canEditRow(row, profile, agentMap[row.agent_id]) && ADMIN_ROLES.has(currentRole) ? (
-                    <button
-                      type="button"
-                      className="btn-link icon-btn"
-                      onClick={() => startEdit(row)}
-                      aria-label={`Edit ${row.leaderName || "row"}`}
-                    >
-                      <EditIcon />
-                    </button>
+                  {canManageRow(row) ? (
+                    <div className="updates-row-actions">
+                      <button
+                        type="button"
+                        className="btn-link icon-btn"
+                        onClick={() => startEdit(row)}
+                        aria-label={`Edit ${row.leaderName || "entry"}`}
+                        disabled={actionLoadingId === row.id}
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-link icon-btn"
+                        onClick={() => handleVoidRow(row)}
+                        aria-label={`Void ${row.leaderName || "entry"}`}
+                        disabled={actionLoadingId === row.id}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   ) : (
                     <span className="muted">-</span>
                   )}

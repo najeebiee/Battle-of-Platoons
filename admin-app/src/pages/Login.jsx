@@ -20,7 +20,7 @@ export default function Login() {
       nav("/dashboard");
     } catch (err) {
       console.error(err);
-      setMsg("Login failed. Check email/password.");
+      setMsg(err?.message || "Login failed. Check email/password.");
     }
   }
 
@@ -28,7 +28,7 @@ export default function Login() {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-title">Battle of Platoons</div>
-        <div className="login-sub">Admin Login</div>
+        <div className="login-sub">Sign in to continue</div>
 
         {sessionError && (
           <div className="p-status error" style={{ marginBottom: 10 }}>

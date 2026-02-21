@@ -11,13 +11,13 @@ export async function getMyProfile() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("role,depot_id")
+    .select("role,depot_id,agent_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (error && error.code !== "PGRST116") throw error;
   if (!data) {
-    return { role: "admin", depot_id: null };
+    throw new Error("No profile configured for this account.");
   }
   return data;
 }

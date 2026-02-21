@@ -37,44 +37,50 @@ export default function Sidebar() {
   }, []);
 
   const isSuperAdmin = role === "super_admin";
+  const isUser = role === "user";
+  const isAdmin = role === "admin" || role === "super_admin";
 
   return (
     <aside className="sidebar">
       <nav className="sb-nav">
         <NavLink to="/dashboard" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
           <img className="sb-ico" src={ICONS.dashboard} alt="" aria-hidden="true" />
-          <span>Dashboard</span>
+          <span>{isUser ? "My Dashboard" : "Dashboard"}</span>
         </NavLink>
 
-        <NavLink to="/participants" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-          <img className="sb-ico" src={ICONS.participants} alt="" aria-hidden="true" />
-          <span>Participants</span>
-        </NavLink>
+        {isAdmin ? (
+          <NavLink to="/participants" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
+            <img className="sb-ico" src={ICONS.participants} alt="" aria-hidden="true" />
+            <span>Participants</span>
+          </NavLink>
+        ) : null}
 
         <NavLink to="/updates" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
           <img className="sb-ico" src={ICONS.updates} alt="" aria-hidden="true" />
-          <span>Updates History</span>
+          <span>{isUser ? "My Updates" : "Updates History"}</span>
         </NavLink>
 
-        <NavLink
-          to="/scoring-formulas"
-          className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}
-        >
-          <img className="sb-ico" src={ICONS.scoring} alt="" aria-hidden="true" />
-          <span>Scoring Formulas</span>
-        </NavLink>
+        {isAdmin ? (
+          <NavLink
+            to="/scoring-formulas"
+            className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}
+          >
+            <img className="sb-ico" src={ICONS.scoring} alt="" aria-hidden="true" />
+            <span>Scoring Formulas</span>
+          </NavLink>
+        ) : null}
 
         <div className="sb-divider" />
-        <div className="sb-section">TOOLS</div>
+        <div className="sb-section">{isUser ? "MY TOOLS" : "TOOLS"}</div>
 
         <NavLink to="/upload" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
           <img className="sb-ico" src={ICONS.upload} alt="" aria-hidden="true" />
-          <span>Upload Data</span>
+          <span>{isUser ? "My Input" : "Upload Data"}</span>
         </NavLink>
 
         <NavLink to="/publishing" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
           <img className="sb-ico" src={ICONS.publishing} alt="" aria-hidden="true" />
-          <span>Publishing</span>
+          <span>{isUser ? "My Publishing" : "Publishing"}</span>
         </NavLink>
 
         {isSuperAdmin ? (

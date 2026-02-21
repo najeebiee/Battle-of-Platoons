@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "./auth/AuthProvider";
 import ProtectedAuth from "./auth/ProtectedAuth";
+import RoleRoute from "./auth/RoleRoute";
 
 import AppShell from "./app/AppShell";
 import Login from "./pages/Login";
@@ -32,14 +33,49 @@ export default function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="participants" element={<Participants />} />
+            <Route
+              path="participants"
+              element={(
+                <RoleRoute allowedRoles={["admin", "super_admin"]}>
+                  <Participants />
+                </RoleRoute>
+              )}
+            />
             <Route path="updates" element={<Updates />} />
-            <Route path="formulas" element={<Formulas />} />
-            <Route path="scoring-formulas" element={<Formulas />} />
+            <Route
+              path="formulas"
+              element={(
+                <RoleRoute allowedRoles={["admin", "super_admin"]}>
+                  <Formulas />
+                </RoleRoute>
+              )}
+            />
+            <Route
+              path="scoring-formulas"
+              element={(
+                <RoleRoute allowedRoles={["admin", "super_admin"]}>
+                  <Formulas />
+                </RoleRoute>
+              )}
+            />
             <Route path="upload" element={<Upload />} />
             <Route path="publishing" element={<Publishing />} />
-            <Route path="finalization" element={<Finalization />} />
-            <Route path="audit-log" element={<AuditLog />} />
+            <Route
+              path="finalization"
+              element={(
+                <RoleRoute allowedRoles={["super_admin"]}>
+                  <Finalization />
+                </RoleRoute>
+              )}
+            />
+            <Route
+              path="audit-log"
+              element={(
+                <RoleRoute allowedRoles={["super_admin"]}>
+                  <AuditLog />
+                </RoleRoute>
+              )}
+            />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

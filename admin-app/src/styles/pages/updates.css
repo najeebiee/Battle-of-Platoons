@@ -2,6 +2,16 @@
   font-weight: 900;
 }
 
+.updates-user-note{
+  background: #f4f8ff;
+  border: 1px solid #dce7ff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #22407a;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .updates-filters{
   margin-top: 14px;
   display: flex;
@@ -65,6 +75,13 @@
   font-weight: 600;
   font-size: 11px;
   padding: 4px 8px;
+}
+
+.updates-row-actions{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .edit-modal{

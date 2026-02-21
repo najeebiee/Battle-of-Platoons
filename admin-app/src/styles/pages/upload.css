@@ -4,6 +4,16 @@
   gap: 12px;
 }
 
+.user-scope-note{
+  background: #f4f8ff;
+  border: 1px solid #dce7ff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #22407a;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .upload-header-actions{
   display:flex;
   gap: 10px;
@@ -68,6 +78,10 @@
 .upload-file-meta__value{
   color: var(--muted);
   font-size: 13px;
+}
+
+.upload-file-meta__value strong{
+  color: #1b1f2d;
 }
 
 .upload-import{

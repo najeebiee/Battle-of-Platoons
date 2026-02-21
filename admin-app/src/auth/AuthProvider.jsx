@@ -3,6 +3,38 @@ import { ensureSession, supabase } from "../services/supabase";
  
 const Ctx = createContext(null);
 
+async function validateUserAccess() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!user) throw new Error("No authenticated user found");
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role,agent_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (profileError && profileError.code !== "PGRST116") throw profileError;
+  if (!profile) throw new Error("No profile configured for this account.");
+
+  if (profile.role === "user") {
+    if (!profile.agent_id) {
+      throw new Error("Your account is not linked to a participant leader yet. Contact admin.");
+    }
+    const { data: agent, error: agentError } = await supabase
+      .from("agents")
+      .select("id")
+      .eq("id", profile.agent_id)
+      .maybeSingle();
+    if (agentError && agentError.code !== "PGRST116") throw agentError;
+    if (!agent) {
+      throw new Error("Your account is not linked to a participant leader yet. Contact admin.");
+    }
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
@@ -60,6 +92,12 @@ export function AuthProvider({ children }) {
     setSessionError("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    try {
+      await validateUserAccess();
+    } catch (accessError) {
+      await supabase.auth.signOut();
+      throw accessError;
+    }
   }
 
   async function logout() {
