@@ -88,8 +88,37 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  async function login(email, password) {
+  async function resolveLoginEmail(identifier) {
+    const input = String(identifier || "").trim();
+    if (!input) throw new Error("Username is required.");
+
+    if (input.includes("@")) return input;
+
+    // Agent-ID login path: map agent_id -> login email from profiles.
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("agent_id", input)
+      .maybeSingle();
+
+    if (profileError && profileError.code !== "PGRST116") throw profileError;
+
+    const resolvedEmail =
+      profile?.login_email ??
+      profile?.email ??
+      profile?.auth_email ??
+      "";
+
+    if (!resolvedEmail) {
+      throw new Error("Agent ID login is not configured yet. Use your email or contact admin.");
+    }
+
+    return String(resolvedEmail).trim();
+  }
+
+  async function login(identifier, password) {
     setSessionError("");
+    const email = await resolveLoginEmail(identifier);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     try {

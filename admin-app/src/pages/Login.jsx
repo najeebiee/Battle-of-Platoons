@@ -7,7 +7,7 @@ export default function Login() {
   const nav = useNavigate();
   const { login, sessionError, clearSessionError } = useAuth();
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
 
@@ -16,7 +16,7 @@ export default function Login() {
     setMsg("");
     clearSessionError();
     try {
-      await login(email.trim(), password);
+      await login(username.trim(), password);
       nav("/dashboard");
     } catch (err) {
       console.error(err);
@@ -38,13 +38,23 @@ export default function Login() {
 
         <form className="form" onSubmit={onSubmit}>
           <div className="field">
-            <label>Email</label>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} />
+            <label>Username</label>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Agent ID or email"
+              autoComplete="username"
+            />
           </div>
 
           <div className="field">
             <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
           </div>
 
           <button className="btn-primary" type="submit">Sign in</button>
