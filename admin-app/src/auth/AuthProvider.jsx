@@ -94,26 +94,23 @@ export function AuthProvider({ children }) {
 
     if (input.includes("@")) return input;
 
-    // Agent-ID login path: map agent_id -> login email from profiles.
+    // Prefer deterministic Agent-ID mapping so login works before auth/RLS.
+    const normalizedAgentId = input.toLowerCase();
+    const deterministicEmail = `${normalizedAgentId}@leaders.local`;
+
+    // Optional fallback: if public profile lookup is allowed and has explicit login_email, use it.
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("*")
+      .select("login_email")
       .eq("agent_id", input)
       .maybeSingle();
 
-    if (profileError && profileError.code !== "PGRST116") throw profileError;
-
-    const resolvedEmail =
-      profile?.login_email ??
-      profile?.email ??
-      profile?.auth_email ??
-      "";
-
-    if (!resolvedEmail) {
-      throw new Error("Agent ID login is not configured yet. Use your email or contact admin.");
+    if (profileError && profileError.code !== "PGRST116") {
+      return deterministicEmail;
     }
 
-    return String(resolvedEmail).trim();
+    const configuredEmail = String(profile?.login_email ?? "").trim();
+    return configuredEmail || deterministicEmail;
   }
 
   async function login(identifier, password) {
