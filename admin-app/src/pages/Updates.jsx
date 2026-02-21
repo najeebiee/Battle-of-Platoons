@@ -292,7 +292,7 @@ export default function Updates() {
         leadsDepotId: normalized.leadsDepotId,
         salesDepotId: normalized.salesDepotId,
         limit: 500,
-        includeVoided: false,
+        includeVoided: true,
       });
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
