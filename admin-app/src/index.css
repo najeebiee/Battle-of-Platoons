@@ -393,6 +393,30 @@ body{
   .modal-body .grid{
     grid-template-columns: 1fr;
   }
+
+  .modal-overlay{
+    padding: 10px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-form{
+    width: min(100%, 680px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px;
+  }
+
+  .modal-header{
+    padding: 12px 14px;
+  }
+
+  .modal-body{
+    padding: 10px 14px 12px;
+  }
+
+  .modal-footer{
+    padding: 10px 14px;
+  }
 }
 
 @media (max-width: 640px){
