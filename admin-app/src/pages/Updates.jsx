@@ -543,28 +543,28 @@ export default function Updates() {
               emptyText="No depots found."
             />
           </div>
+        </div>
 
-          <div className="updates-filter-actions">
-            {/* IMPORTANT: do NOT pass applyFilters directly (it would receive click event) */}
-            <button
-              type="button"
-              className="button primary"
-              onClick={() => applyFilters(filtersInput)}
-              disabled={loading}
-            >
-              Apply Filters
-            </button>
+        <div className="updates-filter-actions">
+          {/* IMPORTANT: do NOT pass applyFilters directly (it would receive click event) */}
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => applyFilters(filtersInput)}
+            disabled={loading}
+          >
+            Apply Filters
+          </button>
 
-            <button type="button" className="button secondary" onClick={clearFilters} disabled={loading}>
-              Clear Filters
-            </button>
-            <ExportButton
-              onClick={exportXlsx}
-              loading={false}
-              disabled={loading || !visibleRows.length}
-              label="Export XLSX"
-            />
-          </div>
+          <button type="button" className="button secondary" onClick={clearFilters} disabled={loading}>
+            Clear Filters
+          </button>
+          <ExportButton
+            onClick={exportXlsx}
+            loading={false}
+            disabled={loading || !visibleRows.length}
+            label="Export XLSX"
+          />
         </div>
       </div>
 
