@@ -259,3 +259,13 @@
     grid-column: span 1;
   }
 }
+
+@media (max-width: 430px){
+  .manual-input-grid .field label,
+  .manual-input-grid input,
+  .manual-input-grid select,
+  .manual-input-grid .floating-select__trigger,
+  .manual-input-grid .floating-select__trigger span{
+    font-size: 11px;
+  }
+}
