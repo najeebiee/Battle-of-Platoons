@@ -59,6 +59,17 @@ export default function MobileTopNav({ role }) {
     return { width: `${width}%`, transform: `translateX(${activeIndex * 100}%)` };
   }, [items.length, activeIndex]);
 
+  const openIndex = useMemo(() => items.findIndex(item => item.id === openItem), [items, openItem]);
+
+  const dropdownStyle = useMemo(() => {
+    if (openIndex < 0 || !items.length) return null;
+    const width = 100 / items.length;
+    return {
+      width: `${width}%`,
+      left: `${openIndex * width}%`,
+    };
+  }, [openIndex, items.length]);
+
   return (
     <div className="sb-mobile" aria-label="Mobile navigation">
       <nav className="sb-mobile-nav">
@@ -104,6 +115,7 @@ export default function MobileTopNav({ role }) {
               key={item.id}
               id={`sb-mobile-panel-${item.id}`}
               className={"sb-mobile-dropdown" + (isExpanded ? " open" : "")}
+              style={isExpanded ? dropdownStyle : undefined}
             >
               <div className="sb-mobile-dropdown-inner">
                 {item.children.map(child => (
