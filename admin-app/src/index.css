@@ -637,6 +637,10 @@ textarea.input:focus{
   .topbar-meta-inline{
     display: none;
   }
+  .topbar-brand-logo{
+    width: 25px;
+    height: 25px;
+  }
   .sb-mobile{
     display: block;
     width: 100%;

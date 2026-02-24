@@ -13,7 +13,7 @@ export default function MobileTopNav({ role }) {
   const isUser = role === "user";
   const isAdmin = role === "admin" || role === "super_admin";
 
-  const updatesLabel = isUser ? "My Updates" : "Updates History";
+  const updatesLabel = "Updates";
   const uploadLabel = isUser ? "My Input" : "Upload Data";
   const publishingLabel = isUser ? "My Publishing" : "Publishing";
 
@@ -42,8 +42,8 @@ export default function MobileTopNav({ role }) {
   }, [isSuperAdmin, uploadLabel, publishingLabel]);
 
   const items = useMemo(
-    () => [...primaryItems, { id: "tools", label: isUser ? "My Tools" : "Tools", children: tools }],
-    [primaryItems, tools, isUser]
+    () => [...primaryItems, { id: "tools", label: "Tools", children: tools }],
+    [primaryItems, tools]
   );
 
   const activeIndex = useMemo(() => {
