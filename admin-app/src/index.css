@@ -664,6 +664,7 @@ textarea.input:focus{
     z-index: 2;
     transition: color .2s ease, opacity .2s ease;
     opacity: 0.78;
+    -webkit-tap-highlight-color: transparent;
   }
   .sb-mobile-item:hover,
   .sb-mobile-item.active{
@@ -686,7 +687,7 @@ textarea.input:focus{
   }
   .sb-mobile-dropdown{
     position: absolute;
-    top: calc(100% + 8px);
+    top: 100%;
     z-index: 130;
     opacity: 0;
     transform: translateY(-8px);
@@ -703,7 +704,8 @@ textarea.input:focus{
     flex-direction: column;
     background: #181a24;
     border: 1px solid #2a3048;
-    border-radius: 0;
+    border-top: 0;
+    border-radius: 0 0 2px 2px;
     overflow: hidden;
     box-shadow: 0 12px 20px rgba(0,0,0,0.24);
   }
@@ -717,6 +719,7 @@ textarea.input:focus{
     background: #181a24;
     border-bottom: 1px solid #2a3048;
     transition: color .2s ease, background .2s ease;
+    -webkit-tap-highlight-color: transparent;
   }
   .sb-mobile-dropdown-link:last-child{
     border-bottom: 0;
