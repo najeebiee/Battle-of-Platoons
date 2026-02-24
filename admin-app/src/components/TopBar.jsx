@@ -54,7 +54,10 @@ export default function TopBar() {
     <header className="topbar">
       <div className="topbar-brand">
         <img src="/gg-logo.png" alt="Grinders Guild logo" className="topbar-brand-logo" />
+        <div className="topbar-brand-text">Grinders Guild</div>
       </div>
+
+      <div className="topbar-title">Battle of Platoons</div>
 
       <div className="topbar-center-nav">
         <MobileTopNav role={role} />
@@ -70,6 +73,11 @@ export default function TopBar() {
         >
           <div className="topbar-avatar" />
         </button>
+
+        <div className="topbar-meta topbar-meta-inline">
+          <div className="topbar-name">{user?.email || "Admin"}</div>
+          <div className="topbar-role">{roleLabel}</div>
+        </div>
 
         {isProfileOpen ? (
           <div className="topbar-user-popover">
