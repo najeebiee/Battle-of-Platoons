@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { getMyProfile } from "../services/profile.service";
 
 const ICONS = {
@@ -18,8 +18,6 @@ const ICONS = {
 
 export default function Sidebar() {
   const [role, setRole] = useState(null);
-  const [openMobileItem, setOpenMobileItem] = useState(null);
-  const { pathname } = useLocation();
 
   useEffect(() => {
     let active = true;
@@ -79,97 +77,8 @@ export default function Sidebar() {
     return items;
   }, [isSuperAdmin, uploadLabel, publishingLabel]);
 
-  const mobileItems = useMemo(
-    () => [
-      ...primaryLinks.map(link => ({ ...link, id: link.to })),
-      { id: "tools", label: isUser ? "My Tools" : "Tools", children: toolLinks },
-    ],
-    [primaryLinks, toolLinks, isUser]
-  );
-
-  const activeMobileIndex = useMemo(() => {
-    const foundIndex = mobileItems.findIndex(item => {
-      if (item.to) return pathname.startsWith(item.to);
-      return item.children?.some(child => pathname.startsWith(child.to));
-    });
-
-    return foundIndex >= 0 ? foundIndex : 0;
-  }, [mobileItems, pathname]);
-
-  const mobileUnderlineStyle = useMemo(() => {
-    const width = mobileItems.length ? 100 / mobileItems.length : 100;
-    return {
-      width: `${width}%`,
-      transform: `translateX(${activeMobileIndex * 100}%)`,
-    };
-  }, [mobileItems.length, activeMobileIndex]);
-
   return (
     <aside className="sidebar">
-      <div className="sb-mobile" aria-label="Mobile navigation">
-        <nav className="sb-mobile-nav">
-          {mobileItems.map(item => {
-            const hasChildren = Boolean(item.children?.length);
-            const isExpanded = openMobileItem === item.id;
-
-            if (!hasChildren) {
-              return (
-                <NavLink
-                  key={item.id}
-                  to={item.to}
-                  className={({ isActive }) => "sb-mobile-item" + (isActive ? " active" : "")}
-                  onClick={() => setOpenMobileItem(null)}
-                >
-                  {item.label}
-                </NavLink>
-              );
-            }
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={"sb-mobile-item sb-mobile-item-button" + (isExpanded ? " active" : "")}
-                aria-expanded={isExpanded}
-                aria-controls={`sb-mobile-panel-${item.id}`}
-                onClick={() => setOpenMobileItem(isExpanded ? null : item.id)}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-          <div className="sb-mobile-underline" style={mobileUnderlineStyle} />
-        </nav>
-
-        {mobileItems.map(item => {
-          const hasChildren = Boolean(item.children?.length);
-          if (!hasChildren) return null;
-
-          const isExpanded = openMobileItem === item.id;
-
-          return (
-            <div
-              key={item.id}
-              id={`sb-mobile-panel-${item.id}`}
-              className={"sb-mobile-dropdown" + (isExpanded ? " open" : "")}
-            >
-              <div className="sb-mobile-dropdown-inner">
-                {item.children.map(child => (
-                  <NavLink
-                    key={child.to}
-                    to={child.to}
-                    className={({ isActive }) => "sb-mobile-dropdown-link" + (isActive ? " active" : "")}
-                    onClick={() => setOpenMobileItem(null)}
-                  >
-                    {child.label}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <nav className="sb-nav sb-desktop">
         {primaryLinks.map(link => (
           <NavLink key={link.to} to={link.to} className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>

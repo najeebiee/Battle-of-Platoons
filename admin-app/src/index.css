@@ -185,7 +185,7 @@ body{
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
   padding: 14px 16px;
   display:grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items:center;
   gap: 12px;
 }
@@ -193,16 +193,19 @@ body{
 .topbar-brand{
   display:flex;
   align-items:center;
-  gap: 10px;
   justify-self: start;
-  min-width: 0;
 }
 
 .topbar-brand-logo{
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   object-fit: cover;
   display:block;
+}
+
+.topbar-center-nav{
+  display: none;
+  min-width: 0;
 }
 
 .topbar-brand-text{
@@ -227,9 +230,25 @@ body{
   display:flex;
   justify-content:flex-end;
   align-items:center;
-  gap: 10px;
   justify-self: end;
-  padding: 2px 0;
+  position: relative;
+}
+
+.topbar-avatar-button{
+  border: 1px solid #d6d9e6;
+  background: #ffffff;
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.topbar-avatar-button:hover{
+  background: #f5f6ff;
 }
 
 .topbar-avatar{
@@ -243,19 +262,34 @@ body{
 .topbar-name{ font-weight:600; font-size:13px; color: var(--blue-card); }
 .topbar-role{ font-size:12px; color: var(--blue-card); opacity: 0.7; margin-top:2px; }
 
-.topbar-logout{
-  border: none;
+.topbar-user-popover{
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
   background: #ffffff;
-  color: var(--blue-card);
+  border: 1px solid #e4e9ff;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14);
+  padding: 10px;
+  z-index: 120;
+}
+
+.topbar-logout{
+  border: 0;
+  width: 100%;
+  background: #f5f6ff;
+  color: var(--blue);
   border: 1px solid #d6d9e6;
-  font-weight: 700;
-  padding: 6px 7px;
-  border-radius: 999px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 10px;
   cursor: pointer;
+  margin-top: 10px;
 }
 
 .topbar-logout:hover{
-  background: #f5f6ff;
+  background: #eef1ff;
 }
 
 /* ----- Common UI blocks ----- */
@@ -586,23 +620,18 @@ textarea.input:focus{
 /* Responsive */
 @media (max-width: 900px){
   .sidebar{
-    position: relative;
-    width: auto;
-    height: auto;
-    border-right:none;
-    border-bottom: 1px solid #eef1ff;
-    flex: 0 0 auto;
+    display: none;
   }
   .admin-body{
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
     height: 100%;
   }
-  .sb-desktop{
-    display: none;
+  .topbar-center-nav{
+    display: block;
   }
   .sb-mobile{
     display: block;
+    width: 100%;
   }
   .sb-mobile-nav{
     position: relative;
@@ -683,10 +712,9 @@ textarea.input:focus{
     border-color: #d8defa;
     color: var(--blue);
   }
-  .topbar{ grid-template-columns: 1fr; }
-  .topbar-brand{ justify-self: start; }
-  .topbar-title{ text-align:left; }
-  .topbar-user{ justify-content:flex-start; }
+  .topbar{
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
   .grid{ grid-template-columns: 1fr; }
 }
 
