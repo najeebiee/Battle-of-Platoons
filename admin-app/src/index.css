@@ -112,6 +112,10 @@ body{
   gap: 4px;
 }
 
+.sb-mobile{
+  display: none;
+}
+
 .sb-link{
   display:flex;
   align-items:center;
@@ -593,6 +597,91 @@ textarea.input:focus{
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
     height: 100%;
+  }
+  .sb-desktop{
+    display: none;
+  }
+  .sb-mobile{
+    display: block;
+  }
+  .sb-mobile-nav{
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e9edff;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sb-mobile-item{
+    flex: 1 1 0;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    text-decoration: none;
+    color: #4f557a;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    padding: 12px 10px 14px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    z-index: 2;
+    transition: color .2s ease, opacity .2s ease;
+    opacity: 0.78;
+  }
+  .sb-mobile-item:hover,
+  .sb-mobile-item.active{
+    color: var(--blue);
+    opacity: 1;
+  }
+  .sb-mobile-item-button{
+    font-family: inherit;
+  }
+  .sb-mobile-underline{
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(to right, #0b1aa5, #3f61ff);
+    pointer-events: none;
+    z-index: 1;
+    transition: transform .32s ease;
+  }
+  .sb-mobile-dropdown{
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height .32s ease;
+  }
+  .sb-mobile-dropdown.open{
+    max-height: 360px;
+  }
+  .sb-mobile-dropdown-inner{
+    padding-top: 8px;
+    display: grid;
+    gap: 6px;
+  }
+  .sb-mobile-dropdown-link{
+    text-decoration: none;
+    color: #4f557a;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: #f8f9ff;
+    border: 1px solid #edf0ff;
+    transition: background .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .sb-mobile-dropdown-link:hover,
+  .sb-mobile-dropdown-link.active{
+    background: #eef1ff;
+    border-color: #d8defa;
+    color: var(--blue);
   }
   .topbar{ grid-template-columns: 1fr; }
   .topbar-brand{ justify-self: start; }

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { getMyProfile } from "../services/profile.service";
 
 const ICONS = {
@@ -18,6 +18,8 @@ const ICONS = {
 
 export default function Sidebar() {
   const [role, setRole] = useState(null);
+  const [openMobileItem, setOpenMobileItem] = useState(null);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     let active = true;
@@ -39,64 +41,152 @@ export default function Sidebar() {
   const isSuperAdmin = role === "super_admin";
   const isUser = role === "user";
   const isAdmin = role === "admin" || role === "super_admin";
+  const updatesLabel = isUser ? "My Updates" : "Updates History";
+  const uploadLabel = isUser ? "My Input" : "Upload Data";
+  const publishingLabel = isUser ? "My Publishing" : "Publishing";
+
+  const primaryLinks = useMemo(() => {
+    const items = [];
+
+    if (!isUser) {
+      items.push({ to: "/dashboard", icon: ICONS.dashboard, label: "Dashboard" });
+    }
+
+    if (isAdmin) {
+      items.push({ to: "/participants", icon: ICONS.participants, label: "Participants" });
+    }
+
+    items.push({ to: "/updates", icon: ICONS.updates, label: updatesLabel });
+
+    if (isAdmin) {
+      items.push({ to: "/scoring-formulas", icon: ICONS.scoring, label: "Scoring Formulas" });
+    }
+
+    return items;
+  }, [isUser, isAdmin, updatesLabel]);
+
+  const toolLinks = useMemo(() => {
+    const items = [
+      { to: "/upload", icon: ICONS.upload, label: uploadLabel },
+      { to: "/publishing", icon: ICONS.publishing, label: publishingLabel },
+    ];
+
+    if (isSuperAdmin) {
+      items.push({ to: "/audit-log", icon: ICONS.audit, label: "Audit Log" });
+      items.push({ to: "/finalization", icon: ICONS.finalization, label: "Week Finalization" });
+    }
+
+    return items;
+  }, [isSuperAdmin, uploadLabel, publishingLabel]);
+
+  const mobileItems = useMemo(
+    () => [
+      ...primaryLinks.map(link => ({ ...link, id: link.to })),
+      { id: "tools", label: isUser ? "My Tools" : "Tools", children: toolLinks },
+    ],
+    [primaryLinks, toolLinks, isUser]
+  );
+
+  const activeMobileIndex = useMemo(() => {
+    const foundIndex = mobileItems.findIndex(item => {
+      if (item.to) return pathname.startsWith(item.to);
+      return item.children?.some(child => pathname.startsWith(child.to));
+    });
+
+    return foundIndex >= 0 ? foundIndex : 0;
+  }, [mobileItems, pathname]);
+
+  const mobileUnderlineStyle = useMemo(() => {
+    const width = mobileItems.length ? 100 / mobileItems.length : 100;
+    return {
+      width: `${width}%`,
+      transform: `translateX(${activeMobileIndex * 100}%)`,
+    };
+  }, [mobileItems.length, activeMobileIndex]);
 
   return (
     <aside className="sidebar">
-      <nav className="sb-nav">
-        {!isUser ? (
-          <NavLink to="/dashboard" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-            <img className="sb-ico" src={ICONS.dashboard} alt="" aria-hidden="true" />
-            <span>Dashboard</span>
-          </NavLink>
-        ) : null}
+      <div className="sb-mobile" aria-label="Mobile navigation">
+        <nav className="sb-mobile-nav">
+          {mobileItems.map(item => {
+            const hasChildren = Boolean(item.children?.length);
+            const isExpanded = openMobileItem === item.id;
 
-        {isAdmin ? (
-          <NavLink to="/participants" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-            <img className="sb-ico" src={ICONS.participants} alt="" aria-hidden="true" />
-            <span>Participants</span>
-          </NavLink>
-        ) : null}
+            if (!hasChildren) {
+              return (
+                <NavLink
+                  key={item.id}
+                  to={item.to}
+                  className={({ isActive }) => "sb-mobile-item" + (isActive ? " active" : "")}
+                  onClick={() => setOpenMobileItem(null)}
+                >
+                  {item.label}
+                </NavLink>
+              );
+            }
 
-        <NavLink to="/updates" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-          <img className="sb-ico" src={ICONS.updates} alt="" aria-hidden="true" />
-          <span>{isUser ? "My Updates" : "Updates History"}</span>
-        </NavLink>
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={"sb-mobile-item sb-mobile-item-button" + (isExpanded ? " active" : "")}
+                aria-expanded={isExpanded}
+                aria-controls={`sb-mobile-panel-${item.id}`}
+                onClick={() => setOpenMobileItem(isExpanded ? null : item.id)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+          <div className="sb-mobile-underline" style={mobileUnderlineStyle} />
+        </nav>
 
-        {isAdmin ? (
-          <NavLink
-            to="/scoring-formulas"
-            className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}
-          >
-            <img className="sb-ico" src={ICONS.scoring} alt="" aria-hidden="true" />
-            <span>Scoring Formulas</span>
+        {mobileItems.map(item => {
+          const hasChildren = Boolean(item.children?.length);
+          if (!hasChildren) return null;
+
+          const isExpanded = openMobileItem === item.id;
+
+          return (
+            <div
+              key={item.id}
+              id={`sb-mobile-panel-${item.id}`}
+              className={"sb-mobile-dropdown" + (isExpanded ? " open" : "")}
+            >
+              <div className="sb-mobile-dropdown-inner">
+                {item.children.map(child => (
+                  <NavLink
+                    key={child.to}
+                    to={child.to}
+                    className={({ isActive }) => "sb-mobile-dropdown-link" + (isActive ? " active" : "")}
+                    onClick={() => setOpenMobileItem(null)}
+                  >
+                    {child.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <nav className="sb-nav sb-desktop">
+        {primaryLinks.map(link => (
+          <NavLink key={link.to} to={link.to} className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
+            <img className="sb-ico" src={link.icon} alt="" aria-hidden="true" />
+            <span>{link.label}</span>
           </NavLink>
-        ) : null}
+        ))}
 
         <div className="sb-divider" />
         <div className="sb-section">{isUser ? "MY TOOLS" : "TOOLS"}</div>
 
-        <NavLink to="/upload" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-          <img className="sb-ico" src={ICONS.upload} alt="" aria-hidden="true" />
-          <span>{isUser ? "My Input" : "Upload Data"}</span>
-        </NavLink>
-
-        <NavLink to="/publishing" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-          <img className="sb-ico" src={ICONS.publishing} alt="" aria-hidden="true" />
-          <span>{isUser ? "My Publishing" : "Publishing"}</span>
-        </NavLink>
-
-        {isSuperAdmin ? (
-          <>
-            <NavLink to="/audit-log" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-              <img className="sb-ico" src={ICONS.audit} alt="" aria-hidden="true" />
-              <span>Audit Log</span>
-            </NavLink>
-            <NavLink to="/finalization" className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
-              <img className="sb-ico" src={ICONS.finalization} alt="" aria-hidden="true" />
-              <span>Week Finalization</span>
-            </NavLink>
-          </>
-        ) : null}
+        {toolLinks.map(link => (
+          <NavLink key={link.to} to={link.to} className={({ isActive }) => "sb-link" + (isActive ? " active" : "")}>
+            <img className="sb-ico" src={link.icon} alt="" aria-hidden="true" />
+            <span>{link.label}</span>
+          </NavLink>
+        ))}
 
         {/* Later: Download Template & Reset Sample can be inside Upload page */}
       </nav>
