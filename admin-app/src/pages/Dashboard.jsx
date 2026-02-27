@@ -453,7 +453,7 @@ export default function Dashboard() {
           dateTo: dateTo || undefined,
           // Server-side leader filter is only safe for individual leader modes.
           agentId: mode === "leaders" && leaderRole !== "platoon" ? selectedId : undefined,
-          includeVoided: true,
+          includeVoided: false,
           limit: 2000,
         });
 

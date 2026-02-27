@@ -160,7 +160,8 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
           role
         )
       `
-      ),
+      )
+      .eq("voided", false),
     getActiveFormula(resolvedBattleType, resolvedWeekKey),
   ]);
 
