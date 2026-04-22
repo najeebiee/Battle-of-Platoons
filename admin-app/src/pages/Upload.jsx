@@ -6,13 +6,13 @@ import AppPagination from "../components/AppPagination";
 import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
 import {
-  mergeRawDataRowsByIdentity,
-  normalizeRawDataRows,
-  parseRawDataWorkbook,
-  upsertRawData,
-} from "../services/rawData.service";
+  mergeRawDataV2RowsByIdentity,
+  normalizeRawDataRowsV2,
+  parseRawDataWorkbookV2,
+  upsertRawDataV2,
+} from "../services/rawDataV2.service";
 import { listAgents } from "../services/agents.service";
-import { listDepots } from "../services/depots.service";
+import { listActiveProductCenterUnits } from "../services/productCenterUnits.service";
 import { getMyProfile } from "../services/profile.service";
 
 function ReplaceIcon({ size = 16 }) {
@@ -73,11 +73,13 @@ function buildManualDefaults(agentId = "") {
   return {
     date_real: getPhDateYmd(0),
     agent_id: agentId,
-    leads_depot_id: "",
     leads: 0,
     payins: 0,
     sales: 0,
-    sales_depot_id: "",
+    activation: 0,
+    leads_product_center_unit_id: "",
+    sales_product_center_unit_id: "",
+    activation_product_center_unit_id: "",
   };
 }
 
@@ -100,11 +102,12 @@ export default function Upload() {
   const [manualForm, setManualForm] = useState(buildManualDefaults(""));
   const [manualLookupInputs, setManualLookupInputs] = useState({
     agent: "",
-    leads_depot_id: "",
-    sales_depot_id: "",
+    leads_product_center_unit_id: "",
+    sales_product_center_unit_id: "",
+    activation_product_center_unit_id: "",
   });
   const [agentsOptions, setAgentsOptions] = useState([]);
-  const [depotsOptions, setDepotsOptions] = useState([]);
+  const [productCenterUnitOptions, setProductCenterUnitOptions] = useState([]);
   const [manualError, setManualError] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
   const [activeManualSelect, setActiveManualSelect] = useState("");
@@ -229,35 +232,54 @@ export default function Upload() {
     );
   }, [agentsOptions, manualLookupInputs.agent]);
 
-  const selectedManualLeadsDepotName = useMemo(() => {
-    if (!manualForm.leads_depot_id) return "";
-    const selected = depotsOptions.find(depot => depot.id === manualForm.leads_depot_id);
-    return selected?.name || "";
-  }, [depotsOptions, manualForm.leads_depot_id]);
-
-  const selectedManualSalesDepotName = useMemo(() => {
-    if (!manualForm.sales_depot_id) return "";
-    const selected = depotsOptions.find(depot => depot.id === manualForm.sales_depot_id);
-    return selected?.name || "";
-  }, [depotsOptions, manualForm.sales_depot_id]);
-
-  const filteredManualLeadsDepots = useMemo(() => {
-    const query = manualLookupInputs.leads_depot_id.trim().toLowerCase();
-    if (!query) return depotsOptions;
-    return depotsOptions.filter(depot =>
-      (depot.name || "").toLowerCase().includes(query) ||
-      (depot.id || "").toLowerCase().includes(query)
+  const selectedManualLeadsUnitName = useMemo(() => {
+    if (!manualForm.leads_product_center_unit_id) return "";
+    const selected = productCenterUnitOptions.find(
+      unit => unit.id === manualForm.leads_product_center_unit_id
     );
-  }, [depotsOptions, manualLookupInputs.leads_depot_id]);
+    return selected?.name || "";
+  }, [productCenterUnitOptions, manualForm.leads_product_center_unit_id]);
 
-  const filteredManualSalesDepots = useMemo(() => {
-    const query = manualLookupInputs.sales_depot_id.trim().toLowerCase();
-    if (!query) return depotsOptions;
-    return depotsOptions.filter(depot =>
-      (depot.name || "").toLowerCase().includes(query) ||
-      (depot.id || "").toLowerCase().includes(query)
+  const selectedManualSalesUnitName = useMemo(() => {
+    if (!manualForm.sales_product_center_unit_id) return "";
+    const selected = productCenterUnitOptions.find(
+      unit => unit.id === manualForm.sales_product_center_unit_id
     );
-  }, [depotsOptions, manualLookupInputs.sales_depot_id]);
+    return selected?.name || "";
+  }, [productCenterUnitOptions, manualForm.sales_product_center_unit_id]);
+
+  const selectedManualActivationUnitName = useMemo(() => {
+    if (!manualForm.activation_product_center_unit_id) return "";
+    const selected = productCenterUnitOptions.find(
+      unit => unit.id === manualForm.activation_product_center_unit_id
+    );
+    return selected?.name || "";
+  }, [productCenterUnitOptions, manualForm.activation_product_center_unit_id]);
+
+  function filterProductCenterUnits(field) {
+    const query = manualLookupInputs[field].trim().toLowerCase();
+    if (!query) return productCenterUnitOptions;
+    return productCenterUnitOptions.filter(unit =>
+      (unit.name || "").toLowerCase().includes(query) ||
+      (unit.id || "").toLowerCase().includes(query) ||
+      (unit.unit_type || "").toLowerCase().includes(query)
+    );
+  }
+
+  const filteredManualLeadsUnits = useMemo(
+    () => filterProductCenterUnits("leads_product_center_unit_id"),
+    [productCenterUnitOptions, manualLookupInputs.leads_product_center_unit_id]
+  );
+
+  const filteredManualSalesUnits = useMemo(
+    () => filterProductCenterUnits("sales_product_center_unit_id"),
+    [productCenterUnitOptions, manualLookupInputs.sales_product_center_unit_id]
+  );
+
+  const filteredManualActivationUnits = useMemo(
+    () => filterProductCenterUnits("activation_product_center_unit_id"),
+    [productCenterUnitOptions, manualLookupInputs.activation_product_center_unit_id]
+  );
 
   function exportXlsx() {
     const exportRows = processed.displayRows.map((row, idx) => {
@@ -274,11 +296,13 @@ export default function Upload() {
         "#": idx + 1,
         Date: row.date_real || "-",
         "Leader Name": row.leader_name_input,
-        "Leads Depot": row.leads_depot_name || "-",
-        "Sales Depot": row.sales_depot_name || "-",
+        "Leads Product Center": row.leads_product_center_unit_name || "-",
+        "Sales Product Center": row.sales_product_center_unit_name || "-",
+        "Activation Product Center": row.activation_product_center_unit_name || "-",
         Leads: row.leads,
         Payins: row.payins,
         Sales: row.sales,
+        Activation: row.activation,
         "Duplicates / Merge": duplicateBadges.length ? duplicateBadges.join(" / ") : "-",
         Status: row.displayStatus,
         Errors: issueText,
@@ -308,12 +332,17 @@ export default function Upload() {
     let mounted = true;
     setManualLoading(true);
     setProfileLoading(true);
-    Promise.all([listAgents(), listDepots(), getMyProfile()])
-      .then(([agents, depots, myProfile]) => {
+    Promise.all([listAgents(), listActiveProductCenterUnits(), getMyProfile()])
+      .then(([agents, units, myProfile]) => {
         if (!mounted) return;
         setProfile(myProfile);
         setAgentsOptions(agents ?? []);
-        setDepotsOptions(depots ?? []);
+        setProductCenterUnitOptions(
+          (units ?? []).map(unit => ({
+            ...unit,
+            name: `${(unit.unit_type || "").toUpperCase()} - ${unit.name || ""}`,
+          }))
+        );
         const userAgentId = myProfile?.role === "user" ? myProfile?.agent_id ?? "" : "";
         setManualForm(prev => ({
           ...buildManualDefaults(userAgentId),
@@ -353,7 +382,7 @@ export default function Upload() {
     setParseProgress({ done: 0, total: 0, stage: "reading" });
 
     try {
-      const { rows: parsedRows, meta: workbookMeta } = await parseRawDataWorkbook(
+      const { rows: parsedRows, meta: workbookMeta } = await parseRawDataWorkbookV2(
         file,
         {},
         (done, total, stage) => {
@@ -425,8 +454,9 @@ export default function Upload() {
     setManualForm(buildManualDefaults(userAgentId));
     setManualLookupInputs({
       agent: isUser ? selectedManualLeaderName : "",
-      leads_depot_id: "",
-      sales_depot_id: "",
+      leads_product_center_unit_id: "",
+      sales_product_center_unit_id: "",
+      activation_product_center_unit_id: "",
     });
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -451,13 +481,15 @@ export default function Upload() {
       const payload = processed.rowsForSave.map(row => ({
         date_real: row.date_real,
         agent_id: row.agent_id ?? row.resolved_agent_id,
-        leads_depot_id: row.leads_depot_id,
-        sales_depot_id: row.sales_depot_id,
+        leads_product_center_unit_id: row.leads_product_center_unit_id,
+        sales_product_center_unit_id: row.sales_product_center_unit_id,
+        activation_product_center_unit_id: row.activation_product_center_unit_id,
         leads: row.leads ?? 0,
         payins: row.payins ?? 0,
         sales: row.sales ?? 0,
+        activation: row.activation ?? 0,
       }));
-      const result = await upsertRawData(payload);
+      const result = await upsertRawDataV2(payload);
       if (!isMountedRef.current) return;
       setSaveProgress({ done: processed.rowsForSave.length, total: processed.rowsForSave.length });
       setSaveResult({
@@ -509,11 +541,11 @@ export default function Upload() {
     }));
   }
 
-  function handleManualDepotInputChange(field, value) {
+  function handleManualProductCenterUnitInputChange(field, value) {
     const normalized = value.trim().toLowerCase();
-    const exactMatch = depotsOptions.find(depot =>
-      (depot.name || "").trim().toLowerCase() === normalized ||
-      (depot.id || "").trim().toLowerCase() === normalized
+    const exactMatch = productCenterUnitOptions.find(unit =>
+      (unit.name || "").trim().toLowerCase() === normalized ||
+      (unit.id || "").trim().toLowerCase() === normalized
     );
     setManualLookupInputs(prev => ({
       ...prev,
@@ -525,15 +557,15 @@ export default function Upload() {
     }));
   }
 
-  function handleManualDepotSelect(field, depot) {
-    if (!depot) return;
+  function handleManualProductCenterUnitSelect(field, unit) {
+    if (!unit) return;
     setManualLookupInputs(prev => ({
       ...prev,
-      [field]: depot.name || "",
+      [field]: unit.name || "",
     }));
     setManualForm(prev => ({
       ...prev,
-      [field]: depot.id,
+      [field]: unit.id,
     }));
   }
 
@@ -548,8 +580,15 @@ export default function Upload() {
       errors.push("Date must be current date or yesterday (PH timezone).");
     }
     if (!(isUser ? profile?.agent_id : manualForm.agent_id)) errors.push("Leader is required.");
-    if (!manualForm.leads_depot_id) errors.push("Leads depot is required.");
-    if (!manualForm.sales_depot_id) errors.push("Sales depot is required.");
+    if (!manualForm.leads_product_center_unit_id) {
+      errors.push("Leads product center is required.");
+    }
+    if (!manualForm.sales_product_center_unit_id) {
+      errors.push("Sales product center is required.");
+    }
+    if (!manualForm.activation_product_center_unit_id) {
+      errors.push("Activation product center is required.");
+    }
     if (errors.length) {
       setManualError(errors.join(" "));
       return;
@@ -564,21 +603,24 @@ export default function Upload() {
       leads: Number(manualForm.leads) || 0,
       payins: Number(manualForm.payins) || 0,
       sales: Number(manualForm.sales) || 0,
-      leads_depot_id: manualForm.leads_depot_id,
-      sales_depot_id: manualForm.sales_depot_id,
+      activation: Number(manualForm.activation) || 0,
+      leads_product_center_unit_id: manualForm.leads_product_center_unit_id,
+      sales_product_center_unit_id: manualForm.sales_product_center_unit_id,
+      activation_product_center_unit_id: manualForm.activation_product_center_unit_id,
     };
 
     try {
       setManualLoading(true);
-      const { rows: normalizedRows } = await normalizeRawDataRows([manualRow]);
-      setRows(prev => mergeRawDataRowsByIdentity([...prev, ...normalizedRows]));
+      const { rows: normalizedRows } = await normalizeRawDataRowsV2([manualRow]);
+      setRows(prev => mergeRawDataV2RowsByIdentity([...prev, ...normalizedRows]));
       setManualOpen(false);
       setActiveManualSelect("");
       setManualForm(buildManualDefaults(isUser ? profile?.agent_id ?? "" : ""));
       setManualLookupInputs({
         agent: isUser ? selectedManualLeaderName : "",
-        leads_depot_id: "",
-        sales_depot_id: "",
+        leads_product_center_unit_id: "",
+        sales_product_center_unit_id: "",
+        activation_product_center_unit_id: "",
       });
     } catch (submitError) {
       setManualError(submitError.message || "Failed to add entry");
@@ -603,7 +645,7 @@ export default function Upload() {
       <div className="muted">
         {isUser
           ? "Encode your own data for today or yesterday."
-          : "Import the Daily Data template (.xlsx) and review rows before saving."}
+          : "Import the v2 Daily Data template (.xlsx) and review rows before saving."}
       </div>
       {isUser ? (
         <div className="user-scope-note">
@@ -660,7 +702,7 @@ export default function Upload() {
           </div>
           <div className="dropzone__content">
             <div className="dropzone__title">Select or drop an .xlsx file</div>
-            <div className="dropzone__sub">.xlsx only. Sheet name "Daily Data" or first sheet.</div>
+            <div className="dropzone__sub">.xlsx only. Include product-center columns for leads, sales, and activation.</div>
             <button
               type="button"
               className="button primary dropzone__cta upload-browse-btn"
@@ -786,11 +828,13 @@ export default function Upload() {
                   <th>#</th>
                   <th>Date</th>
                   <th>Leader Name</th>
-                  <th>Leads Depot</th>
-                  <th>Sales Depot</th>
+                  <th>Leads Product Center</th>
+                  <th>Sales Product Center</th>
+                  <th>Activation Product Center</th>
                   <th>Leads</th>
                   <th>Payins</th>
                   <th>Sales</th>
+                  <th>Activation</th>
                   <th>Duplicates / Merge</th>
                   <th>Status</th>
                   <th>Errors</th>
@@ -820,14 +864,18 @@ export default function Upload() {
                       <div>{row.leader_name_input}</div>
                     </td>
                     <td>
-                      <div>{row.leads_depot_name || "—"}</div>
+                      <div>{row.leads_product_center_unit_name || "—"}</div>
                     </td>
                     <td>
-                      <div>{row.sales_depot_name || "—"}</div>
+                      <div>{row.sales_product_center_unit_name || "—"}</div>
+                    </td>
+                    <td>
+                      <div>{row.activation_product_center_unit_name || "—"}</div>
                     </td>
                     <td>{row.leads}</td>
                     <td>{row.payins}</td>
                     <td>{row.sales}</td>
+                    <td>{row.activation}</td>
                     <td>
                       {duplicateBadges.length ? (
                         <div>
@@ -1003,19 +1051,25 @@ export default function Upload() {
           </div>
           <div className="manual-input-grid__col">
             <FloatingSelectField
-              label="Leads Depot"
+              label="Leads Product Center"
               required
-              placeholder="Select leads depot"
-              searchPlaceholder="Search leads depot"
-              valueText={selectedManualLeadsDepotName}
-              searchValue={manualLookupInputs.leads_depot_id}
-              onSearchChange={value => handleManualDepotInputChange("leads_depot_id", value)}
-              options={filteredManualLeadsDepots}
-              selectedId={manualForm.leads_depot_id}
-              onSelect={depot => handleManualDepotSelect("leads_depot_id", depot)}
-              emptyText="No depots found."
-              isOpen={activeManualSelect === "leads_depot"}
-              onOpenChange={open => setActiveManualSelect(open ? "leads_depot" : "")}
+              placeholder="Select leads product center"
+              searchPlaceholder="Search leads product center"
+              valueText={selectedManualLeadsUnitName}
+              searchValue={manualLookupInputs.leads_product_center_unit_id}
+              onSearchChange={value =>
+                handleManualProductCenterUnitInputChange("leads_product_center_unit_id", value)
+              }
+              options={filteredManualLeadsUnits}
+              selectedId={manualForm.leads_product_center_unit_id}
+              onSelect={unit =>
+                handleManualProductCenterUnitSelect("leads_product_center_unit_id", unit)
+              }
+              emptyText="No product center units found."
+              isOpen={activeManualSelect === "leads_product_center_unit"}
+              onOpenChange={open =>
+                setActiveManualSelect(open ? "leads_product_center_unit" : "")
+              }
             />
           </div>
           <div className="field manual-input-grid__col manual-input-grid__sales">
@@ -1030,19 +1084,64 @@ export default function Upload() {
           </div>
           <div className="manual-input-grid__col manual-input-grid__sales-depot">
             <FloatingSelectField
-              label="Sales Depot"
+              label="Sales Product Center"
               required
-              placeholder="Select sales depot"
-              searchPlaceholder="Search sales depot"
-              valueText={selectedManualSalesDepotName}
-              searchValue={manualLookupInputs.sales_depot_id}
-              onSearchChange={value => handleManualDepotInputChange("sales_depot_id", value)}
-              options={filteredManualSalesDepots}
-              selectedId={manualForm.sales_depot_id}
-              onSelect={depot => handleManualDepotSelect("sales_depot_id", depot)}
-              emptyText="No depots found."
-              isOpen={activeManualSelect === "sales_depot"}
-              onOpenChange={open => setActiveManualSelect(open ? "sales_depot" : "")}
+              placeholder="Select sales product center"
+              searchPlaceholder="Search sales product center"
+              valueText={selectedManualSalesUnitName}
+              searchValue={manualLookupInputs.sales_product_center_unit_id}
+              onSearchChange={value =>
+                handleManualProductCenterUnitInputChange("sales_product_center_unit_id", value)
+              }
+              options={filteredManualSalesUnits}
+              selectedId={manualForm.sales_product_center_unit_id}
+              onSelect={unit =>
+                handleManualProductCenterUnitSelect("sales_product_center_unit_id", unit)
+              }
+              emptyText="No product center units found."
+              isOpen={activeManualSelect === "sales_product_center_unit"}
+              onOpenChange={open =>
+                setActiveManualSelect(open ? "sales_product_center_unit" : "")
+              }
+            />
+          </div>
+          <div className="field manual-input-grid__col manual-input-grid__activation">
+            <label>Activation</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={manualForm.activation}
+              onChange={e => setManualForm(prev => ({ ...prev, activation: e.target.value }))}
+            />
+          </div>
+          <div className="manual-input-grid__col manual-input-grid__activation-unit">
+            <FloatingSelectField
+              label="Activation Product Center"
+              required
+              placeholder="Select activation product center"
+              searchPlaceholder="Search activation product center"
+              valueText={selectedManualActivationUnitName}
+              searchValue={manualLookupInputs.activation_product_center_unit_id}
+              onSearchChange={value =>
+                handleManualProductCenterUnitInputChange(
+                  "activation_product_center_unit_id",
+                  value
+                )
+              }
+              options={filteredManualActivationUnits}
+              selectedId={manualForm.activation_product_center_unit_id}
+              onSelect={unit =>
+                handleManualProductCenterUnitSelect(
+                  "activation_product_center_unit_id",
+                  unit
+                )
+              }
+              emptyText="No product center units found."
+              isOpen={activeManualSelect === "activation_product_center_unit"}
+              onOpenChange={open =>
+                setActiveManualSelect(open ? "activation_product_center_unit" : "")
+              }
             />
           </div>
         </div>

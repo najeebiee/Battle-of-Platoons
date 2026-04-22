@@ -9,13 +9,13 @@ import { computeTotalScore } from "./scoringEngine";
  * Contract:
  * getLeaderboard({ startDate, endDate, groupBy }) returns:
  * {
- *   metrics: { entitiesCount, totalLeads, totalPayins, totalSales },
- *   rows: [{ key, name, avatarUrl, leads, payins, sales, points, rank, platoon? }]
+ *   metrics: { entitiesCount, totalLeads, totalPayins, totalSales, totalActivation },
+ *   rows: [{ key, name, avatarUrl, leads, payins, sales, activation, points, rank, platoon? }]
  * }
  *
  * Notes:
  * - Public visibility is governed by Supabase RLS; do not add publishable logic in the frontend.
- * - We intentionally DO NOT rely on PostgREST nested joins for depots/companies/platoons
+ * - We intentionally DO NOT rely on PostgREST nested joins for product centers/companies/platoons
  *   because those return null unless FK relationships are properly defined in Postgres.
  * - Instead: fetch lookups separately and attach by company_id/platoon_id.
  */
@@ -26,6 +26,15 @@ export async function listTeams() {
 
 export async function listCommanders() {
   return supabase.from("companies").select("id,name,photoURL,photo_url").order("name");
+}
+
+export async function listProductCenters() {
+  return supabase
+    .from("product_center_units")
+    .select("id,name,unit_type,code")
+    .eq("is_active", true)
+    .order("unit_type")
+    .order("name");
 }
 
 export async function getLeaderboard({
@@ -49,15 +58,17 @@ export async function getLeaderboard({
 
   // 1) Fetch publishable rows - rely on RLS for visibility
   const { data: publishableRows, error: publishableError } = await supabase
-    .from("publishable_raw_data")
+    .from("publishable_raw_data_v2")
     .select(
       `
       id,
       leads,
       payins,
       sales,
-      leads_depot_id,
-      sales_depot_id,
+      activation,
+      leads_product_center_unit_id,
+      sales_product_center_unit_id,
+      activation_product_center_unit_id,
       date_real,
       agent_id
     `
@@ -103,14 +114,14 @@ export async function getLeaderboard({
     });
   }
 
-  // 3) Fetch lookups in parallel (for names/logos + platoon display)
-  const [{ data: depots }, { data: commanders }, { data: teams }] = await Promise.all([
-    supabase.from("depots").select("id,name,photoURL,photo_url").order("name"),
+  // 3) Fetch lookups in parallel (for names + platoon display)
+  const [{ data: productCenters }, { data: commanders }, { data: teams }] = await Promise.all([
+    listProductCenters(),
     listCommanders(),
     listTeams(),
   ]);
 
-  const depotsMap = new Map((depots ?? []).map((d) => [String(d.id), d]));
+  const productCentersMap = new Map((productCenters ?? []).map((unit) => [String(unit.id), unit]));
   const commandersMap = new Map((commanders ?? []).map((c) => [String(c.id), c]));
   const teamsMap = new Map((teams ?? []).map((p) => [String(p.id), p]));
 
@@ -127,7 +138,7 @@ export async function getLeaderboard({
     rows: filtered,
     mode: normalizeGroupBy(groupBy),
     scoringFn,
-    depotsMap,
+    productCentersMap,
     commandersMap,
     teamsMap,
     agentsMap,
@@ -139,6 +150,7 @@ export async function getLeaderboard({
     totalLeads: rows.reduce((s, r) => s + toNumber(r.leads), 0),
     totalPayins: rows.reduce((s, r) => s + toNumber(r.payins), 0),
     totalSales: rows.reduce((s, r) => s + toNumber(r.sales), 0),
+    totalActivation: rows.reduce((s, r) => s + toNumber(r.activation), 0),
   };
 
   return {
@@ -160,7 +172,7 @@ function aggregateLeaderboard({
   rows,
   mode,
   scoringFn,
-  depotsMap,
+  productCentersMap,
   commandersMap,
   teamsMap,
   agentsMap,
@@ -176,13 +188,15 @@ function aggregateLeaderboard({
     const leads = toNumber(r.leads);
     const payins = toNumber(r.payins);
     const sales = toNumber(r.sales);
+    const activation = toNumber(r.activation);
 
     const agentId = String(r.agent_id ?? joinedAgent.id ?? "");
     const mappedAgent = agentId && agentsMap ? agentsMap.get(agentId) : null;
     const agentData = { ...mappedAgent, ...joinedAgent };
 
-    const leadsDepotId = r.leads_depot_id ?? null;
-    const salesDepotId = r.sales_depot_id ?? null;
+    const leadsProductCenterUnitId = r.leads_product_center_unit_id ?? null;
+    const salesProductCenterUnitId = r.sales_product_center_unit_id ?? null;
+    const activationProductCenterUnitId = r.activation_product_center_unit_id ?? null;
     const companyId = agentData.company_id ?? agentData.companyId ?? null;
     const platoonId = agentData.platoon_id ?? agentData.platoonId ?? null;
 
@@ -220,39 +234,47 @@ function aggregateLeaderboard({
     }
 
     if (mode === "depots") {
-      const ensureDepotBucket = (depotKey) => {
-        if (!depotKey) return null;
-        if (map.has(depotKey)) return map.get(depotKey);
-        const depot = depotsMap.get(depotKey) ?? null;
-        const depotName = depot?.name || (depotKey === "unassigned" ? "Unassigned" : depotKey);
+      const ensureProductCenterBucket = (unitKey) => {
+        if (!unitKey) return null;
+        if (map.has(unitKey)) return map.get(unitKey);
+        const unit = productCentersMap.get(unitKey) ?? null;
+        const unitName = unit?.name || (unitKey === "unassigned" ? "Unassigned" : unitKey);
+        const unitType = unit?.unit_type ? String(unit.unit_type).toUpperCase() : "";
         const bucket = {
-          key: depotKey,
-          name: depotName,
-          avatarUrl: depot?.photoURL ?? depot?.photo_url ?? "",
+          key: unitKey,
+          name: unitType ? `${unitType} - ${unitName}` : unitName,
+          avatarUrl: "",
           platoon: "",
           leads: 0,
           payins: 0,
           sales: 0,
+          activation: 0,
           points: 0,
           rank: 0,
           uplineName: "",
         };
-        map.set(depotKey, bucket);
+        map.set(unitKey, bucket);
         return bucket;
       };
 
-      const leadsKey = leadsDepotId ? String(leadsDepotId) : "unassigned";
-      const salesKey = salesDepotId ? String(salesDepotId) : "unassigned";
+      const leadsKey = leadsProductCenterUnitId ? String(leadsProductCenterUnitId) : "unassigned";
+      const salesKey = salesProductCenterUnitId ? String(salesProductCenterUnitId) : "unassigned";
+      const activationKey = activationProductCenterUnitId
+        ? String(activationProductCenterUnitId)
+        : "unassigned";
 
-      const leadsBucket = ensureDepotBucket(leadsKey);
-      const salesBucket = ensureDepotBucket(salesKey);
+      const leadsBucket = ensureProductCenterBucket(leadsKey);
+      const salesBucket = ensureProductCenterBucket(salesKey);
+      const activationBucket = ensureProductCenterBucket(activationKey);
 
       if (leadsBucket) {
         leadsBucket.leads += leads;
       }
       if (salesBucket) {
-        salesBucket.payins += payins;
         salesBucket.sales += sales;
+      }
+      if (activationBucket) {
+        activationBucket.activation += activation;
       }
 
       continue;
@@ -269,6 +291,7 @@ function aggregateLeaderboard({
         leads: 0,
         payins: 0,
         sales: 0,
+        activation: 0,
         points: 0,
         rank: 0,
         uplineName: mode === "leaders" ? uplineName : "",
@@ -279,6 +302,7 @@ function aggregateLeaderboard({
     item.leads += leads;
     item.payins += payins;
     item.sales += sales;
+    item.activation += activation;
     if (mode === "leaders" && platoonName && !item.platoon) {
       item.platoon = platoonName;
     }
@@ -296,16 +320,12 @@ function aggregateLeaderboard({
     const pointsDiff = toNumber(b.points) - toNumber(a.points);
     if (pointsDiff !== 0) return pointsDiff;
 
-    // Temporary depot-only rule:
-    // if both are at 1000+ points, lower sales ranks higher.
     if (mode === "depots") {
-      if (toNumber(a.points) >= 1000 && toNumber(b.points) >= 1000) {
-        const lowerSalesWins = toNumber(a.sales) - toNumber(b.sales);
-        if (lowerSalesWins !== 0) return lowerSalesWins;
-      } else {
-        const salesDiff = toNumber(b.sales) - toNumber(a.sales);
-        if (salesDiff !== 0) return salesDiff;
-      }
+      const salesDiff = toNumber(b.sales) - toNumber(a.sales);
+      if (salesDiff !== 0) return salesDiff;
+
+      const activationDiff = toNumber(b.activation) - toNumber(a.activation);
+      if (activationDiff !== 0) return activationDiff;
 
       const leadsDiff = toNumber(b.leads) - toNumber(a.leads);
       if (leadsDiff !== 0) return leadsDiff;
@@ -313,7 +333,9 @@ function aggregateLeaderboard({
       return toNumber(b.payins) - toNumber(a.payins);
     }
 
-    // Leaders/commanders/companies: payins first, then sales, then leads.
+    const activationDiff = toNumber(b.activation) - toNumber(a.activation);
+    if (activationDiff !== 0) return activationDiff;
+
     const payinsDiff = toNumber(b.payins) - toNumber(a.payins);
     if (payinsDiff !== 0) return payinsDiff;
 
@@ -348,18 +370,20 @@ function aggregateUplines({ rows, scoringFn, agentsMap }) {
     const leads = toNumber(r.leads);
     const payins = toNumber(r.payins);
     const sales = toNumber(r.sales);
+    const activation = toNumber(r.activation);
 
     const uplineIdRaw = agentData.uplineId ?? agentData.upline_agent_id ?? "";
     const uplineKey = uplineIdRaw ? String(uplineIdRaw) : NO_UPLINE_KEY;
 
     if (!totalsByUpline.has(uplineKey)) {
-      totalsByUpline.set(uplineKey, { leads: 0, payins: 0, sales: 0 });
+      totalsByUpline.set(uplineKey, { leads: 0, payins: 0, sales: 0, activation: 0 });
     }
 
     const bucket = totalsByUpline.get(uplineKey);
     bucket.leads += leads;
     bucket.payins += payins;
     bucket.sales += sales;
+    bucket.activation += activation;
   }
 
   const result = Array.from(totalsByUpline.entries()).map(([uplineKey, totals]) => {
@@ -375,6 +399,7 @@ function aggregateUplines({ rows, scoringFn, agentsMap }) {
       leads: totals.leads,
       payins: totals.payins,
       sales: totals.sales,
+      activation: totals.activation,
     };
 
     return {
@@ -385,7 +410,11 @@ function aggregateUplines({ rows, scoringFn, agentsMap }) {
 
   result.sort(
     (a, b) =>
-      b.points - a.points || b.sales - a.sales || b.leads - a.leads || b.payins - a.payins
+      b.points - a.points ||
+      b.activation - a.activation ||
+      b.payins - a.payins ||
+      b.sales - a.sales ||
+      b.leads - a.leads
   );
 
   for (let i = 0; i < result.length; i++) result[i].rank = i + 1;
@@ -410,37 +439,10 @@ function toNumber(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-/**
- * Prefer date_real (date) if present.
- * Fallback to Firestore-exported timestamp JSON in `date`.
- */
 function getRowDate(r) {
   if (r?.date_real) {
-    // Supabase date is "YYYY-MM-DD"
     return new Date(`${r.date_real}T00:00:00`);
   }
-  return parseFirestoreTimestampJson(r?.date);
-}
-
-function parseFirestoreTimestampJson(ts) {
-  if (!ts) return null;
-
-  // Sometimes already a string
-  if (typeof ts === "string") {
-    const d = new Date(ts);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  // Firestore export style: { _seconds, _nanoseconds }
-  const sec = ts._seconds ?? ts.seconds;
-  const nsec = ts._nanoseconds ?? ts.nanoseconds ?? 0;
-
-  if (typeof sec === "number") {
-    const ms = sec * 1000 + Math.floor(nsec / 1e6);
-    const d = new Date(ms);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
   return null;
 }
 

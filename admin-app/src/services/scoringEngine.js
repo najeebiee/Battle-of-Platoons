@@ -11,6 +11,7 @@ export function computeTotalScore(battleType, totals = {}, config = {}) {
     leads: totals?.leads ?? 0,
     payins: totals?.payins ?? 0,
     sales: totals?.sales ?? 0,
+    activation: totals?.activation ?? 0,
   };
 
   const isDepot = String(battleType || "").toLowerCase() === "depot" ||

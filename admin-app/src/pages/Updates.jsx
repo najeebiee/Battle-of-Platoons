@@ -6,50 +6,21 @@ import AppPagination from "../components/AppPagination";
 import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
 import { listAgents } from "../services/agents.service";
-import { listDepots } from "../services/depots.service";
-import { canEditRow, getRawDataHistory, updateRow } from "../services/rawData.service";
+import { listActiveProductCenterUnits } from "../services/productCenterUnits.service";
+import { getRawDataV2History, updateRawDataV2 } from "../services/rawDataV2.service";
 import { getMyProfile } from "../services/profile.service";
 
-// ----------------------
-// Formatting helpers
-// ----------------------
-function formatNumber(value) {
-  if (value === null || value === undefined || value === "") return "N/A";
-  const num = Number(value);
-  if (Number.isNaN(num)) return "N/A";
-  return num.toLocaleString();
-}
-
-function formatCurrency(value) {
-  if (value === null || value === undefined || value === "") return "N/A";
-  const num = Number(value);
-  if (Number.isNaN(num)) return "N/A";
-  return num.toLocaleString("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-}
-
-// ----------------------
-// Date parsing (timezone-safe)
-// Supports: YYYY-MM-DD, MM/DD/YYYY, M/D/YYYY
-// Returns: YYYY-MM-DD or ""
-// ----------------------
 function normalizeToYmd(input) {
   if (!input) return "";
   const s = String(input).trim();
 
-  // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // MM/DD/YYYY or M/D/YYYY
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    const mm = String(m[1]).padStart(2, "0");
-    const dd = String(m[2]).padStart(2, "0");
-    const yyyy = String(m[3]);
+  const match = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    const mm = String(match[1]).padStart(2, "0");
+    const dd = String(match[2]).padStart(2, "0");
+    const yyyy = String(match[3]);
     return `${yyyy}-${mm}-${dd}`;
   }
 
@@ -57,21 +28,11 @@ function normalizeToYmd(input) {
 }
 
 function toTsYmd(ymd) {
-  const norm = normalizeToYmd(ymd);
-  if (!norm) return null;
-  const ts = new Date(`${norm}T00:00:00`).getTime();
+  const normalized = normalizeToYmd(ymd);
+  if (!normalized) return null;
+  const ts = new Date(`${normalized}T00:00:00`).getTime();
   return Number.isNaN(ts) ? null : ts;
 }
-
-const initialFilters = {
-  dateFrom: "",
-  dateTo: "",
-  leaderId: "",
-  leadsDepotId: "",
-  salesDepotId: "",
-};
-
-const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
 function getPhDateYmd(offsetDays = 0) {
   const now = Date.now() + offsetDays * 24 * 60 * 60 * 1000;
@@ -89,6 +50,23 @@ function isPhTodayOrYesterday(dateValue) {
   return day === getPhDateYmd(0) || day === getPhDateYmd(-1);
 }
 
+function formatProductCenterUnitLabel(unit) {
+  if (!unit) return "";
+  const type = unit.unit_type ? String(unit.unit_type).toUpperCase() : "";
+  return type ? `${type} - ${unit.name || unit.id}` : unit.name || unit.id;
+}
+
+const initialFilters = {
+  dateFrom: "",
+  dateTo: "",
+  leaderId: "",
+  leadsProductCenterUnitId: "",
+  salesProductCenterUnitId: "",
+  activationProductCenterUnitId: "",
+};
+
+const ADMIN_ROLES = new Set(["admin", "super_admin"]);
+
 function EditIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -102,33 +80,37 @@ function EditIcon({ size = 16 }) {
 
 export default function Updates() {
   const [agents, setAgents] = useState([]);
-  const [depots, setDepots] = useState([]);
+  const [productCenterUnits, setProductCenterUnits] = useState([]);
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
 
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState("");
-
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
 
-  // Two-state filtering: input vs applied
   const [filtersInput, setFiltersInput] = useState(initialFilters);
   const [filtersApplied, setFiltersApplied] = useState(initialFilters);
   const [filterSearch, setFilterSearch] = useState({
     leaderId: "",
-    leadsDepotId: "",
-    salesDepotId: "",
+    leadsProductCenterUnitId: "",
+    salesProductCenterUnitId: "",
+    activationProductCenterUnitId: "",
   });
 
-  // Editing
   const [editingRow, setEditingRow] = useState(null);
   const [editValues, setEditValues] = useState({
     leads: "",
     payins: "",
     sales: "",
+    activation: "",
   });
+
+  const [profile, setProfile] = useState(null);
+  const currentRole = profile?.role || "";
+  const isAdmin = ADMIN_ROLES.has(currentRole);
+  const isUser = currentRole === "user";
 
   const leadInvalid =
     editingRow &&
@@ -139,74 +121,100 @@ export default function Updates() {
   const salesInvalid =
     editingRow &&
     (editValues.sales === "" || Number.isNaN(Number(editValues.sales)) || Number(editValues.sales) < 0);
+  const activationInvalid =
+    editingRow &&
+    (editValues.activation === "" ||
+      Number.isNaN(Number(editValues.activation)) ||
+      Number(editValues.activation) < 0);
   const canSaveEdit =
-    editingRow && !leadInvalid && !payinsInvalid && !salesInvalid && savingId !== editingRow?.id;
-
-  // Auth / session
-  const [profile, setProfile] = useState(null);
-  const currentRole = profile?.role || "";
-  const isAdmin = ADMIN_ROLES.has(currentRole);
-  const isUser = currentRole === "user";
+    editingRow &&
+    !leadInvalid &&
+    !payinsInvalid &&
+    !salesInvalid &&
+    !activationInvalid &&
+    savingId !== editingRow?.id;
 
   const agentMap = useMemo(() => {
     const map = {};
-    for (const a of agents) map[a.id] = a;
+    for (const agent of agents) map[agent.id] = agent;
     return map;
   }, [agents]);
-  const depotMap = useMemo(() => {
-    const map = {};
-    for (const depot of depots) map[depot.id] = depot;
-    return map;
-  }, [depots]);
 
   const leaderFilterLabel = useMemo(() => {
     if (!filtersInput.leaderId) return "";
-    const found = agents.find(a => String(a.id) === String(filtersInput.leaderId));
+    const found = agents.find((agent) => String(agent.id) === String(filtersInput.leaderId));
     return found?.name || "";
   }, [agents, filtersInput.leaderId]);
 
-  const leadsDepotFilterLabel = useMemo(() => {
-    if (!filtersInput.leadsDepotId) return "";
-    const found = depots.find(d => String(d.id) === String(filtersInput.leadsDepotId));
-    return found?.name || "";
-  }, [depots, filtersInput.leadsDepotId]);
+  const leadsProductCenterFilterLabel = useMemo(() => {
+    if (!filtersInput.leadsProductCenterUnitId) return "";
+    const found = productCenterUnits.find(
+      (unit) => String(unit.id) === String(filtersInput.leadsProductCenterUnitId)
+    );
+    return formatProductCenterUnitLabel(found);
+  }, [productCenterUnits, filtersInput.leadsProductCenterUnitId]);
 
-  const salesDepotFilterLabel = useMemo(() => {
-    if (!filtersInput.salesDepotId) return "";
-    const found = depots.find(d => String(d.id) === String(filtersInput.salesDepotId));
-    return found?.name || "";
-  }, [depots, filtersInput.salesDepotId]);
+  const salesProductCenterFilterLabel = useMemo(() => {
+    if (!filtersInput.salesProductCenterUnitId) return "";
+    const found = productCenterUnits.find(
+      (unit) => String(unit.id) === String(filtersInput.salesProductCenterUnitId)
+    );
+    return formatProductCenterUnitLabel(found);
+  }, [productCenterUnits, filtersInput.salesProductCenterUnitId]);
+
+  const activationProductCenterFilterLabel = useMemo(() => {
+    if (!filtersInput.activationProductCenterUnitId) return "";
+    const found = productCenterUnits.find(
+      (unit) => String(unit.id) === String(filtersInput.activationProductCenterUnitId)
+    );
+    return formatProductCenterUnitLabel(found);
+  }, [productCenterUnits, filtersInput.activationProductCenterUnitId]);
 
   const leaderFilterOptions = useMemo(() => {
     const q = filterSearch.leaderId.trim().toLowerCase();
-    const base = agents.map(agent => ({ id: agent.id, name: agent.name || agent.id }));
+    const base = agents.map((agent) => ({ id: agent.id, name: agent.name || agent.id }));
     if (!q) return base;
-    return base.filter(option =>
-      option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+    return base.filter(
+      (option) => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
     );
   }, [agents, filterSearch.leaderId]);
 
-  const leadsDepotFilterOptions = useMemo(() => {
-    const q = filterSearch.leadsDepotId.trim().toLowerCase();
-    const base = depots.map(depot => ({ id: depot.id, name: depot.name || depot.id }));
-    if (!q) return base;
-    return base.filter(option =>
-      option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
-    );
-  }, [depots, filterSearch.leadsDepotId]);
+  const productCenterOptions = useMemo(
+    () =>
+      productCenterUnits.map((unit) => ({
+        id: unit.id,
+        name: formatProductCenterUnitLabel(unit),
+      })),
+    [productCenterUnits]
+  );
 
-  const salesDepotFilterOptions = useMemo(() => {
-    const q = filterSearch.salesDepotId.trim().toLowerCase();
-    const base = depots.map(depot => ({ id: depot.id, name: depot.name || depot.id }));
-    if (!q) return base;
-    return base.filter(option =>
-      option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+  const leadsProductCenterFilterOptions = useMemo(() => {
+    const q = filterSearch.leadsProductCenterUnitId.trim().toLowerCase();
+    if (!q) return productCenterOptions;
+    return productCenterOptions.filter(
+      (option) => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
     );
-  }, [depots, filterSearch.salesDepotId]);
+  }, [filterSearch.leadsProductCenterUnitId, productCenterOptions]);
+
+  const salesProductCenterFilterOptions = useMemo(() => {
+    const q = filterSearch.salesProductCenterUnitId.trim().toLowerCase();
+    if (!q) return productCenterOptions;
+    return productCenterOptions.filter(
+      (option) => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+    );
+  }, [filterSearch.salesProductCenterUnitId, productCenterOptions]);
+
+  const activationProductCenterFilterOptions = useMemo(() => {
+    const q = filterSearch.activationProductCenterUnitId.trim().toLowerCase();
+    if (!q) return productCenterOptions;
+    return productCenterOptions.filter(
+      (option) => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+    );
+  }, [filterSearch.activationProductCenterUnitId, productCenterOptions]);
 
   function canManageRow(row) {
     if (!row) return false;
-    if (isAdmin) return canEditRow(row, profile, agentMap[row.agent_id]);
+    if (isAdmin) return true;
     if (!isUser) return false;
     return (
       String(row.agent_id || "") === String(profile?.agent_id || "") &&
@@ -215,14 +223,13 @@ export default function Updates() {
     );
   }
 
-  // Load agents once
   useEffect(() => {
     (async () => {
       try {
         const data = await listAgents();
         setAgents(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error(e);
+      } catch (err) {
+        console.error(err);
       }
     })();
   }, []);
@@ -230,10 +237,10 @@ export default function Updates() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await listDepots();
-        setDepots(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error(e);
+        const data = await listActiveProductCenterUnits();
+        setProductCenterUnits(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
       }
     })();
   }, []);
@@ -241,34 +248,31 @@ export default function Updates() {
   useEffect(() => {
     let mounted = true;
     getMyProfile()
-      .then(data => {
+      .then((data) => {
         if (!mounted) return;
         setProfile(data);
       })
-      .catch(e => {
+      .catch((err) => {
         if (!mounted) return;
-        setError(e?.message || "Failed to load profile");
-      })
+        setError(err?.message || "Failed to load profile");
+      });
+
     return () => {
       mounted = false;
     };
   }, []);
 
-  // Initial fetch after profile is known
   useEffect(() => {
     if (!profile?.role) return;
-    const seeded = profile.role === "user"
-      ? { ...initialFilters, leaderId: profile.agent_id ?? "" }
-      : initialFilters;
+    const seeded =
+      profile.role === "user"
+        ? { ...initialFilters, leaderId: profile.agent_id ?? "" }
+        : initialFilters;
     setFiltersInput(seeded);
     setFiltersApplied(seeded);
     void applyFilters(seeded);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.role, profile?.agent_id]);
 
-  // ----------------------
-  // Apply/Clear filters
-  // ----------------------
   async function applyFilters(customFilters = filtersInput) {
     const normalized = { ...initialFilters, ...(customFilters || {}) };
     normalized.dateFrom = normalizeToYmd(normalized.dateFrom);
@@ -283,61 +287,77 @@ export default function Updates() {
     setStatus("");
 
     try {
-      // IMPORTANT: fetch without relying on server-side string date filtering
-      // We will always filter client-side correctly.
-      const data = await getRawDataHistory({
+      const data = await getRawDataV2History({
         dateFrom: normalized.dateFrom,
         dateTo: normalized.dateTo,
         agentId: normalized.leaderId,
-        leadsDepotId: normalized.leadsDepotId,
-        salesDepotId: normalized.salesDepotId,
+        leadsProductCenterUnitId: normalized.leadsProductCenterUnitId,
+        salesProductCenterUnitId: normalized.salesProductCenterUnitId,
+        activationProductCenterUnitId: normalized.activationProductCenterUnitId,
         limit: 500,
         includeVoided: true,
       });
       setRows(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error(e);
-      setError(e?.message || "Failed to load updates");
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "Failed to load updates");
     } finally {
       setLoading(false);
     }
   }
 
   async function clearFilters() {
-    const resetFilters = profile?.role === "user"
-      ? { ...initialFilters, leaderId: profile?.agent_id ?? "" }
-      : initialFilters;
+    const resetFilters =
+      profile?.role === "user"
+        ? { ...initialFilters, leaderId: profile?.agent_id ?? "" }
+        : initialFilters;
     setFiltersInput(resetFilters);
     setFiltersApplied(resetFilters);
-    setFilterSearch({ leaderId: "", leadsDepotId: "", salesDepotId: "" });
+    setFilterSearch({
+      leaderId: "",
+      leadsProductCenterUnitId: "",
+      salesProductCenterUnitId: "",
+      activationProductCenterUnitId: "",
+    });
     cancelEdit();
     await applyFilters(resetFilters);
   }
 
-  // ----------------------
-  // Filtered rows shown in table
-  // ----------------------
   const visibleRows = useMemo(() => {
     const fromTs = toTsYmd(filtersApplied.dateFrom);
     const toTs = toTsYmd(filtersApplied.dateTo);
     const selectedLeaderId = filtersApplied.leaderId;
-    const filteredLeadsDepotId = filtersApplied.leadsDepotId;
-    const filteredSalesDepotId = filtersApplied.salesDepotId;
+    const filteredLeadsUnitId = filtersApplied.leadsProductCenterUnitId;
+    const filteredSalesUnitId = filtersApplied.salesProductCenterUnitId;
+    const filteredActivationUnitId = filtersApplied.activationProductCenterUnitId;
 
-    const filtered = rows.filter(r => {
-      const rowTs = toTsYmd(r.date_real); // row date_real should be YYYY-MM-DD
+    const filtered = rows.filter((row) => {
+      const rowTs = toTsYmd(row.date_real);
       if ((fromTs !== null || toTs !== null) && rowTs === null) return false;
       if (fromTs !== null && rowTs < fromTs) return false;
       if (toTs !== null && rowTs > toTs) return false;
-      if (filteredLeadsDepotId && String(r.leads_depot_id || "") !== String(filteredLeadsDepotId)) return false;
-      if (filteredSalesDepotId && String(r.sales_depot_id || "") !== String(filteredSalesDepotId)) return false;
-
-      if (selectedLeaderId && String(r.agent_id || "") !== String(selectedLeaderId)) return false;
-
+      if (selectedLeaderId && String(row.agent_id || "") !== String(selectedLeaderId)) return false;
+      if (
+        filteredLeadsUnitId &&
+        String(row.leads_product_center_unit_id || "") !== String(filteredLeadsUnitId)
+      ) {
+        return false;
+      }
+      if (
+        filteredSalesUnitId &&
+        String(row.sales_product_center_unit_id || "") !== String(filteredSalesUnitId)
+      ) {
+        return false;
+      }
+      if (
+        filteredActivationUnitId &&
+        String(row.activation_product_center_unit_id || "") !== String(filteredActivationUnitId)
+      ) {
+        return false;
+      }
       return true;
     });
 
-    // Default sort: date desc
     filtered.sort((a, b) => {
       const ad = toTsYmd(a.date_real) ?? 0;
       const bd = toTsYmd(b.date_real) ?? 0;
@@ -366,14 +386,16 @@ export default function Updates() {
   }, [page, rowsPerPage, visibleRows]);
 
   function exportXlsx() {
-    const exportRows = visibleRows.map(row => ({
+    const exportRows = visibleRows.map((row) => ({
       Date: row.date_real,
-      Leader: row.leaderName || "(Restricted)",
-      "Leads Depot": row.leadsDepotName || "-",
+      Leader: row.agent_name || "(Restricted)",
+      "Leads Product Center": row.leads_product_center_unit_name || "-",
       Leads: row.leads ?? "-",
-      "Sales Depot": row.salesDepotName || "-",
+      "Sales Product Center": row.sales_product_center_unit_name || "-",
       Payins: row.payins ?? "-",
       Sales: row.sales ?? "-",
+      "Activation Product Center": row.activation_product_center_unit_name || "-",
+      Activation: row.activation ?? "-",
       Published: row.published ? "Published" : "Unpublished",
       Status: row.voided ? "Voided" : "Active",
     }));
@@ -381,20 +403,19 @@ export default function Updates() {
     exportToXlsx({ rows: exportRows, filename, sheetName: "Updates" });
   }
 
-  // ----------------------
-  // Editing
-  // ----------------------
   function startEdit(row) {
     if (row.voided) return;
     if (!canManageRow(row)) {
       setError("You do not have permission to edit this entry.");
       return;
     }
+
     setEditingRow(row);
     setEditValues({
       leads: row.leads ?? "",
       payins: row.payins ?? "",
       sales: row.sales ?? "",
+      activation: row.activation ?? "",
     });
     setError("");
     setStatus("");
@@ -402,24 +423,25 @@ export default function Updates() {
 
   function cancelEdit() {
     setEditingRow(null);
-    setEditValues({ leads: "", payins: "", sales: "" });
+    setEditValues({ leads: "", payins: "", sales: "", activation: "" });
   }
 
   function onEditChange(field, value) {
-    setEditValues(prev => ({ ...prev, [field]: value }));
+    setEditValues((prev) => ({ ...prev, [field]: value }));
   }
 
   async function saveEdit(rowId) {
     const leadsNum = Number(editValues.leads);
     const payinsNum = Number(editValues.payins);
     const salesNum = Number(editValues.sales);
+    const activationNum = Number(editValues.activation);
 
-    if ([leadsNum, payinsNum, salesNum].some(n => Number.isNaN(n))) {
-      setError("Please enter valid numbers for leads, payins, and sales.");
+    if ([leadsNum, payinsNum, salesNum, activationNum].some((n) => Number.isNaN(n))) {
+      setError("Please enter valid numbers for leads, payins, sales, and activation.");
       return;
     }
 
-    const targetRow = rows.find(r => r.id === rowId);
+    const targetRow = rows.find((row) => row.id === rowId);
     if (!targetRow || !canManageRow(targetRow)) {
       setError("You do not have permission to edit this entry.");
       return;
@@ -430,24 +452,25 @@ export default function Updates() {
     setStatus("");
 
     try {
-      const updated = await updateRow(rowId, {
+      const updated = await updateRawDataV2(rowId, {
         leads: leadsNum,
         payins: payinsNum,
         sales: salesNum,
+        activation: activationNum,
       });
 
-      setRows(prev => prev.map(r => (r.id === rowId ? updated : r)));
+      setRows((prev) => prev.map((row) => (row.id === rowId ? updated : row)));
       setStatus("Entry updated.");
       cancelEdit();
-    } catch (e) {
-      console.error(e);
-      setError(e?.message || "Failed to update entry");
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "Failed to update entry");
     } finally {
       setSavingId("");
     }
   }
 
-  const tableColumnCount = 10;
+  const tableColumnCount = 12;
 
   return (
     <div className="card updates-page">
@@ -463,7 +486,6 @@ export default function Updates() {
         </div>
       ) : null}
 
-      {/* Filters */}
       <div className="updates-filters">
         <div className="updates-filter-row">
           <div>
@@ -472,7 +494,7 @@ export default function Updates() {
               type="date"
               className="input"
               value={filtersInput.dateFrom}
-              onChange={e => setFiltersInput(p => ({ ...p, dateFrom: e.target.value }))}
+              onChange={(e) => setFiltersInput((prev) => ({ ...prev, dateFrom: e.target.value }))}
             />
           </div>
 
@@ -482,7 +504,7 @@ export default function Updates() {
               type="date"
               className="input"
               value={filtersInput.dateTo}
-              onChange={e => setFiltersInput(p => ({ ...p, dateTo: e.target.value }))}
+              onChange={(e) => setFiltersInput((prev) => ({ ...prev, dateTo: e.target.value }))}
             />
           </div>
         </div>
@@ -496,12 +518,12 @@ export default function Updates() {
                 searchPlaceholder="Search leader"
                 valueText={leaderFilterLabel}
                 searchValue={filterSearch.leaderId}
-                onSearchChange={value => setFilterSearch(prev => ({ ...prev, leaderId: value }))}
+                onSearchChange={(value) => setFilterSearch((prev) => ({ ...prev, leaderId: value }))}
                 options={leaderFilterOptions}
                 selectedId={filtersInput.leaderId}
-                onSelect={option => {
-                  setFiltersInput(prev => ({ ...prev, leaderId: option.id }));
-                  setFilterSearch(prev => ({ ...prev, leaderId: option.name }));
+                onSelect={(option) => {
+                  setFiltersInput((prev) => ({ ...prev, leaderId: option.id }));
+                  setFilterSearch((prev) => ({ ...prev, leaderId: option.name }));
                 }}
                 emptyText="No leaders found."
               />
@@ -510,43 +532,72 @@ export default function Updates() {
 
           <div>
             <FloatingSelectField
-              label="Leads Depot"
-              placeholder="All depots"
-              searchPlaceholder="Search leads depot"
-              valueText={leadsDepotFilterLabel}
-              searchValue={filterSearch.leadsDepotId}
-              onSearchChange={value => setFilterSearch(prev => ({ ...prev, leadsDepotId: value }))}
-              options={leadsDepotFilterOptions}
-              selectedId={filtersInput.leadsDepotId}
-              onSelect={option => {
-                setFiltersInput(prev => ({ ...prev, leadsDepotId: option.id }));
-                setFilterSearch(prev => ({ ...prev, leadsDepotId: option.name }));
+              label="Leads Product Center"
+              placeholder="All product centers"
+              searchPlaceholder="Search leads product center"
+              valueText={leadsProductCenterFilterLabel}
+              searchValue={filterSearch.leadsProductCenterUnitId}
+              onSearchChange={(value) =>
+                setFilterSearch((prev) => ({ ...prev, leadsProductCenterUnitId: value }))
+              }
+              options={leadsProductCenterFilterOptions}
+              selectedId={filtersInput.leadsProductCenterUnitId}
+              onSelect={(option) => {
+                setFiltersInput((prev) => ({ ...prev, leadsProductCenterUnitId: option.id }));
+                setFilterSearch((prev) => ({ ...prev, leadsProductCenterUnitId: option.name }));
               }}
-              emptyText="No depots found."
+              emptyText="No product centers found."
             />
           </div>
 
           <div>
             <FloatingSelectField
-              label="Sales Depot"
-              placeholder="All depots"
-              searchPlaceholder="Search sales depot"
-              valueText={salesDepotFilterLabel}
-              searchValue={filterSearch.salesDepotId}
-              onSearchChange={value => setFilterSearch(prev => ({ ...prev, salesDepotId: value }))}
-              options={salesDepotFilterOptions}
-              selectedId={filtersInput.salesDepotId}
-              onSelect={option => {
-                setFiltersInput(prev => ({ ...prev, salesDepotId: option.id }));
-                setFilterSearch(prev => ({ ...prev, salesDepotId: option.name }));
+              label="Sales Product Center"
+              placeholder="All product centers"
+              searchPlaceholder="Search sales product center"
+              valueText={salesProductCenterFilterLabel}
+              searchValue={filterSearch.salesProductCenterUnitId}
+              onSearchChange={(value) =>
+                setFilterSearch((prev) => ({ ...prev, salesProductCenterUnitId: value }))
+              }
+              options={salesProductCenterFilterOptions}
+              selectedId={filtersInput.salesProductCenterUnitId}
+              onSelect={(option) => {
+                setFiltersInput((prev) => ({ ...prev, salesProductCenterUnitId: option.id }));
+                setFilterSearch((prev) => ({ ...prev, salesProductCenterUnitId: option.name }));
               }}
-              emptyText="No depots found."
+              emptyText="No product centers found."
+            />
+          </div>
+
+          <div>
+            <FloatingSelectField
+              label="Activation Product Center"
+              placeholder="All product centers"
+              searchPlaceholder="Search activation product center"
+              valueText={activationProductCenterFilterLabel}
+              searchValue={filterSearch.activationProductCenterUnitId}
+              onSearchChange={(value) =>
+                setFilterSearch((prev) => ({ ...prev, activationProductCenterUnitId: value }))
+              }
+              options={activationProductCenterFilterOptions}
+              selectedId={filtersInput.activationProductCenterUnitId}
+              onSelect={(option) => {
+                setFiltersInput((prev) => ({
+                  ...prev,
+                  activationProductCenterUnitId: option.id,
+                }));
+                setFilterSearch((prev) => ({
+                  ...prev,
+                  activationProductCenterUnitId: option.name,
+                }));
+              }}
+              emptyText="No product centers found."
             />
           </div>
         </div>
 
         <div className="updates-filter-actions">
-          {/* IMPORTANT: do NOT pass applyFilters directly (it would receive click event) */}
           <button
             type="button"
             className="button primary"
@@ -559,6 +610,7 @@ export default function Updates() {
           <button type="button" className="button secondary" onClick={clearFilters} disabled={loading}>
             Clear Filters
           </button>
+
           <ExportButton
             onClick={exportXlsx}
             loading={false}
@@ -568,7 +620,6 @@ export default function Updates() {
         </div>
       </div>
 
-      {/* Status/Error */}
       {(error || status) && (
         <div style={{ marginTop: 12 }}>
           {error ? (
@@ -586,18 +637,19 @@ export default function Updates() {
         </div>
       ) : null}
 
-      {/* Table */}
       <div className="table-scroll updates-table-wrap">
         <table className="updates-table">
           <thead>
             <tr>
               <th>Date</th>
               <th>Leader</th>
-              <th>Leads Depot</th>
+              <th>Leads Product Center</th>
               <th className="num">Leads</th>
-              <th>Sales Depot</th>
+              <th>Sales Product Center</th>
               <th className="num">Payins</th>
               <th className="num">Sales</th>
+              <th>Activation Product Center</th>
+              <th className="num">Activation</th>
               <th className="center">Published</th>
               <th className="center">Status</th>
               <th className="center">Actions</th>
@@ -605,17 +657,19 @@ export default function Updates() {
           </thead>
 
           <tbody>
-            {pagedRows.map(row => (
+            {pagedRows.map((row) => (
               <tr key={row.id}>
                 <td>{row.date_real}</td>
                 <td>
-                  <div>{row.leaderName || "(Restricted)"}</div>
+                  <div>{row.agent_name || "(Restricted)"}</div>
                 </td>
-                <td>{row.leadsDepotName || "—"}</td>
+                <td>{row.leads_product_center_unit_name || "—"}</td>
                 <td className="num">{row.leads ?? "—"}</td>
-                <td>{row.salesDepotName || "—"}</td>
+                <td>{row.sales_product_center_unit_name || "—"}</td>
                 <td className="num">{row.payins ?? "—"}</td>
                 <td className="num">{row.sales ?? "—"}</td>
+                <td>{row.activation_product_center_unit_name || "—"}</td>
+                <td className="num">{row.activation ?? "—"}</td>
                 <td className="center">
                   <span className={`status-pill ${row.published ? "valid" : "muted"}`}>
                     {row.published ? "Published" : "Unpublished"}
@@ -633,7 +687,7 @@ export default function Updates() {
                         type="button"
                         className="btn-link icon-btn"
                         onClick={() => startEdit(row)}
-                        aria-label={`Edit ${row.leaderName || "entry"}`}
+                        aria-label={`Edit ${row.agent_name || "entry"}`}
                       >
                         <EditIcon />
                       </button>
@@ -647,7 +701,11 @@ export default function Updates() {
 
             {!visibleRows.length && !loading ? (
               <tr>
-                <td colSpan={tableColumnCount} className="muted" style={{ textAlign: "center", padding: 16 }}>
+                <td
+                  colSpan={tableColumnCount}
+                  className="muted"
+                  style={{ textAlign: "center", padding: 16 }}
+                >
                   No data to display.
                 </td>
               </tr>
@@ -673,21 +731,30 @@ export default function Updates() {
           e.preventDefault();
           if (editingRow && canSaveEdit) saveEdit(editingRow.id);
         }}
-        footer={(
+        footer={
           <>
-            <button type="button" className="button secondary" onClick={cancelEdit} disabled={savingId === editingRow?.id}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={cancelEdit}
+              disabled={savingId === editingRow?.id}
+            >
               Cancel
             </button>
             <button
               type="submit"
               className="button primary"
               disabled={!canSaveEdit}
-              title={!canSaveEdit ? "Fill in valid non-negative values for Leads, Payins, and Sales." : ""}
+              title={
+                !canSaveEdit
+                  ? "Fill in valid non-negative values for Leads, Payins, Sales, and Activation."
+                  : ""
+              }
             >
               {savingId === editingRow?.id ? "Saving..." : "Save"}
             </button>
           </>
-        )}
+        }
       >
         <div className="edit-modal">
           <div className="edit-modal__section">
@@ -698,20 +765,25 @@ export default function Updates() {
                 <strong>{editingRow?.date_real || "-"}</strong>
               </div>
               <div>
-                <div className="form-label edit-modal__label">Leads Depot</div>
-                <strong>{editingRow?.leadsDepotName || "-"}</strong>
+                <div className="form-label edit-modal__label">Leads Product Center</div>
+                <strong>{editingRow?.leads_product_center_unit_name || "-"}</strong>
               </div>
               <div>
-                <div className="form-label edit-modal__label">Sales Depot</div>
-                <strong>{editingRow?.salesDepotName || "-"}</strong>
+                <div className="form-label edit-modal__label">Sales Product Center</div>
+                <strong>{editingRow?.sales_product_center_unit_name || "-"}</strong>
+              </div>
+              <div>
+                <div className="form-label edit-modal__label">Activation Product Center</div>
+                <strong>{editingRow?.activation_product_center_unit_name || "-"}</strong>
               </div>
               <div>
                 <div className="form-label edit-modal__label">Leader</div>
-                <strong>{editingRow?.leaderName || "(Restricted)"}</strong>
+                <strong>{editingRow?.agent_name || "(Restricted)"}</strong>
               </div>
             </div>
             <div className="hint">
-              Date and depots are locked because they are part of the row ID. Changing them would create a new row.
+              Date and product-center assignments are locked because they are part of the row ID.
+              Changing them would create a new row.
             </div>
           </div>
 
@@ -725,7 +797,7 @@ export default function Updates() {
                   className={`input${leadInvalid ? " input-error" : ""}`}
                   min="0"
                   value={editValues.leads}
-                  onChange={e => onEditChange("leads", e.target.value)}
+                  onChange={(e) => onEditChange("leads", e.target.value)}
                 />
                 {leadInvalid && <div className="field-error">Enter 0 or a positive number.</div>}
               </label>
@@ -736,9 +808,11 @@ export default function Updates() {
                   className={`input${payinsInvalid ? " input-error" : ""}`}
                   min="0"
                   value={editValues.payins}
-                  onChange={e => onEditChange("payins", e.target.value)}
+                  onChange={(e) => onEditChange("payins", e.target.value)}
                 />
-                {payinsInvalid && <div className="field-error">Enter 0 or a positive number.</div>}
+                {payinsInvalid && (
+                  <div className="field-error">Enter 0 or a positive number.</div>
+                )}
               </label>
               <label className="form-field">
                 <span className="form-label edit-modal__label">Sales</span>
@@ -747,15 +821,29 @@ export default function Updates() {
                   className={`input${salesInvalid ? " input-error" : ""}`}
                   min="0"
                   value={editValues.sales}
-                  onChange={e => onEditChange("sales", e.target.value)}
+                  onChange={(e) => onEditChange("sales", e.target.value)}
                 />
-                {salesInvalid && <div className="field-error">Enter 0 or a positive number.</div>}
+                {salesInvalid && (
+                  <div className="field-error">Enter 0 or a positive number.</div>
+                )}
+              </label>
+              <label className="form-field">
+                <span className="form-label edit-modal__label">Activation</span>
+                <input
+                  type="number"
+                  className={`input${activationInvalid ? " input-error" : ""}`}
+                  min="0"
+                  value={editValues.activation}
+                  onChange={(e) => onEditChange("activation", e.target.value)}
+                />
+                {activationInvalid && (
+                  <div className="field-error">Enter 0 or a positive number.</div>
+                )}
               </label>
             </div>
           </div>
         </div>
       </ModalForm>
-
     </div>
   );
 }

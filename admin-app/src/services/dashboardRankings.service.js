@@ -1,6 +1,6 @@
 import { listAgents, listPlatoons } from "./agents.service";
 import { listCompanies } from "./companies.service";
-import { listDepotsDetailed } from "./depots.service";
+import { listProductCenterUnits } from "./productCenterUnits.service";
 import { computeTotalScore } from "./scoringEngine";
 import { supabase } from "./supabase";
 
@@ -71,25 +71,9 @@ async function getActiveFormula(battleType, weekKey) {
   return row ?? null;
 }
 
-function parseFirestoreTimestampJson(ts) {
-  if (!ts) return null;
-  if (typeof ts === "string") {
-    const d = new Date(ts);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const sec = ts._seconds ?? ts.seconds;
-  const nsec = ts._nanoseconds ?? ts.nanoseconds ?? 0;
-  if (typeof sec === "number") {
-    const ms = sec * 1000 + Math.floor(nsec / 1e6);
-    const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  return null;
-}
-
 function getRowDate(row) {
   if (row?.date_real) return new Date(`${row.date_real}T00:00:00`);
-  return parseFirestoreTimestampJson(row?.date);
+  return null;
 }
 
 function rankRows(rows = [], mode = "leaders") {
@@ -98,19 +82,17 @@ function rankRows(rows = [], mode = "leaders") {
     if (pointsDiff !== 0) return pointsDiff;
 
     if (mode === "depots") {
-      if (toNumber(a.points) >= 1000 && toNumber(b.points) >= 1000) {
-        const lowerSalesWins = toNumber(a.sales) - toNumber(b.sales);
-        if (lowerSalesWins !== 0) return lowerSalesWins;
-      } else {
-        const salesDiff = toNumber(b.sales) - toNumber(a.sales);
-        if (salesDiff !== 0) return salesDiff;
-      }
+      const salesDiff = toNumber(b.sales) - toNumber(a.sales);
+      if (salesDiff !== 0) return salesDiff;
 
-      const leadsDiff = toNumber(b.leads) - toNumber(a.leads);
-      if (leadsDiff !== 0) return leadsDiff;
+      const activationDiff = toNumber(b.activation) - toNumber(a.activation);
+      if (activationDiff !== 0) return activationDiff;
 
-      return toNumber(b.payins) - toNumber(a.payins);
+      return toNumber(b.leads) - toNumber(a.leads);
     }
+
+    const activationDiff = toNumber(b.activation) - toNumber(a.activation);
+    if (activationDiff !== 0) return activationDiff;
 
     const payinsDiff = toNumber(b.payins) - toNumber(a.payins);
     if (payinsDiff !== 0) return payinsDiff;
@@ -120,6 +102,7 @@ function rankRows(rows = [], mode = "leaders") {
 
     return toNumber(b.leads) - toNumber(a.leads);
   });
+
   return sorted.map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
@@ -129,46 +112,50 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
   const resolvedEndDate = dateTo || formatYmd(new Date());
   const resolvedWeekKey = toIsoWeekKey(resolvedEndDate);
 
-  const [agents, depots, companies, platoons, rawResult, activeFormula] = await Promise.all([
-    listAgents(),
-    listDepotsDetailed(),
-    listCompanies(),
-    listPlatoons(),
-    supabase
-      .from("raw_data")
-      .select(
-        `
-        id,
-        agent_id,
-        leads,
-        payins,
-        sales,
-        leads_depot_id,
-        sales_depot_id,
-        date_real,
-        date,
-        voided,
-        agents:agents (
+  const [agents, productCenterUnits, companies, platoons, rawResult, activeFormula] =
+    await Promise.all([
+      listAgents(),
+      listProductCenterUnits({ onlyActive: false }),
+      listCompanies(),
+      listPlatoons(),
+      supabase
+        .from("raw_data_v2")
+        .select(
+          `
           id,
-          name,
-          photo_url,
-          photoURL,
-          depot_id,
-          company_id,
-          platoon_id,
-          upline_agent_id,
-          role
+          agent_id,
+          leads,
+          payins,
+          sales,
+          activation,
+          leads_product_center_unit_id,
+          sales_product_center_unit_id,
+          activation_product_center_unit_id,
+          date_real,
+          voided,
+          agents:agents (
+            id,
+            name,
+            photo_url,
+            photoURL,
+            depot_id,
+            company_id,
+            platoon_id,
+            upline_agent_id,
+            role
+          )
+        `
         )
-      `
-      )
-      .eq("voided", false),
-    getActiveFormula(resolvedBattleType, resolvedWeekKey),
-  ]);
+        .eq("voided", false),
+      getActiveFormula(resolvedBattleType, resolvedWeekKey),
+    ]);
 
   if (rawResult?.error) throw rawResult.error;
 
   const agentsMap = new Map((agents ?? []).map((agent) => [String(agent.id), agent]));
-  const depotsMap = new Map((depots ?? []).map((depot) => [String(depot.id), depot]));
+  const productCenterUnitsMap = new Map(
+    (productCenterUnits ?? []).map((unit) => [String(unit.id), unit])
+  );
   const companiesMap = new Map((companies ?? []).map((company) => [String(company.id), company]));
   const platoonsMap = new Map((platoons ?? []).map((platoon) => [String(platoon.id), platoon]));
 
@@ -215,6 +202,7 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
           leads: 0,
           payins: 0,
           sales: 0,
+          activation: 0,
         });
       }
 
@@ -222,6 +210,7 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
       item.leads += toNumber(row.leads);
       item.payins += toNumber(row.payins);
       item.sales += toNumber(row.sales);
+      item.activation += toNumber(row.activation);
     });
     rows = Array.from(grouped.values());
   } else if (leadersMode) {
@@ -237,46 +226,55 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
           leads: 0,
           payins: 0,
           sales: 0,
+          activation: 0,
         });
       }
       const item = grouped.get(agentId);
       item.leads += toNumber(row.leads);
       item.payins += toNumber(row.payins);
       item.sales += toNumber(row.sales);
+      item.activation += toNumber(row.activation);
     });
     rows = Array.from(grouped.values());
   } else if (resolvedMode === "depots") {
-    const ensureDepotBucket = (depotKey) => {
-      if (!depotKey) return null;
-      if (grouped.has(depotKey)) return grouped.get(depotKey);
-      const depot = depotsMap.get(depotKey) ?? null;
-      const depotName = depot?.name || (depotKey === "unassigned" ? "Unassigned" : depotKey);
+    const ensureUnitBucket = (unitKey) => {
+      if (!unitKey) return null;
+      if (grouped.has(unitKey)) return grouped.get(unitKey);
+      const unit = productCenterUnitsMap.get(unitKey) ?? null;
+      const unitName = unit?.name || (unitKey === "unassigned" ? "Unassigned" : unitKey);
+      const unitType = unit?.unit_type ?? "";
       const bucket = {
-        id: depotKey,
-        name: depotName,
-        photoUrl: normalizePhotoUrl(depot),
+        id: unitKey,
+        name: unitType ? `${unitType.toUpperCase()} - ${unitName}` : unitName,
+        photoUrl: "",
+        unitType,
         leads: 0,
         payins: 0,
         sales: 0,
+        activation: 0,
       };
-      grouped.set(depotKey, bucket);
+      grouped.set(unitKey, bucket);
       return bucket;
     };
 
     rawRows.forEach((row) => {
-      const leadsKey = row.leads_depot_id ? String(row.leads_depot_id) : "unassigned";
-      const salesKey = row.sales_depot_id ? String(row.sales_depot_id) : "unassigned";
+      const leadsKey = row.leads_product_center_unit_id
+        ? String(row.leads_product_center_unit_id)
+        : "unassigned";
+      const salesKey = row.sales_product_center_unit_id
+        ? String(row.sales_product_center_unit_id)
+        : "unassigned";
+      const activationKey = row.activation_product_center_unit_id
+        ? String(row.activation_product_center_unit_id)
+        : "unassigned";
 
-      const leadsBucket = ensureDepotBucket(leadsKey);
-      const salesBucket = ensureDepotBucket(salesKey);
+      const leadsBucket = ensureUnitBucket(leadsKey);
+      const salesBucket = ensureUnitBucket(salesKey);
+      const activationBucket = ensureUnitBucket(activationKey);
 
-      if (leadsBucket) {
-        leadsBucket.leads += toNumber(row.leads);
-      }
-      if (salesBucket) {
-        salesBucket.payins += toNumber(row.payins);
-        salesBucket.sales += toNumber(row.sales);
-      }
+      if (leadsBucket) leadsBucket.leads += toNumber(row.leads);
+      if (salesBucket) salesBucket.sales += toNumber(row.sales);
+      if (activationBucket) activationBucket.activation += toNumber(row.activation);
     });
     rows = Array.from(grouped.values());
   } else if (resolvedMode === "commanders") {
@@ -294,12 +292,14 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
           leads: 0,
           payins: 0,
           sales: 0,
+          activation: 0,
         });
       }
       const item = grouped.get(key);
       item.leads += toNumber(row.leads);
       item.payins += toNumber(row.payins);
       item.sales += toNumber(row.sales);
+      item.activation += toNumber(row.activation);
     });
     rows = Array.from(grouped.values());
   } else if (resolvedMode === "companies") {
@@ -317,12 +317,14 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
           leads: 0,
           payins: 0,
           sales: 0,
+          activation: 0,
         });
       }
       const item = grouped.get(key);
       item.leads += toNumber(row.leads);
       item.payins += toNumber(row.payins);
       item.sales += toNumber(row.sales);
+      item.activation += toNumber(row.activation);
     });
     rows = Array.from(grouped.values());
   }
@@ -340,18 +342,20 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
       acc.totalLeads += toNumber(row.leads);
       acc.totalPayins += toNumber(row.payins);
       acc.totalSales += toNumber(row.sales);
+      acc.totalActivation += toNumber(row.activation);
       return acc;
     },
-    { totalLeads: 0, totalPayins: 0, totalSales: 0 }
+    { totalLeads: 0, totalPayins: 0, totalSales: 0, totalActivation: 0 }
   );
 
   const kpis = {
     leadersCount: (agents ?? []).length,
-    depotsCount: (depots ?? []).length,
+    productCentersCount: (productCenterUnits ?? []).length,
     companiesCount: (companies ?? []).length,
     totalLeads: totals.totalLeads,
     totalPayins: totals.totalPayins,
     totalSales: totals.totalSales,
+    totalActivation: totals.totalActivation,
   };
 
   return {

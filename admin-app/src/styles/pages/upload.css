@@ -232,6 +232,14 @@
   grid-column: span 3;
 }
 
+.manual-input-grid__activation{
+  grid-column: span 3;
+}
+
+.manual-input-grid__activation-unit{
+  grid-column: span 3;
+}
+
 .manual-input-grid .req{
   color: #b01818;
   font-weight: 700;
@@ -255,7 +263,9 @@
   .manual-input-grid__payins,
   .manual-input-grid__col,
   .manual-input-grid__sales,
-  .manual-input-grid__sales-depot{
+  .manual-input-grid__sales-depot,
+  .manual-input-grid__activation,
+  .manual-input-grid__activation-unit{
     grid-column: span 1;
   }
 }

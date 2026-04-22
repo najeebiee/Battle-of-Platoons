@@ -8,14 +8,18 @@ import ExportButton from "../components/ExportButton";
 import { exportToXlsx } from "../services/export.service";
 import { listAgents } from "../services/agents.service";
 import {
-  AuditAction,
-  applyRawDataAuditAction,
-  listPublishingRows,
-  setPublished,
-  unpublishRowsWithAudit,
-} from "../services/rawData.service";
+  listPublishingRowsV2,
+  setRawDataV2Published,
+  setRawDataV2Voided,
+} from "../services/rawDataV2.service";
 import { getMyProfile } from "../services/profile.service";
 import { ensureSession } from "../services/supabase";
+
+const AuditAction = Object.freeze({
+  VOID: "VOID",
+  UNVOID: "UNVOID",
+  UNPUBLISH: "UNPUBLISH",
+});
 
 function formatDateInput(date) {
   const year = date.getFullYear();
@@ -165,7 +169,7 @@ export default function Publishing() {
     let mounted = true;
     setLoading(true);
     setError("");
-    listPublishingRows(appliedFilters)
+    listPublishingRowsV2(appliedFilters)
       .then((dataRows) => {
         if (!mounted) return;
         setRows(dataRows ?? []);
@@ -219,13 +223,16 @@ export default function Publishing() {
     const exportRows = rows.map((row, index) => ({
       "#": index + 1,
       Date: row.date_real,
-      Leader: row.agent_id,
-      "Leads Depot": row.leads_depot_id,
-      "Sales Depot": row.sales_depot_id,
+      Leader: row.agent_name || row.agent_id,
+      "Leads Product Center": row.leads_product_center_unit_name || "-",
+      "Sales Product Center": row.sales_product_center_unit_name || "-",
+      "Activation Product Center": row.activation_product_center_unit_name || "-",
       Leads: row.leads,
       Payins: row.payins,
       Sales: row.sales,
+      Activation: row.activation,
       Status: row.voided ? "Voided" : row.published ? "Published" : "Unpublished",
+      "Publish Reason": row.publish_reason || "-",
       "Void Reason": row.void_reason || "-",
     }));
     const filename = `publishing-${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -335,7 +342,7 @@ export default function Publishing() {
 
     try {
       for (const id of ids) {
-        await setPublished(id, nextPublished);
+        await setRawDataV2Published(id, nextPublished);
       }
       setRows(prev =>
         prev.map(row => (ids.includes(row.id) ? { ...row, published: nextPublished } : row))
@@ -413,23 +420,28 @@ export default function Publishing() {
     setAuditProgress(null);
 
     try {
-      let updatedRows = [];
+      const updatedRows = [];
+      const total = auditRowIds.length;
       if (auditAction === AuditAction.UNPUBLISH) {
-        const total = auditRowIds.length;
         setAuditProgress({ current: 0, total });
-        updatedRows = await unpublishRowsWithAudit({
-          rowIds: auditRowIds,
-          reason: trimmedReason,
-          onProgress: ({ current, total: totalCount }) =>
-            setAuditProgress({ current, total: totalCount }),
-        });
-      } else {
-        updatedRows = await applyRawDataAuditAction({
-          action: auditAction,
-          reason: trimmedReason,
-          rowIds: auditRowIds,
-        });
       }
+
+      for (let index = 0; index < auditRowIds.length; index += 1) {
+        const rowId = auditRowIds[index];
+        let updatedRow = null;
+
+        if (auditAction === AuditAction.UNPUBLISH) {
+          updatedRow = await setRawDataV2Published(rowId, false, trimmedReason);
+          setAuditProgress({ current: index + 1, total });
+        } else if (auditAction === AuditAction.VOID) {
+          updatedRow = await setRawDataV2Voided(rowId, true, trimmedReason);
+        } else if (auditAction === AuditAction.UNVOID) {
+          updatedRow = await setRawDataV2Voided(rowId, false, trimmedReason);
+        }
+
+        if (updatedRow) updatedRows.push(updatedRow);
+      }
+
       const updatedById = new Map((updatedRows ?? []).map(row => [row.id, row]));
       const nowIso = new Date().toISOString();
       setRows(prev =>
@@ -647,11 +659,13 @@ export default function Publishing() {
               <th>#</th>
               <th>Date</th>
               <th>Leader</th>
-              <th>Leads Depot</th>
-              <th>Sales Depot</th>
+              <th>Leads Product Center</th>
+              <th>Sales Product Center</th>
+              <th>Activation Product Center</th>
               <th className="num">Leads</th>
               <th className="num">Payins</th>
               <th className="num">Sales</th>
+              <th className="num">Activation</th>
               <th>Status</th>
               <th>Void Reason</th>
               <th>Actions</th>
@@ -674,12 +688,14 @@ export default function Publishing() {
                   <div className="muted" style={{ fontSize: 12 }}>{baseIndex + index + 1}</div>
                 </td>
                 <td>{row.date_real}</td>
-                <td>{row.agent_id}</td>
-                <td>{row.leads_depot_id}</td>
-                <td>{row.sales_depot_id}</td>
+                <td>{row.agent_name || row.agent_id}</td>
+                <td>{row.leads_product_center_unit_name || "-"}</td>
+                <td>{row.sales_product_center_unit_name || "-"}</td>
+                <td>{row.activation_product_center_unit_name || "-"}</td>
                 <td className="num">{row.leads}</td>
                 <td className="num">{row.payins}</td>
                 <td className="num">{row.sales}</td>
+                <td className="num">{row.activation}</td>
 
                 <td>
                   {row.voided ? (
@@ -730,7 +746,7 @@ export default function Publishing() {
             ))}
             {!rows.length && !loading ? (
               <tr>
-                <td colSpan={isSuperAdmin ? 12 : 11} className="muted" style={{ textAlign: "center" }}>
+                <td colSpan={isSuperAdmin ? 14 : 13} className="muted" style={{ textAlign: "center" }}>
                   No rows found for the selected filters.
                 </td>
               </tr>

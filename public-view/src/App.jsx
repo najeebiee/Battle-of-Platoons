@@ -20,7 +20,7 @@ import "./styles.css";
 // Findings: layout wrappers were flattened, so the shared metric bar and podium positioning lost their shared blue container and relative rank anchors.
 
 const VIEW_TABS = [
-  { key: "depots", label: "Depots" },
+  { key: "depots", label: "Product Centers" },
   { key: "leaders", label: "Leaders" },
   { key: "commanders", label: "Commanders" },
   { key: "companies", label: "Companies" },
@@ -470,6 +470,7 @@ function App() {
     totalLeads: 0,
     totalPayins: 0,
     totalSales: 0,
+    totalActivation: 0,
   };
   const rows = data?.rows || [];
   const activeFormula = data?.formula?.data || null;
@@ -492,7 +493,7 @@ function App() {
       : activeView === "leaders" && leaderRoleFilter === "squad"
       ? "Squads"
       : displayView === "depots"
-      ? "Depots"
+      ? "Product Centers"
       : displayView === "platoon"
       ? "Platoons"
       : "Leaders";
@@ -507,7 +508,7 @@ function App() {
       : displayView === "teams"
       ? "Team Rankings"
       : displayView === "depots"
-      ? "Depot Rankings"
+      ? "Product Center Rankings"
       : displayView === "companies"
       ? "Company Rankings"
       : "Commander Rankings";
@@ -691,7 +692,7 @@ function App() {
   const formulaAccordionItems = [
     {
       key: "depots",
-      label: "Depots",
+      label: "Product Centers",
       content: renderFormulaBlock(resolvedFormulas.depots),
     },
     {
@@ -810,6 +811,20 @@ function App() {
               <div className="topbar-segment topbar-segment--metric">
                 <div className="metric-label">Payins</div>
                 <div className="metric-value">{metrics.totalPayins}</div>
+              </div>
+
+              <div className="topbar-divider" aria-hidden="true"></div>
+
+              <div className="topbar-segment topbar-segment--metric">
+                <div className="metric-label">Sales</div>
+                <div className="metric-value">{formatCurrencyPHP(metrics.totalSales)}</div>
+              </div>
+
+              <div className="topbar-divider" aria-hidden="true"></div>
+
+              <div className="topbar-segment topbar-segment--metric">
+                <div className="metric-label">Activation</div>
+                <div className="metric-value">{metrics.totalActivation}</div>
               </div>
             </div>
           </div>
@@ -1156,6 +1171,7 @@ function Podium({ top3, view }) {
       {podiumItems.map((item, index) => {
         const rank = item.rank ?? index + 1;
         const payins = item.payins ?? item.totalPayins ?? 0;
+        const activation = item.activation ?? item.totalActivation ?? 0;
         // Move compact sales threshold to 1100px.
         const salesValue =
           width <= 600
@@ -1217,6 +1233,10 @@ function Podium({ top3, view }) {
                   <div className="podium-stat__value">{salesValue}</div>
                   <div className="podium-stat__label">sales</div>
                 </div>
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{activation}</div>
+                  <div className="podium-stat__label">activation</div>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1234,7 +1254,7 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
     view === "leaders"
       ? "Leader Name"
       : view === "depots"
-      ? "Depot"
+      ? "Product Center"
       : view === "platoon"
       ? "Leader Name"
       : view === "companies"
@@ -1303,6 +1323,10 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
               <span className="rank-label__full">Sales</span>
               <span className="rank-label__short">SALES</span>
             </span>
+            <span className="rank-label">
+              <span className="rank-label__full">Activation</span>
+              <span className="rank-label__short">ACT</span>
+            </span>
           </div>
           <div className="rank-header__points">
             <span className="rank-label">
@@ -1344,6 +1368,9 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
                         ? formatCurrencyPHPCompact(r.sales, "600")
                         : formatCurrencyPHP(r.sales)}
                     </span>
+                  </div>
+                  <div className="leader-row-stat">
+                    <span className="leader-row-stat__value">{r.activation ?? 0}</span>
                   </div>
                 </div>
               </div>

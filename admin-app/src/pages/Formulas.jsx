@@ -761,7 +761,7 @@ export default function ScoringFormulas() {
   }
 
   const sections = [
-    { key: "depots", title: "Depots" },
+    { key: "depots", title: "Product Centers" },
     { key: "commanders", title: "Commanders" },
     { key: "companies", title: "Companies" },
     { key: "platoons", title: "Platoons" },

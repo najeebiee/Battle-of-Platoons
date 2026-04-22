@@ -5,7 +5,7 @@ import "../styles/pages/dashboard.css";
 import "../styles/pages/updates.css";
 import { getDashboardRankings } from "../services/dashboardRankings.service";
 import { exportToXlsx } from "../services/export.service";
-import { getRawDataHistory } from "../services/rawData.service";
+import { getRawDataV2History } from "../services/rawDataV2.service";
 import { computeTotalScore } from "../services/scoringEngine";
 
 function UsersIcon({ size = 18 }) {
@@ -150,24 +150,36 @@ function formatPoints(value) {
   return num.toFixed(1);
 }
 
+function ActivationIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12.68 2.37a.75.75 0 0 0-1.36 0l-6.5 13.5A.75.75 0 0 0 5.5 17h4.77l-1.03 4.8a.75.75 0 0 0 1.37.56l8.5-12A.75.75 0 0 0 18.5 9h-4.66l-1.16-6.63Z"
+      />
+    </svg>
+  );
+}
+
 function compareRowsByMode(a, b, mode) {
   const pointsDiff = Number(b?.points || 0) - Number(a?.points || 0);
   if (pointsDiff !== 0) return pointsDiff;
 
   if (mode === "depots") {
-    if (Number(a?.points || 0) >= 1000 && Number(b?.points || 0) >= 1000) {
-      const lowerSalesWins = Number(a?.sales || 0) - Number(b?.sales || 0);
-      if (lowerSalesWins !== 0) return lowerSalesWins;
-    } else {
-      const salesDiff = Number(b?.sales || 0) - Number(a?.sales || 0);
-      if (salesDiff !== 0) return salesDiff;
-    }
+    const salesDiff = Number(b?.sales || 0) - Number(a?.sales || 0);
+    if (salesDiff !== 0) return salesDiff;
+
+    const activationDiff = Number(b?.activation || 0) - Number(a?.activation || 0);
+    if (activationDiff !== 0) return activationDiff;
 
     const leadsDiff = Number(b?.leads || 0) - Number(a?.leads || 0);
     if (leadsDiff !== 0) return leadsDiff;
 
     return Number(b?.payins || 0) - Number(a?.payins || 0);
   }
+
+  const activationDiff = Number(b?.activation || 0) - Number(a?.activation || 0);
+  if (activationDiff !== 0) return activationDiff;
 
   const payinsDiff = Number(b?.payins || 0) - Number(a?.payins || 0);
   if (payinsDiff !== 0) return payinsDiff;
@@ -182,7 +194,7 @@ function isBlankValue(value) {
   return value === null || value === undefined || String(value).trim() === "";
 }
 
-function matchesDepotKey(value, selectedKey) {
+function matchesProductCenterKey(value, selectedKey) {
   if (selectedKey === "unassigned") return isBlankValue(value);
   return String(value ?? "") === selectedKey;
 }
@@ -193,17 +205,23 @@ function getScopedMetrics(row, { mode, selectedId }) {
       leads: Number(row?.leads ?? 0),
       payins: Number(row?.payins ?? 0),
       sales: Number(row?.sales ?? 0),
+      activation: Number(row?.activation ?? 0),
     };
   }
 
   const selectedKey = String(selectedId ?? "");
-  const matchesLeadsDepot = matchesDepotKey(row?.leads_depot_id, selectedKey);
-  const matchesSalesDepot = matchesDepotKey(row?.sales_depot_id, selectedKey);
+  const matchesLeadsUnit = matchesProductCenterKey(row?.leads_product_center_unit_id, selectedKey);
+  const matchesSalesUnit = matchesProductCenterKey(row?.sales_product_center_unit_id, selectedKey);
+  const matchesActivationUnit = matchesProductCenterKey(
+    row?.activation_product_center_unit_id,
+    selectedKey
+  );
 
   return {
-    leads: matchesLeadsDepot ? Number(row?.leads ?? 0) : 0,
-    payins: matchesSalesDepot ? Number(row?.payins ?? 0) : 0,
-    sales: matchesSalesDepot ? Number(row?.sales ?? 0) : 0,
+    leads: matchesLeadsUnit ? Number(row?.leads ?? 0) : 0,
+    payins: 0,
+    sales: matchesSalesUnit ? Number(row?.sales ?? 0) : 0,
+    activation: matchesActivationUnit ? Number(row?.activation ?? 0) : 0,
   };
 }
 
@@ -220,7 +238,11 @@ function rowMatchesSelection(row, { mode, leaderRole, selectedId }) {
   }
 
   if (mode === "depots") {
-    return matchesDepotKey(row?.leads_depot_id, selectedKey) || matchesDepotKey(row?.sales_depot_id, selectedKey);
+    return (
+      matchesProductCenterKey(row?.leads_product_center_unit_id, selectedKey) ||
+      matchesProductCenterKey(row?.sales_product_center_unit_id, selectedKey) ||
+      matchesProductCenterKey(row?.activation_product_center_unit_id, selectedKey)
+    );
   }
 
   if (mode === "commanders") {
@@ -328,6 +350,10 @@ function Podium({ top3, onSelect, selectedId }) {
                   <div className="podium-stat__value">{formatCurrency(item.sales ?? 0)}</div>
                   <div className="podium-stat__label">sales</div>
                 </div>
+                <div className="podium-stat">
+                  <div className="podium-stat__value">{formatNumber(item.activation ?? 0)}</div>
+                  <div className="podium-stat__label">activation</div>
+                </div>
               </div>
             </div>
           </button>
@@ -393,9 +419,10 @@ export default function Dashboard() {
 
   const kpis = [
     { key: "totalSales", label: "Total Sales", icon: SalesIcon, format: formatCurrency },
+    { key: "totalActivation", label: "Total Activation", icon: ActivationIcon, format: formatNumber },
     { key: "totalLeads", label: "Total Leads", icon: LeadsIcon, format: formatNumber },
     { key: "leadersCount", label: "Leaders", icon: UsersIcon, format: formatNumber },
-    { key: "depotsCount", label: "Depots", icon: DepotIcon, format: formatNumber },
+    { key: "productCentersCount", label: "Product Centers", icon: DepotIcon, format: formatNumber },
     { key: "companiesCount", label: "Companies", icon: CompanyIcon, format: formatNumber },
   ];
 
@@ -448,7 +475,7 @@ export default function Dashboard() {
       setHistoryLoading(true);
       setHistoryError("");
       try {
-        const historyResult = await getRawDataHistory({
+        const historyResult = await getRawDataV2History({
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
           // Server-side leader filter is only safe for individual leader modes.
@@ -472,6 +499,7 @@ export default function Dashboard() {
             leads: scoped.leads,
             payins: scoped.payins,
             sales: scoped.sales,
+            activation: scoped.activation,
             points: computeTotalScore(battleType, scoped, scoringConfig),
           };
         });
@@ -531,7 +559,7 @@ export default function Dashboard() {
     mode === "leaders"
       ? "Leader"
       : mode === "depots"
-      ? "Depot"
+      ? "Product Center"
       : mode === "commanders"
       ? "Commander"
       : "Company";
@@ -542,7 +570,7 @@ export default function Dashboard() {
     mode === "leaders"
       ? "Leader"
       : mode === "depots"
-      ? "Depot"
+      ? "Product Center"
       : mode === "commanders"
       ? "Commander"
       : "Company";
@@ -555,6 +583,7 @@ export default function Dashboard() {
       Leads: Number(row?.leads ?? 0),
       Payins: Number(row?.payins ?? 0),
       Sales: Number(row?.sales ?? 0),
+      Activation: Number(row?.activation ?? 0),
       Points: Number(row?.points ?? 0),
     }));
     const scope = mode === "leaders" ? `${mode}-${leaderRole}` : mode;
@@ -568,12 +597,14 @@ export default function Dashboard() {
     if (!selectedRow || !historyRows.length) return;
     const exportRows = historyRows.map((row) => ({
       Date: row.date_real || "",
-      Leader: row.leaderName || "(Restricted)",
-      "Leads Depot": row.leadsDepotName || "-",
+      Leader: row.agent_name || row.leaderName || "(Restricted)",
+      "Leads Product Center": row.leads_product_center_unit_name || "-",
       Leads: Number(row.leads ?? 0),
-      "Sales Depot": row.salesDepotName || "-",
+      "Sales Product Center": row.sales_product_center_unit_name || "-",
       Payins: Number(row.payins ?? 0),
       Sales: Number(row.sales ?? 0),
+      "Activation Product Center": row.activation_product_center_unit_name || "-",
+      Activation: Number(row.activation ?? 0),
       Points: Number(row.points ?? 0),
       Status: row.voided ? "Voided" : "Active",
     }));
@@ -683,7 +714,7 @@ export default function Dashboard() {
                 {key === "leaders"
                   ? "Leaders"
                   : key === "depots"
-                  ? "Depots"
+                  ? "Product Centers"
                   : key === "commanders"
                   ? "Commanders"
                   : "Companies"}
@@ -747,13 +778,14 @@ export default function Dashboard() {
                     <th>Leads</th>
                     <th>Payins</th>
                     <th>Sales</th>
+                    <th>Activation</th>
                     <th>Points</th>
                   </tr>
                 </thead>
                 <tbody>
                   {listRows.length === 0 && !loading ? (
                     <tr>
-                      <td colSpan={6} className="muted">
+                      <td colSpan={7} className="muted">
                         No ranks available below podium for the selected range.
                       </td>
                     </tr>
@@ -769,6 +801,7 @@ export default function Dashboard() {
                         <td>{formatNumber(row?.leads)}</td>
                         <td>{formatNumber(row?.payins)}</td>
                         <td>{formatCurrency(row?.sales)}</td>
+                        <td>{formatNumber(row?.activation)}</td>
                         <td>{formatPoints(row?.points)}</td>
                       </tr>
                     ))
@@ -816,6 +849,10 @@ export default function Dashboard() {
                     <div className="dashboard-detail__value">{formatCurrency(selectedRow?.sales)}</div>
                   </div>
                   <div>
+                    <div className="dashboard-detail__label">Activation</div>
+                    <div className="dashboard-detail__value">{formatNumber(selectedRow?.activation)}</div>
+                  </div>
+                  <div>
                     <div className="dashboard-detail__label">Points</div>
                     <div className="dashboard-detail__value">{formatPoints(selectedRow?.points)}</div>
                   </div>
@@ -823,7 +860,7 @@ export default function Dashboard() {
               </div>
 
               <div className="dashboard-history__meta">
-                <div className="dashboard-panel__title">Selected Participant History</div>
+                <div className="dashboard-panel__title">Selected {selectedEntityLabel} History</div>
                 <ExportButton
                   onClick={exportHistoryXlsx}
                   loading={false}
@@ -840,11 +877,13 @@ export default function Dashboard() {
                     <tr>
                       <th>Date</th>
                       <th>Leader</th>
-                      <th>Leads Depot</th>
+                      <th>Leads Product Center</th>
                       <th className="num">Leads</th>
-                      <th>Sales Depot</th>
+                      <th>Sales Product Center</th>
                       <th className="num">Payins</th>
                       <th className="num">Sales</th>
+                      <th>Activation Product Center</th>
+                      <th className="num">Activation</th>
                       <th className="num">Points</th>
                       <th className="center">Status</th>
                     </tr>
@@ -853,12 +892,14 @@ export default function Dashboard() {
                     {pagedHistoryRows.map((row) => (
                       <tr key={row.id}>
                         <td>{row.date_real}</td>
-                        <td>{row.leaderName || "(Restricted)"}</td>
-                        <td>{row.leadsDepotName || "-"}</td>
+                        <td>{row.agent_name || row.leaderName || "(Restricted)"}</td>
+                        <td>{row.leads_product_center_unit_name || "-"}</td>
                         <td className="num">{formatNumber(row.leads)}</td>
-                        <td>{row.salesDepotName || "-"}</td>
+                        <td>{row.sales_product_center_unit_name || "-"}</td>
                         <td className="num">{formatNumber(row.payins)}</td>
                         <td className="num">{formatCurrency(row.sales)}</td>
+                        <td>{row.activation_product_center_unit_name || "-"}</td>
+                        <td className="num">{formatNumber(row.activation)}</td>
                         <td className="num">{formatPoints(row.points)}</td>
                         <td className="center">
                           <span className={`status-pill ${row.voided ? "invalid" : "muted"}`}>
@@ -869,14 +910,14 @@ export default function Dashboard() {
                     ))}
                     {historyLoading ? (
                       <tr>
-                        <td colSpan={9} className="muted" style={{ textAlign: "center", padding: 16 }}>
+                        <td colSpan={11} className="muted" style={{ textAlign: "center", padding: 16 }}>
                           Loading history...
                         </td>
                       </tr>
                     ) : null}
                     {!historyLoading && !historyRows.length ? (
                       <tr>
-                        <td colSpan={9} className="muted" style={{ textAlign: "center", padding: 16 }}>
+                        <td colSpan={11} className="muted" style={{ textAlign: "center", padding: 16 }}>
                           No history for the selected participant and date range.
                         </td>
                       </tr>
