@@ -256,6 +256,14 @@ export default function Upload() {
     return selected?.name || "";
   }, [productCenterUnitOptions, manualForm.activation_product_center_unit_id]);
 
+  const productCenterUnitsEmptyText = useMemo(
+    () =>
+      productCenterUnitOptions.length
+        ? "No product center units found."
+        : "No product center units configured yet. Backfill the product_center_units table first.",
+    [productCenterUnitOptions.length]
+  );
+
   function filterProductCenterUnits(field) {
     const query = manualLookupInputs[field].trim().toLowerCase();
     if (!query) return productCenterUnitOptions;
@@ -1065,7 +1073,7 @@ export default function Upload() {
               onSelect={unit =>
                 handleManualProductCenterUnitSelect("leads_product_center_unit_id", unit)
               }
-              emptyText="No product center units found."
+              emptyText={productCenterUnitsEmptyText}
               isOpen={activeManualSelect === "leads_product_center_unit"}
               onOpenChange={open =>
                 setActiveManualSelect(open ? "leads_product_center_unit" : "")
@@ -1098,7 +1106,7 @@ export default function Upload() {
               onSelect={unit =>
                 handleManualProductCenterUnitSelect("sales_product_center_unit_id", unit)
               }
-              emptyText="No product center units found."
+              emptyText={productCenterUnitsEmptyText}
               isOpen={activeManualSelect === "sales_product_center_unit"}
               onOpenChange={open =>
                 setActiveManualSelect(open ? "sales_product_center_unit" : "")
@@ -1137,7 +1145,7 @@ export default function Upload() {
                   unit
                 )
               }
-              emptyText="No product center units found."
+              emptyText={productCenterUnitsEmptyText}
               isOpen={activeManualSelect === "activation_product_center_unit"}
               onOpenChange={open =>
                 setActiveManualSelect(open ? "activation_product_center_unit" : "")

@@ -31,6 +31,22 @@ create index if not exists idx_product_center_units_unit_type
 create unique index if not exists ux_product_center_units_unit_type_name
   on public.product_center_units(unit_type, name);
 
+-- Backfill existing depot records into the new unified product-center table.
+-- This keeps current admin data usable before city records are introduced.
+insert into public.product_center_units (name, unit_type, code, is_active)
+select
+  d.name,
+  'depot',
+  d.id,
+  true
+from public.depots d
+where not exists (
+  select 1
+  from public.product_center_units pcu
+  where pcu.unit_type = 'depot'
+    and lower(trim(pcu.name)) = lower(trim(d.name))
+);
+
 -- Optional helper trigger if you already use a shared updated_at trigger function.
 -- Uncomment only if you have the function available.
 --

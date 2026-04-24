@@ -98,6 +98,7 @@ export default function Updates() {
     salesProductCenterUnitId: "",
     activationProductCenterUnitId: "",
   });
+  const [activeFilterSelect, setActiveFilterSelect] = useState("");
 
   const [editingRow, setEditingRow] = useState(null);
   const [editValues, setEditValues] = useState({
@@ -151,7 +152,7 @@ export default function Updates() {
     const found = productCenterUnits.find(
       (unit) => String(unit.id) === String(filtersInput.leadsProductCenterUnitId)
     );
-    return formatProductCenterUnitLabel(found);
+    return found?.name || "";
   }, [productCenterUnits, filtersInput.leadsProductCenterUnitId]);
 
   const salesProductCenterFilterLabel = useMemo(() => {
@@ -159,7 +160,7 @@ export default function Updates() {
     const found = productCenterUnits.find(
       (unit) => String(unit.id) === String(filtersInput.salesProductCenterUnitId)
     );
-    return formatProductCenterUnitLabel(found);
+    return found?.name || "";
   }, [productCenterUnits, filtersInput.salesProductCenterUnitId]);
 
   const activationProductCenterFilterLabel = useMemo(() => {
@@ -167,7 +168,7 @@ export default function Updates() {
     const found = productCenterUnits.find(
       (unit) => String(unit.id) === String(filtersInput.activationProductCenterUnitId)
     );
-    return formatProductCenterUnitLabel(found);
+    return found?.name || "";
   }, [productCenterUnits, filtersInput.activationProductCenterUnitId]);
 
   const leaderFilterOptions = useMemo(() => {
@@ -179,38 +180,35 @@ export default function Updates() {
     );
   }, [agents, filterSearch.leaderId]);
 
-  const productCenterOptions = useMemo(
-    () =>
-      productCenterUnits.map((unit) => ({
-        id: unit.id,
-        name: formatProductCenterUnitLabel(unit),
-      })),
-    [productCenterUnits]
-  );
+  function filterProductCenterUnits(field) {
+    const query = filterSearch[field].trim().toLowerCase();
+    if (!query) return productCenterUnits;
+    return productCenterUnits.filter((unit) =>
+      (unit.name || "").toLowerCase().includes(query) ||
+      String(unit.id || "").toLowerCase().includes(query) ||
+      String(unit.unit_type || "").toLowerCase().includes(query)
+    );
+  }
 
   const leadsProductCenterFilterOptions = useMemo(() => {
-    const q = filterSearch.leadsProductCenterUnitId.trim().toLowerCase();
-    if (!q) return productCenterOptions;
-    return productCenterOptions.filter(
-      (option) => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
-    );
-  }, [filterSearch.leadsProductCenterUnitId, productCenterOptions]);
+    return filterProductCenterUnits("leadsProductCenterUnitId");
+  }, [productCenterUnits, filterSearch.leadsProductCenterUnitId]);
 
   const salesProductCenterFilterOptions = useMemo(() => {
-    const q = filterSearch.salesProductCenterUnitId.trim().toLowerCase();
-    if (!q) return productCenterOptions;
-    return productCenterOptions.filter(
-      (option) => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
-    );
-  }, [filterSearch.salesProductCenterUnitId, productCenterOptions]);
+    return filterProductCenterUnits("salesProductCenterUnitId");
+  }, [productCenterUnits, filterSearch.salesProductCenterUnitId]);
 
   const activationProductCenterFilterOptions = useMemo(() => {
-    const q = filterSearch.activationProductCenterUnitId.trim().toLowerCase();
-    if (!q) return productCenterOptions;
-    return productCenterOptions.filter(
-      (option) => option.name.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
-    );
-  }, [filterSearch.activationProductCenterUnitId, productCenterOptions]);
+    return filterProductCenterUnits("activationProductCenterUnitId");
+  }, [productCenterUnits, filterSearch.activationProductCenterUnitId]);
+
+  const productCenterUnitsEmptyText = useMemo(
+    () =>
+      productCenterUnits.length
+        ? "No product centers found."
+        : "No product center units configured yet. Backfill the product_center_units table first.",
+    [productCenterUnits.length]
+  );
 
   function canManageRow(row) {
     if (!row) return false;
@@ -238,7 +236,14 @@ export default function Updates() {
     (async () => {
       try {
         const data = await listActiveProductCenterUnits();
-        setProductCenterUnits(Array.isArray(data) ? data : []);
+        setProductCenterUnits(
+          Array.isArray(data)
+            ? data.map((unit) => ({
+                ...unit,
+                name: formatProductCenterUnitLabel(unit),
+              }))
+            : []
+        );
       } catch (err) {
         console.error(err);
       }
@@ -392,8 +397,8 @@ export default function Updates() {
       "Leads Product Center": row.leads_product_center_unit_name || "-",
       Leads: row.leads ?? "-",
       "Sales Product Center": row.sales_product_center_unit_name || "-",
-      Payins: row.payins ?? "-",
       Sales: row.sales ?? "-",
+      Payins: row.payins ?? "-",
       "Activation Product Center": row.activation_product_center_unit_name || "-",
       Activation: row.activation ?? "-",
       Published: row.published ? "Published" : "Unpublished",
@@ -526,6 +531,8 @@ export default function Updates() {
                   setFilterSearch((prev) => ({ ...prev, leaderId: option.name }));
                 }}
                 emptyText="No leaders found."
+                isOpen={activeFilterSelect === "leader"}
+                onOpenChange={(open) => setActiveFilterSelect(open ? "leader" : "")}
               />
             </div>
           ) : null}
@@ -546,7 +553,11 @@ export default function Updates() {
                 setFiltersInput((prev) => ({ ...prev, leadsProductCenterUnitId: option.id }));
                 setFilterSearch((prev) => ({ ...prev, leadsProductCenterUnitId: option.name }));
               }}
-              emptyText="No product centers found."
+              emptyText={productCenterUnitsEmptyText}
+              isOpen={activeFilterSelect === "leadsProductCenterUnitId"}
+              onOpenChange={(open) =>
+                setActiveFilterSelect(open ? "leadsProductCenterUnitId" : "")
+              }
             />
           </div>
 
@@ -566,7 +577,11 @@ export default function Updates() {
                 setFiltersInput((prev) => ({ ...prev, salesProductCenterUnitId: option.id }));
                 setFilterSearch((prev) => ({ ...prev, salesProductCenterUnitId: option.name }));
               }}
-              emptyText="No product centers found."
+              emptyText={productCenterUnitsEmptyText}
+              isOpen={activeFilterSelect === "salesProductCenterUnitId"}
+              onOpenChange={(open) =>
+                setActiveFilterSelect(open ? "salesProductCenterUnitId" : "")
+              }
             />
           </div>
 
@@ -592,7 +607,11 @@ export default function Updates() {
                   activationProductCenterUnitId: option.name,
                 }));
               }}
-              emptyText="No product centers found."
+              emptyText={productCenterUnitsEmptyText}
+              isOpen={activeFilterSelect === "activationProductCenterUnitId"}
+              onOpenChange={(open) =>
+                setActiveFilterSelect(open ? "activationProductCenterUnitId" : "")
+              }
             />
           </div>
         </div>
@@ -646,8 +665,8 @@ export default function Updates() {
               <th>Leads Product Center</th>
               <th className="num">Leads</th>
               <th>Sales Product Center</th>
-              <th className="num">Payins</th>
               <th className="num">Sales</th>
+              <th className="num">Payins</th>
               <th>Activation Product Center</th>
               <th className="num">Activation</th>
               <th className="center">Published</th>
@@ -666,8 +685,8 @@ export default function Updates() {
                 <td>{row.leads_product_center_unit_name || "—"}</td>
                 <td className="num">{row.leads ?? "—"}</td>
                 <td>{row.sales_product_center_unit_name || "—"}</td>
-                <td className="num">{row.payins ?? "—"}</td>
                 <td className="num">{row.sales ?? "—"}</td>
+                <td className="num">{row.payins ?? "—"}</td>
                 <td>{row.activation_product_center_unit_name || "—"}</td>
                 <td className="num">{row.activation ?? "—"}</td>
                 <td className="center">
