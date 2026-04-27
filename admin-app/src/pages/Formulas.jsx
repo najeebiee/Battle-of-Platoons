@@ -83,6 +83,7 @@ export default function ScoringFormulas() {
     leads: "0",
     payins: "0",
     sales: "0",
+    activation: "0",
   });
 
   const [auditEntries, setAuditEntries] = useState([]);
@@ -196,22 +197,24 @@ export default function ScoringFormulas() {
 
   function getAllowedMetricKeys(battleType) {
     if (battleType === "depots") {
-      return ["leads", "sales"];
+      return ["leads", "sales", "activation"];
     }
-    return ["leads", "payins", "sales"];
+    return ["leads", "payins", "sales", "activation"];
   }
 
   function getDefaultMetrics(battleType) {
     if (battleType === "depots") {
       return [
-        { key: "leads", divisor: 500, maxPoints: 400 },
-        { key: "sales", divisor: 3_000_000, maxPoints: 600 },
+        { key: "leads", divisor: 500, maxPoints: 250 },
+        { key: "sales", divisor: 3_000_000, maxPoints: 250 },
+        { key: "activation", divisor: 500, maxPoints: 250 },
       ];
     }
     return [
-      { key: "leads", divisor: 500, maxPoints: 400 },
-      { key: "payins", divisor: 200, maxPoints: 200 },
-      { key: "sales", divisor: 3_000_000, maxPoints: 400 },
+      { key: "leads", divisor: 500, maxPoints: 250 },
+      { key: "payins", divisor: 200, maxPoints: 250 },
+      { key: "sales", divisor: 3_000_000, maxPoints: 250 },
+      { key: "activation", divisor: 500, maxPoints: 250 },
     ];
   }
 
@@ -254,7 +257,7 @@ export default function ScoringFormulas() {
     setReasonText("");
     setSaveError("");
     setPublishError("");
-    setPreviewInputs({ leads: "0", payins: "0", sales: "0" });
+    setPreviewInputs({ leads: "0", payins: "0", sales: "0", activation: "0" });
   }, [selectedFormula]);
 
   useEffect(() => {
@@ -378,7 +381,8 @@ export default function ScoringFormulas() {
     const leads = clampNonNegative(previewInputs.leads);
     const payins = isDepotBattle ? 0 : clampNonNegative(previewInputs.payins);
     const sales = clampNonNegative(previewInputs.sales);
-    return { leads, payins, sales };
+    const activation = clampNonNegative(previewInputs.activation);
+    return { leads, payins, sales, activation };
   }
 
   const allowedPreviewKeys = getAllowedMetricKeys(selectedFormula?.battle_type);
@@ -642,7 +646,7 @@ export default function ScoringFormulas() {
         <div className="calculator-card">
           <div className="details-section__title">Preview Calculator</div>
           <div className="calculator-grid">
-            {["leads", "payins", "sales"]
+            {["leads", "payins", "sales", "activation"]
               .filter(key => !(isDepotBattle && key === "payins"))
               .map(key => (
                 <div className="details-field" key={key}>

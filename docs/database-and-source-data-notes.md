@@ -169,13 +169,16 @@ Then raw data stores:
 
 ### Leader hierarchy side
 
-The leadership side also looks like it is becoming more layered:
+The leadership side hierarchy is now confirmed as:
 
-- Platoon
-- Squad
-- Team
-- Member
-- possibly another role later
+- Commander
+- Company
+- Platoon Leader
+- Squad Leader
+- Team (with two roles):
+  - Team Leader (new)
+  - Member
+- possibly more roles later
 
 So the same principle should apply there:
 
@@ -801,6 +804,30 @@ Deferred on purpose:
 
 - `[deferred] admin-app/src/pages/Participants.jsx still manages actual Depot entities and should not be renamed blindly`
 - `[deferred] admin-app/src/services/auditLog.service.js and admin-app/src/pages/AuditLog.jsx still depend on raw_data_audit and need a separate audit migration plan`
+
+## Pending Formulas Page Updates
+
+The admin Scoring Formulas page needs updates to match the new scoring model end-to-end:
+
+- **Add activation as a formula metric**: Update `getAllowedMetricKeys` (line 197) to include "activation" for all battle types, not just Product Centers. Currently only allows leads/sales for depots, leads/payins/sales for others.
+
+- **Update default formula templates**: Modify `getDefaultMetrics` (line 204) to include activation defaults with equal point distribution. Confirmed default split: 25% each (250 points each out of 1000 total) for:
+  - leads
+  - sales
+  - activation
+  - payins
+
+- **Update the preview calculator**: Change `previewInputs` state and `getTotals()` to include activation. For Product Centers, show leads/sales/activation.
+
+- **Sync admin scoring engine with public scoring engine**: Admin `scoringEngine.js` already includes activation in normalizedTotals but public handles metrics more generally. Ensure both support same config shapes.
+
+- **Rename/clarify Product Center wording**: Section title is already "Product Centers", but ensure labels avoid old depot assumptions.
+
+- **Review formula sections**: Sections are commanders, companies, platoons, squads, teams. Public mapping uses teams formula for companies view. Ensure admin categories match what `get_active_scoring_formula` expects.
+
+- **Leader role hierarchy**: Note that Team now has two roles: Member and Team Leader (new). Ensure formulas support role-based scenarios if needed.
+
+No code changes yet - plan and validate first.
 
 ## Naming Recommendation
 
