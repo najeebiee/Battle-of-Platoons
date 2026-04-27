@@ -45,6 +45,44 @@ function PublishIcon({ size = 16 }) {
   );
 }
 
+const FORMULA_SECTIONS = [
+  { key: "depots", title: "Product Centers", createLabel: "Product Center" },
+  { key: "commanders", title: "Commanders", createLabel: "Commander" },
+  { key: "companies", title: "Companies", createLabel: "Company" },
+  { key: "platoons", title: "Platoons", createLabel: "Platoon Leader" },
+  { key: "squads", title: "Squads", createLabel: "Squad Leader" },
+  { key: "team_leaders", title: "Team Leaders", createLabel: "Team Leader" },
+  { key: "members", title: "Members", createLabel: "Member" },
+];
+
+function normalizeFormulaBattleType(battleType) {
+  const key = String(battleType || "").toLowerCase();
+  if (key === "depot" || key === "depots") return "depots";
+  if (key === "teams" || key === "team" || key === "team_leader" || key === "team_leaders") {
+    return "team_leaders";
+  }
+  if (key === "member" || key === "members") return "members";
+  return key;
+}
+
+function getSectionMatchKeys(sectionKey) {
+  if (sectionKey === "team_leaders") return ["team_leaders", "teams"];
+  return [sectionKey];
+}
+
+function getBattleTypeDisplayName(battleType) {
+  const normalized = normalizeFormulaBattleType(battleType);
+  const match = FORMULA_SECTIONS.find((section) => section.key === normalized);
+  return match?.createLabel || "Formula";
+}
+
+function getMetricName(metricKey) {
+  if (metricKey === "leads") return "Leads";
+  if (metricKey === "payins") return "Pay-ins";
+  if (metricKey === "activation") return "Activation";
+  return "Sales";
+}
+
 export default function ScoringFormulas() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -152,9 +190,7 @@ export default function ScoringFormulas() {
 
   const isPublished = selectedFormula?.status === "published";
   const isEditable = isSuperAdmin && selectedFormula && !isPublished;
-  const isDepotBattle =
-    String(selectedFormula?.battle_type || "").toLowerCase() === "depot" ||
-    String(selectedFormula?.battle_type || "").toLowerCase() === "depots";
+  const isDepotBattle = normalizeFormulaBattleType(selectedFormula?.battle_type) === "depots";
 
   function Stepper({ id, value, onChange, step = 50, min = 0, disabled = false }) {
     return (
@@ -196,18 +232,18 @@ export default function ScoringFormulas() {
   }
 
   function getAllowedMetricKeys(battleType) {
-    if (battleType === "depots") {
+    if (normalizeFormulaBattleType(battleType) === "depots") {
       return ["leads", "sales", "activation"];
     }
     return ["leads", "payins", "sales", "activation"];
   }
 
   function getDefaultMetrics(battleType) {
-    if (battleType === "depots") {
+    if (normalizeFormulaBattleType(battleType) === "depots") {
       return [
-        { key: "leads", divisor: 500, maxPoints: 250 },
-        { key: "sales", divisor: 3_000_000, maxPoints: 250 },
-        { key: "activation", divisor: 500, maxPoints: 250 },
+        { key: "leads", divisor: 500, maxPoints: 334 },
+        { key: "sales", divisor: 3_000_000, maxPoints: 333 },
+        { key: "activation", divisor: 500, maxPoints: 333 },
       ];
     }
     return [
@@ -235,6 +271,38 @@ export default function ScoringFormulas() {
         maxPoints: Number(existing?.maxPoints ?? existing?.max_points ?? existing?.points ?? 0),
       };
     });
+  }
+
+  async function reloadFormulasAndSelect(nextSelectedId = selectedId) {
+    const loader = isSuperAdmin ? listAllFormulasForSuperAdmin : listPublishedFormulas;
+    setFormulasLoading(true);
+    setFormulasError("");
+
+    try {
+      const { data, error } = await loader();
+      if (error) {
+        setFormulasError(error.message || "Failed to load formulas");
+        setFormulas([]);
+        return;
+      }
+
+      const nextRows = data ?? [];
+      setFormulas(nextRows);
+      if (nextRows.length === 0) {
+        setSelectedId(null);
+        return;
+      }
+
+      const requestedId = nextSelectedId ?? nextRows[0]?.id ?? null;
+      const resolvedId = nextRows.some((row) => row.id === requestedId)
+        ? requestedId
+        : nextRows[0]?.id ?? null;
+      setSelectedId(resolvedId);
+    } catch (err) {
+      setFormulasError(err?.message || "Failed to load formulas");
+    } finally {
+      setFormulasLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -439,7 +507,8 @@ export default function ScoringFormulas() {
       displayMetrics.filter(m => Number(m.divisor) > 0 || !isEditable).length ===
       displayMetrics.length;
     const hasReason = reasonText.trim().length > 0;
-    const canPublishDraft = !publishLoading && !isPublished && hasReason;
+    const canPublishDraft =
+      !publishLoading && !isPublished && hasReason && totalPointsValid && divisorsValid;
 
     return (
       <div className="details-panel">
@@ -513,12 +582,7 @@ export default function ScoringFormulas() {
                   totalPoints > 0
                     ? (((Number(metric.maxPoints) || 0) / totalPoints) * 100).toFixed(2)
                     : "0.00";
-                const name =
-                  metric.key === "leads"
-                    ? "Leads"
-                    : metric.key === "payins"
-                      ? "Pay-ins"
-                      : "Sales";
+                const name = getMetricName(metric.key);
                 return (
                   <div key={metric.key} className="metric-card">
                     <div className="metric-card__header">
@@ -599,7 +663,7 @@ export default function ScoringFormulas() {
                 className="btn details-action-btn details-action-btn--publish"
                 onClick={handlePublish}
                 disabled={!canPublishDraft}
-                title={!canPublishDraft ? "Reason is required to publish." : ""}
+                title={!canPublishDraft ? "Reason, valid divisors, and 1000 total points are required to publish." : ""}
               >
                 <PublishIcon size={16} />
                 {publishLoading ? "Publishing…" : "Publish"}
@@ -615,12 +679,7 @@ export default function ScoringFormulas() {
                   totalPoints > 0
                     ? (((Number(metric.maxPoints) || 0) / totalPoints) * 100).toFixed(2)
                     : "0.00";
-                const name =
-                  metric.key === "leads"
-                    ? "Leads"
-                    : metric.key === "payins"
-                      ? "Pay-ins"
-                      : "Sales";
+                const name = getMetricName(metric.key);
                 return (
                   <div key={metric.key} className="metric-card">
                     <div className="metric-card__header">
@@ -764,24 +823,18 @@ export default function ScoringFormulas() {
     );
   }
 
-  const sections = [
-    { key: "depots", title: "Product Centers" },
-    { key: "commanders", title: "Commanders" },
-    { key: "companies", title: "Companies" },
-    { key: "platoons", title: "Platoons" },
-    { key: "squads", title: "Squads" },
-    { key: "teams", title: "Teams" },
-  ];
-
-  const grouped = sections.map(section => ({
+  const grouped = FORMULA_SECTIONS.map(section => ({
     ...section,
-    items: formulas.filter(f => (f.battle_type || "").toLowerCase() === section.key),
+    items: formulas.filter((formula) =>
+      getSectionMatchKeys(section.key).includes(
+        String(formula?.battle_type || "").toLowerCase()
+      )
+    ),
   }));
 
   const canCreateFormulaDraft =
     !!createModal.label.trim() &&
     !!createModal.start.trim() &&
-    !!createModal.end.trim() &&
     !!createModal.reason.trim();
 
   function closeCreateModal() {
@@ -829,7 +882,7 @@ export default function ScoringFormulas() {
     <div className="formulas-page">
       <ModalForm
         isOpen={createModal.open}
-        title={`New ${createModal.battleType.replace(/s$/, "")} Formula`}
+        title={`New ${getBattleTypeDisplayName(createModal.battleType)} Formula`}
         onClose={closeCreateModal}
         onOverlayClose={closeCreateModal}
         onSubmit={handleCreateSubmit}
@@ -933,7 +986,7 @@ export default function ScoringFormulas() {
                       }
                     >
                       <PlusIcon />
-                      New {section.title.replace(/s$/, "")} Formula
+                      New {section.createLabel} Formula
                     </button>
                   )}
                 </div>

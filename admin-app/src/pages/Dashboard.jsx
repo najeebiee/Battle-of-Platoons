@@ -723,14 +723,20 @@ export default function Dashboard() {
           </div>
           {mode === "leaders" && (
             <div className="view-toggle leader-role-toggle" role="tablist" aria-label="Leader role">
-              {["platoon", "squad", "team"].map((key) => (
+              {["platoon", "squad", "team_leader", "member"].map((key) => (
                 <button
                   key={key}
                   type="button"
                   className={`view-pill${leaderRole === key ? " view-pill--active" : ""}`}
                   onClick={() => setLeaderRole(key)}
                 >
-                  {key === "platoon" ? "Platoon" : key === "squad" ? "Squad" : "Team"}
+                  {key === "platoon"
+                    ? "Platoon Leader"
+                    : key === "squad"
+                    ? "Squad Leader"
+                    : key === "team_leader"
+                    ? "Team Leader"
+                    : "Member"}
                 </button>
               ))}
             </div>

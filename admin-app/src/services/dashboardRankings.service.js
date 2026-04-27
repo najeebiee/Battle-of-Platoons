@@ -14,19 +14,29 @@ function normalizeMode(mode) {
 
 function normalizeLeaderRole(roleFilter) {
   const key = String(roleFilter || "").toLowerCase();
+  if (key === "member") return "member";
+  if (key === "team_leader" || key === "team") return "team_leader";
   if (key === "squad") return "squad";
-  if (key === "team") return "team";
   return "platoon";
 }
 
 function resolveBattleType(mode, roleFilter) {
   if (mode === "depots") return "depots";
   if (mode === "commanders") return "commanders";
-  if (mode === "companies") return "teams";
+  if (mode === "companies") return "companies";
   const leaderRole = normalizeLeaderRole(roleFilter);
+  if (leaderRole === "member") return "members";
   if (leaderRole === "squad") return "squads";
-  if (leaderRole === "team") return "teams";
+  if (leaderRole === "team_leader") return "team_leaders";
   return "platoons";
+}
+
+function normalizeAgentRole(role) {
+  const key = String(role || "").toLowerCase();
+  if (key === "member") return "member";
+  if (key === "team_leader" || key === "team") return "team_leader";
+  if (key === "squad") return "squad";
+  return "platoon";
 }
 
 function normalizePhotoUrl(item) {
@@ -182,7 +192,7 @@ export async function getDashboardRankings({ mode, dateFrom, dateTo, roleFilter 
   if (leadersMode && roleFilter && roleFilter !== "platoon") {
     rawRows = rawRows.filter((row) => {
       const agent = getMergedAgent(row, agentsMap);
-      return (agent?.role ?? "platoon") === roleFilter;
+      return normalizeAgentRole(agent?.role) === normalizeLeaderRole(roleFilter);
     });
   }
 

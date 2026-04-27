@@ -17,7 +17,8 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ROLE_OPTIONS = [
   { id: "platoon", name: "Platoon Leader" },
   { id: "squad", name: "Squad Leader" },
-  { id: "team", name: "Team Leader" },
+  { id: "team_leader", name: "Team Leader" },
+  { id: "member", name: "Member" },
 ];
 
 function slugId(input = "") {
@@ -340,6 +341,7 @@ export default function Participants() {
     const exportRows = agents.map(a => ({
       "Leader ID": a.id,
       "Leader Name": a.name,
+      Role: ROLE_OPTIONS.find(role => role.id === (a.role || "platoon"))?.name || a.role || "Platoon Leader",
       Commander: companyById[a.companyId]?.name || a.companyId || "-",
       Company: platoonById[a.platoonId]?.name || a.platoonId || "-",
       Upline: a.uplineAgentId ? (agentById[a.uplineAgentId]?.name || a.uplineAgentId) : "-",

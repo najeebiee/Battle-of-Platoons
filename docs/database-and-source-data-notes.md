@@ -805,29 +805,23 @@ Deferred on purpose:
 - `[deferred] admin-app/src/pages/Participants.jsx still manages actual Depot entities and should not be renamed blindly`
 - `[deferred] admin-app/src/services/auditLog.service.js and admin-app/src/pages/AuditLog.jsx still depend on raw_data_audit and need a separate audit migration plan`
 
-## Pending Formulas Page Updates
+## Formulas Page Status
 
-The admin Scoring Formulas page needs updates to match the new scoring model end-to-end:
+The app-side Scoring Formulas update is now in progress with frontend compatibility in place:
 
-- **Add activation as a formula metric**: Update `getAllowedMetricKeys` (line 197) to include "activation" for all battle types, not just Product Centers. Currently only allows leads/sales for depots, leads/payins/sales for others.
+- **Leader role split**: canonical leader role ids are now `platoon`, `squad`, `team_leader`, and `member`.
+- **Formula buckets**: frontend now expects `platoons`, `squads`, `team_leaders`, and `members`.
+- **Legacy compatibility**: old `teams` formulas are still treated as legacy Team Leader formulas until Supabase is migrated.
+- **Company formulas**: public/admin formula routing should use `companies`, not `teams`.
+- **Activation-aware defaults**: non-Product-Center formulas use 4 metrics, while Product Center formulas use `leads`, `sales`, and `activation`.
+- **Product Center total**: Product Center defaults should total 1000 using `334 / 333 / 333`.
+- **Preview calculator**: preview inputs and score breakdown now need to stay activation-aware for all formula types.
 
-- **Update default formula templates**: Modify `getDefaultMetrics` (line 204) to include activation defaults with equal point distribution. Confirmed default split: 25% each (250 points each out of 1000 total) for:
-  - leads
-  - sales
-  - activation
-  - payins
+Still pending on the Supabase side:
 
-- **Update the preview calculator**: Change `previewInputs` state and `getTotals()` to include activation. For Product Centers, show leads/sales/activation.
-
-- **Sync admin scoring engine with public scoring engine**: Admin `scoringEngine.js` already includes activation in normalizedTotals but public handles metrics more generally. Ensure both support same config shapes.
-
-- **Rename/clarify Product Center wording**: Section title is already "Product Centers", but ensure labels avoid old depot assumptions.
-
-- **Review formula sections**: Sections are commanders, companies, platoons, squads, teams. Public mapping uses teams formula for companies view. Ensure admin categories match what `get_active_scoring_formula` expects.
-
-- **Leader role hierarchy**: Note that Team now has two roles: Member and Team Leader (new). Ensure formulas support role-based scenarios if needed.
-
-No code changes yet - plan and validate first.
+- add `members` and `team_leaders` as supported scoring formula battle types
+- migrate or clone legacy `teams` formulas into the new buckets
+- update `get_active_scoring_formula` and related RPCs to resolve the new battle types directly
 
 ## Naming Recommendation
 

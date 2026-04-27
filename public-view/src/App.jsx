@@ -27,12 +27,22 @@ const VIEW_TABS = [
 ];
 
 const ENTITY_KEYS = ["depots", "leaders", "commanders", "companies"];
-const FORMULA_TYPES = ["depots", "companies", "commanders", "platoons", "squads", "teams"];
+const FORMULA_TYPES = [
+  "depots",
+  "companies",
+  "commanders",
+  "platoons",
+  "squads",
+  "team_leaders",
+  "members",
+];
+const LEGACY_FORMULA_TYPES = ["teams"];
 
 const LEADER_ROLE_TABS = [
-  { key: "platoon", label: "Platoon" },
-  { key: "squad", label: "Squad" },
-  { key: "team", label: "Team" },
+  { key: "platoon", label: "Platoon Leader" },
+  { key: "squad", label: "Squad Leader" },
+  { key: "team_leader", label: "Team Leader" },
+  { key: "member", label: "Member" },
 ];
 
 function mergeClassNames(...classes) {
@@ -314,13 +324,13 @@ function isWeekKeyInRange(weekKey, startKey, endKey) {
 
 function getBattleTypeForView(viewKey, roleFilter) {
   if (viewKey === "depots") return "depots";
-  if (viewKey === "companies") return "teams";
-  if (viewKey === "teams") return "teams";
+  if (viewKey === "companies") return "companies";
   if (viewKey === "commanders") return "commanders";
   if (viewKey === "platoon") return "platoons";
   if (viewKey === "leaders" && roleFilter === "platoon") return "platoons";
   if (viewKey === "leaders" && roleFilter === "squad") return "squads";
-  if (viewKey === "leaders" && roleFilter === "team") return "teams";
+  if (viewKey === "leaders" && roleFilter === "team_leader") return "team_leaders";
+  if (viewKey === "leaders" && roleFilter === "member") return "members";
   return viewKey || "leaders";
 }
 
@@ -488,25 +498,27 @@ function App() {
       ? "Commanders"
       : displayView === "companies"
       ? "Companies"
-      : activeView === "leaders" && leaderRoleFilter === "team"
-      ? "Teams"
+      : activeView === "leaders" && leaderRoleFilter === "team_leader"
+      ? "Team Leaders"
+      : activeView === "leaders" && leaderRoleFilter === "member"
+      ? "Members"
       : activeView === "leaders" && leaderRoleFilter === "squad"
-      ? "Squads"
+      ? "Squad Leaders"
       : displayView === "depots"
       ? "Product Centers"
       : displayView === "platoon"
-      ? "Platoons"
+      ? "Platoon Leaders"
       : "Leaders";
 
   const title =
     displayView === "platoon"
-      ? "Platoon Rankings"
-      : activeView === "leaders" && leaderRoleFilter === "team"
+      ? "Platoon Leader Rankings"
+      : activeView === "leaders" && leaderRoleFilter === "team_leader"
       ? "Team Leader Rankings"
+      : activeView === "leaders" && leaderRoleFilter === "member"
+      ? "Member Rankings"
       : displayView === "leaders"
       ? "Squad Leader Rankings"
-      : displayView === "teams"
-      ? "Team Rankings"
       : displayView === "depots"
       ? "Product Center Rankings"
       : displayView === "companies"
@@ -534,16 +546,22 @@ function App() {
 
   const resolvedFormulas = {
     depots: { formula: formulasByType.depots, fallbackLabel: null },
-    companies: { formula: formulasByType.teams, fallbackLabel: null },
+    companies: { formula: formulasByType.companies, fallbackLabel: null },
     commanders: {
       formula: formulasByType.commanders,
       fallbackLabel: null,
     },
     platoons: { formula: formulasByType.platoons, fallbackLabel: null },
     squads: { formula: formulasByType.squads, fallbackLabel: null },
-    teams: {
-      formula: formulasByType.teams,
-      fallbackLabel: null,
+    team_leaders: {
+      formula: formulasByType.team_leaders ?? formulasByType.teams,
+      fallbackLabel:
+        !formulasByType.team_leaders && formulasByType.teams ? "legacy Teams" : null,
+    },
+    members: {
+      formula: formulasByType.members ?? formulasByType.teams,
+      fallbackLabel:
+        !formulasByType.members && formulasByType.teams ? "legacy Teams" : null,
     },
   };
 
@@ -556,8 +574,9 @@ function App() {
     let cancelled = false;
 
     async function loadFormulas() {
+      const requestedTypes = [...FORMULA_TYPES, ...LEGACY_FORMULA_TYPES];
       const entries = await Promise.all(
-        FORMULA_TYPES.map(async (typeKey) => {
+        requestedTypes.map(async (typeKey) => {
           const battleType = getFaqBattleType(typeKey);
           try {
             const { data: formulaData, error } = await getActiveFormula(battleType, faqWeekKey);
@@ -630,15 +649,17 @@ function App() {
     const leaderMap = {
       platoon: resolvedFormulas.platoons,
       squad: resolvedFormulas.squads,
-      team: resolvedFormulas.teams,
+      team_leader: resolvedFormulas.team_leaders,
+      member: resolvedFormulas.members,
     };
     return renderFormulaBlock(leaderMap[subKey]);
   };
 
   const leaderSublist = [
-    { key: "platoon", label: "Platoon", Icon: Building2 },
-    { key: "squad", label: "Squad", Icon: User },
-    { key: "team", label: "Team", Icon: BadgeCheck },
+    { key: "platoon", label: "Platoon Leader", Icon: Building2 },
+    { key: "squad", label: "Squad Leader", Icon: User },
+    { key: "team_leader", label: "Team Leader", Icon: BadgeCheck },
+    { key: "member", label: "Member", Icon: User },
   ];
 
   const leadersSubContent =

@@ -41,7 +41,7 @@ export async function getLeaderboard({
   startDate, // "YYYY-MM-DD"
   endDate, // "YYYY-MM-DD"
   groupBy = "leaders", // "leaders" | "depots" | "commanders" | "teams" | "platoon"
-  roleFilter = null, // null | "platoon" | "squad" | "team"
+  roleFilter = null, // null | "platoon" | "squad" | "team_leader" | "member"
   battleType = null, // override battle type passed to scoring formula RPC
   weekKey = null,
 }) {
@@ -109,8 +109,8 @@ export async function getLeaderboard({
   if (groupBy === "leaders" && roleFilter) {
     filtered = filtered.filter((r) => {
       const agentId = String(r?.agent_id ?? "");
-      const role = agentsMap.get(agentId)?.role ?? "platoon";
-      return role === roleFilter;
+      const role = normalizeLeaderRole(agentsMap.get(agentId)?.role);
+      return role === normalizeLeaderRole(roleFilter);
     });
   }
 
@@ -429,9 +429,17 @@ function normalizeAgent(a) {
     uplineId: a?.uplineId ?? a?.upline_agent_id ?? "",
     company_id: a?.company_id ?? null,
     platoon_id: a?.platoon_id ?? null,
-    role: a?.role ?? "platoon",
+    role: normalizeLeaderRole(a?.role),
     photoURL: a?.photoURL ?? a?.photo_url ?? "",
   };
+}
+
+function normalizeLeaderRole(role) {
+  const key = String(role || "").toLowerCase();
+  if (key === "member") return "member";
+  if (key === "team_leader" || key === "team") return "team_leader";
+  if (key === "squad") return "squad";
+  return "platoon";
 }
 
 function toNumber(v) {
@@ -450,7 +458,9 @@ function normalizeBattleType(input) {
   const key = String(input || "").toLowerCase();
   if (key === "depots") return "depots";
   if (key === "companies") return "companies";
-  if (key === "teams") return "teams";
+  if (key === "member" || key === "members") return "members";
+  if (key === "team" || key === "team_leader" || key === "team_leaders") return "team_leaders";
+  if (key === "squad" || key === "squads") return "squads";
   if (key === "commanders") return "commanders";
   if (key === "platoon" || key === "platoons") return "platoons";
   if (key === "leaders") return "leaders";

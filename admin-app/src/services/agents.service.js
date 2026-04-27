@@ -78,6 +78,9 @@ export async function upsertPlatoon({ id, name, photoURL, photo_url }) {
 /* ------------------------------ Mappers ------------------------------ */
 
 function normalizeAgent(a) {
+  const rawRole = String(a.role ?? "").toLowerCase();
+  const normalizedRole = rawRole === "team" ? "team_leader" : rawRole || "platoon";
+
   // Your DB may have camelCase (from Firestore import) AND snake_case columns
   return {
     id: a.id,
@@ -87,7 +90,7 @@ function normalizeAgent(a) {
     depotId: a.depotId ?? a.depot_id ?? a.depot ?? "",
     companyId: a.companyId ?? a.company_id ?? a.company ?? "",
     platoonId: a.platoonId ?? a.platoon_id ?? a.platoon ?? "",
-    role: a.role ?? "platoon",
+    role: normalizedRole,
     uplineAgentId: a.uplineAgentId ?? a.upline_agent_id ?? "",
 
     // keep any metadata if present
@@ -97,6 +100,9 @@ function normalizeAgent(a) {
 }
 
 function denormalizeAgent(agent) {
+  const rawRole = String(agent.role ?? "").toLowerCase();
+  const normalizedRole = rawRole === "team" ? "team_leader" : rawRole || "platoon";
+
   return {
     id: agent.id,
     name: agent.name,
@@ -105,7 +111,7 @@ function denormalizeAgent(agent) {
     depot_id: agent.depotId ?? agent.depot_id ?? null,
     company_id: agent.companyId ?? agent.company_id ?? null,
     platoon_id: agent.platoonId ?? agent.platoon_id ?? null,
-    role: agent.role ?? "platoon",
+    role: normalizedRole,
     upline_agent_id: agent.uplineAgentId ?? agent.upline_agent_id ?? null,
 
     // timestamps optional; you can also manage this in DB triggers later
