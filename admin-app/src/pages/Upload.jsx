@@ -83,6 +83,25 @@ function buildManualDefaults(agentId = "") {
   };
 }
 
+function buildTemplateRows() {
+  return [
+    {
+      Date: getPhDateYmd(0),
+      "Leader Name": "Juan Dela Cruz",
+      Leads: 120,
+      Payins: 35,
+      Sales: 1500000,
+      Activation: 40,
+      "Leads Unit Type": "Depot",
+      "Leads Unit Name": "North Depot",
+      "Sales Unit Type": "City",
+      "Sales Unit Name": "Cebu City",
+      "Activation Unit Type": "City",
+      "Activation Unit Name": "Cebu City",
+    },
+  ];
+}
+
 export default function Upload() {
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState([]);
@@ -436,12 +455,11 @@ export default function Upload() {
   }
 
   function downloadTemplate() {
-    const a = document.createElement("a");
-    a.href = "/Leaderboard_Template.xlsx";
-    a.download = "Leaderboard_Template.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    exportToXlsx({
+      rows: buildTemplateRows(),
+      filename: "Leaderboard_Template_V2.xlsx",
+      sheetName: "Raw Data Template",
+    });
   }
 
   function resetUpload() {
