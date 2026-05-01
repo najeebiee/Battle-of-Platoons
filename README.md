@@ -34,7 +34,6 @@ The system solves the problem of manually collecting, computing, and presenting 
 - Vite
 - JavaScript
 - Supabase
-- Firebase
 - Material UI
 - Framer Motion
 - Lucide React
