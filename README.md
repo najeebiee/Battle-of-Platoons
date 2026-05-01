@@ -90,23 +90,41 @@ npm run dev
 
 ## Screenshots
 
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/cc9fc22c-4e1e-43c3-8e9f-29572fba0ddc" />
+### Public Leaderboard - Company Rankings
 
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/26b74f3a-5988-4e25-b825-33ecccbda1f0" />
+<img width="1919" height="1079" alt="Public leaderboard company rankings page" src="https://github.com/user-attachments/assets/cc9fc22c-4e1e-43c3-8e9f-29572fba0ddc" />
 
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/937942c9-9bc7-454b-bf75-ebef4d589bec" />
+### Admin Dashboard
 
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/d1e172f4-8f7a-4d6b-9113-90bda96aaa59" />
+<img width="1919" height="1079" alt="Admin dashboard leaderboard overview page" src="https://github.com/user-attachments/assets/26b74f3a-5988-4e25-b825-33ecccbda1f0" />
 
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/6c5ce1f9-cfb1-4fcf-95d9-5bb7c16639ee" />
+### Participants - Leaders
 
-<img width="1919" height="763" alt="image" src="https://github.com/user-attachments/assets/dece6844-c6cd-4c98-8e73-85bd0d4cc549" />
+<img width="1919" height="1079" alt="Admin participants leaders page" src="https://github.com/user-attachments/assets/937942c9-9bc7-454b-bf75-ebef4d589bec" />
 
-<img width="1918" height="960" alt="image" src="https://github.com/user-attachments/assets/e6192425-ab8b-4217-a990-ede0a078f73e" />
+### Updates History
 
-<img width="1919" height="1078" alt="image" src="https://github.com/user-attachments/assets/bcfdc8f0-a7bd-4ad2-8647-5066d347d69b" />
+<img width="1919" height="1079" alt="Admin updates history page" src="https://github.com/user-attachments/assets/d1e172f4-8f7a-4d6b-9113-90bda96aaa59" />
 
-<img width="1919" height="1078" alt="image" src="https://github.com/user-attachments/assets/5a0dea12-c6b8-4b60-b3cb-d40e08d30f23" />
+### Scoring Formulas
+
+<img width="1919" height="1079" alt="Admin scoring formulas page" src="https://github.com/user-attachments/assets/6c5ce1f9-cfb1-4fcf-95d9-5bb7c16639ee" />
+
+### Upload Raw Data
+
+<img width="1919" height="763" alt="Admin upload raw data page" src="https://github.com/user-attachments/assets/dece6844-c6cd-4c98-8e73-85bd0d4cc549" />
+
+### Publishing
+
+<img width="1918" height="960" alt="Admin publishing page" src="https://github.com/user-attachments/assets/e6192425-ab8b-4217-a990-ede0a078f73e" />
+
+### Audit Log
+
+<img width="1919" height="1078" alt="Admin audit log page" src="https://github.com/user-attachments/assets/bcfdc8f0-a7bd-4ad2-8647-5066d347d69b" />
+
+### Week Finalization
+
+<img width="1919" height="1078" alt="Admin week finalization page" src="https://github.com/user-attachments/assets/5a0dea12-c6b8-4b60-b3cb-d40e08d30f23" />
 
 
 ## Author
