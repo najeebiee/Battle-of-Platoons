@@ -713,16 +713,15 @@ export async function upsertRawDataV2(rows = []) {
   const payload = rows.map((row) => buildUpsertPayload(row)).filter(Boolean);
   if (!payload.length) return [];
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("raw_data_v2")
     .upsert(payload, {
       onConflict:
         "date_real,agent_id,leads_product_center_unit_id,sales_product_center_unit_id,activation_product_center_unit_id",
-    })
-    .select("*");
+    });
 
   if (error) throw error;
-  return enrichRawDataV2Rows(data ?? []);
+  return payload;
 }
 
 export async function updateRawDataV2(id, patch = {}) {

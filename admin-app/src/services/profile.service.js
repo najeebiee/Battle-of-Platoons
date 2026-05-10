@@ -21,3 +21,27 @@ export async function getMyProfile() {
   }
   return data;
 }
+
+export async function getAuthDebugContext() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    return { userError: userError.message };
+  }
+
+  const { data, error } = await supabase.rpc("debug_current_auth_context");
+  if (error) {
+    return {
+      authUserId: user?.id ?? null,
+      rpcError: error.message,
+    };
+  }
+
+  return {
+    authUserId: user?.id ?? null,
+    ...(data?.[0] ?? {}),
+  };
+}

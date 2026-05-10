@@ -13,7 +13,7 @@ import {
 } from "../services/rawDataV2.service";
 import { listAgents } from "../services/agents.service";
 import { listActiveProductCenterUnits } from "../services/productCenterUnits.service";
-import { getMyProfile } from "../services/profile.service";
+import { getAuthDebugContext, getMyProfile } from "../services/profile.service";
 
 function ReplaceIcon({ size = 16 }) {
   return (
@@ -528,7 +528,11 @@ export default function Upload() {
       });
     } catch (e) {
       if (!isMountedRef.current) return;
-      const message = e?.message || "Failed to save";
+      const debugContext = await getAuthDebugContext();
+      const debugText = debugContext
+        ? ` Auth context: ${JSON.stringify(debugContext)}`
+        : "";
+      const message = `${e?.message || "Failed to save"}${debugText}`;
       setError(message);
       setSaveResult({
         insertedCount: 0,
