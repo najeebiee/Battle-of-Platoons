@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "lucide-react": "^0.562.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.105.4",
+    "supabase": "^2.98.2"
   }
 }

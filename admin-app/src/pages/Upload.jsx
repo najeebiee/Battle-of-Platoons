@@ -93,11 +93,8 @@ function buildTemplateRows() {
       Sales: 1500000,
       Activation: 40,
       "Leads Unit Type": "Depot",
-      "Leads Unit Name": "North Depot",
       "Sales Unit Type": "City",
-      "Sales Unit Name": "Cebu City",
       "Activation Unit Type": "City",
-      "Activation Unit Name": "Cebu City",
     },
   ];
 }
@@ -288,6 +285,7 @@ export default function Upload() {
     if (!query) return productCenterUnitOptions;
     return productCenterUnitOptions.filter(unit =>
       (unit.name || "").toLowerCase().includes(query) ||
+      (unit.raw_name || "").toLowerCase().includes(query) ||
       (unit.id || "").toLowerCase().includes(query) ||
       (unit.unit_type || "").toLowerCase().includes(query)
     );
@@ -365,10 +363,14 @@ export default function Upload() {
         setProfile(myProfile);
         setAgentsOptions(agents ?? []);
         setProductCenterUnitOptions(
-          (units ?? []).map(unit => ({
-            ...unit,
-            name: `${(unit.unit_type || "").toUpperCase()} - ${unit.name || ""}`,
-          }))
+          (units ?? []).map(unit => {
+            const rawName = unit.name || "";
+            return {
+              ...unit,
+              raw_name: rawName,
+              name: `${(unit.unit_type || "").toUpperCase()} - ${rawName}`,
+            };
+          })
         );
         const userAgentId = myProfile?.role === "user" ? myProfile?.agent_id ?? "" : "";
         setManualForm(prev => ({
@@ -571,6 +573,7 @@ export default function Upload() {
     const normalized = value.trim().toLowerCase();
     const exactMatch = productCenterUnitOptions.find(unit =>
       (unit.name || "").trim().toLowerCase() === normalized ||
+      (unit.raw_name || "").trim().toLowerCase() === normalized ||
       (unit.id || "").trim().toLowerCase() === normalized
     );
     setManualLookupInputs(prev => ({
@@ -728,7 +731,7 @@ export default function Upload() {
           </div>
           <div className="dropzone__content">
             <div className="dropzone__title">Select or drop an .xlsx file</div>
-            <div className="dropzone__sub">.xlsx only. Include product-center columns for leads, sales, and activation.</div>
+            <div className="dropzone__sub">.xlsx only. Include unit type columns for leads, sales, and activation.</div>
             <button
               type="button"
               className="button primary dropzone__cta upload-browse-btn"

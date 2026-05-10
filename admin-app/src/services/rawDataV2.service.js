@@ -1,10 +1,6 @@
 import * as XLSX from "xlsx";
 import { listAgents } from "./agents.service";
-import {
-  buildProductCenterUnitMaps,
-  listProductCenterUnits,
-  resolveProductCenterUnitId,
-} from "./productCenterUnits.service";
+import { listProductCenterUnits } from "./productCenterUnits.service";
 import { ensureSessionOrThrow, supabase } from "./supabase";
 
 function toNumber(value) {
@@ -106,14 +102,14 @@ const HEADER_ALIASES_V2 = {
   sales: ["sales"],
   activation: ["activation", "activations"],
   leads_unit_type: ["leads_unit_type", "leads_category", "leads_product_center_type"],
-  leads_unit_name: ["leads_unit_name", "leads_product_center_unit", "leads_product_center_name"],
   sales_unit_type: ["sales_unit_type", "sales_category", "sales_product_center_type"],
-  sales_unit_name: ["sales_unit_name", "sales_product_center_unit", "sales_product_center_name"],
   activation_unit_type: [
     "activation_unit_type",
     "activation_category",
     "activation_product_center_type",
   ],
+  leads_unit_name: ["leads_unit_name", "leads_product_center_unit", "leads_product_center_name"],
+  sales_unit_name: ["sales_unit_name", "sales_product_center_unit", "sales_product_center_name"],
   activation_unit_name: [
     "activation_unit_name",
     "activation_product_center_unit",
@@ -129,11 +125,8 @@ const REQUIRED_FIELDS_V2 = [
   "sales",
   "activation",
   "leads_unit_type",
-  "leads_unit_name",
   "sales_unit_type",
-  "sales_unit_name",
   "activation_unit_type",
-  "activation_unit_name",
 ];
 
 function findHeaderKeyV2(normalizedHeader) {
@@ -291,9 +284,15 @@ export async function normalizeRawDataRowsV2(inputRows = [], _options = {}, onPr
   const progressCb = typeof onProgress === "function" ? onProgress : () => {};
   const parseStart = Date.now();
   const [lookups, units] = await Promise.all([buildAgentLookups(), listProductCenterUnits()]);
-  const unitMaps = buildProductCenterUnitMaps(units);
   const unitNames = Object.fromEntries((units ?? []).map((unit) => [unit.id, unit.name]));
   const unitTypes = Object.fromEntries((units ?? []).map((unit) => [unit.id, unit.unit_type]));
+  const unitsByType = (units ?? []).reduce((map, unit) => {
+    const unitType = normalizeUnitTypeValue(unit?.unit_type);
+    if (!unitType) return map;
+    if (!map.has(unitType)) map.set(unitType, []);
+    map.get(unitType).push(unit);
+    return map;
+  }, new Map());
 
   const rows = [];
   const totalRows = inputRows.length;
@@ -331,7 +330,7 @@ export async function normalizeRawDataRowsV2(inputRows = [], _options = {}, onPr
       suggestions = resolved.suggestions;
     }
 
-    const resolveUnit = ({ idField, typeField, nameField, label }) => {
+    const resolveUnit = ({ idField, typeField, label }) => {
       const existingId = rawRow[idField] ?? null;
       if (existingId) {
         return {
@@ -341,34 +340,34 @@ export async function normalizeRawDataRowsV2(inputRows = [], _options = {}, onPr
       }
 
       const unitType = normalizeUnitTypeValue(rawRow[typeField]);
-      const unitName = rawRow[nameField] ?? "";
       if (!unitType) {
         return { id: null, error: `Invalid ${label} category type` };
       }
 
-      const result = resolveProductCenterUnitId(unitName, unitMaps, { unitType });
+      const matches = unitsByType.get(unitType) ?? [];
+      const preferred = matches.find(
+        unit => (unit?.name || "").trim().toLowerCase() === unitType
+      );
+      const unit = preferred ?? (matches.length === 1 ? matches[0] : null);
       return {
-        id: result.product_center_unit_id,
-        error: result.error ? `Invalid ${label} category` : null,
+        id: unit?.id ?? null,
+        error: unit ? null : `${label} category: ${unitType} unit type is not configured`,
       };
     };
 
     const leadsUnit = resolveUnit({
       idField: "leads_product_center_unit_id",
       typeField: "leads_unit_type",
-      nameField: "leads_unit_name",
       label: "leads",
     });
     const salesUnit = resolveUnit({
       idField: "sales_product_center_unit_id",
       typeField: "sales_unit_type",
-      nameField: "sales_unit_name",
       label: "sales",
     });
     const activationUnit = resolveUnit({
       idField: "activation_product_center_unit_id",
       typeField: "activation_unit_type",
-      nameField: "activation_unit_name",
       label: "activation",
     });
 
