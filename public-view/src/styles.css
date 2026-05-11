@@ -180,7 +180,7 @@ a:focus-visible {
 
 .topbar-metrics{
   display: flex;
-  flex: 1;
+  flex: 0 1 67%;
   align-items: stretch;
   min-width: 0;
 }
@@ -195,7 +195,7 @@ a:focus-visible {
 }
 
 .topbar-segment--weeks {
-  flex: 0 1 clamp(340px, 25vw, 400px);
+  flex: 1 1 clamp(420px, 31vw, 560px);
   min-width: 0;
   align-items: flex-start;
   text-align: left;
@@ -209,7 +209,7 @@ a:focus-visible {
   align-items: center;
   text-align: center;
   gap: 8px;
-  padding: 16px clamp(8px, 1vw, 18px);
+  padding: 14px clamp(6px, 0.8vw, 14px);
 }
 
 .week-row {
@@ -227,7 +227,7 @@ a:focus-visible {
 }
 
 .week-label {
-  font-size: clamp(18px, 1.25vw, 24px);
+  font-size: clamp(15px, 1vw, 20px);
   font-weight: 400;
   letter-spacing: 0.2px;
   opacity: 0.9;
@@ -236,7 +236,7 @@ a:focus-visible {
 }
 
 .week-range {
-  font-size: clamp(16px, 1.1vw, 22px);
+  font-size: clamp(14px, 0.9vw, 18px);
   font-weight: 200;
   line-height: 1.2;
   opacity: 0.95;
@@ -521,12 +521,12 @@ a:focus-visible {
 }
 
 .metric-label {
-  font-size: 0.875rem;
+  font-size: 0.78rem;
   font-weight: 200;
 }
 
 .metric-value {
-  font-size: clamp(20px, 1.55vw, 28px);
+  font-size: clamp(18px, 1.35vw, 25px);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -2138,13 +2138,14 @@ a:focus-visible {
   }
 
   .topbar-segment--weeks {
-    flex: 0 1 300px;
+    flex: 1 1 320px;
     min-width: 0;
   }
 
   .topbar-segment--metric {
     flex: 1 1 0;
     min-width: 0;
+    padding-inline: 6px;
   }
 
   .topbar-divider {
@@ -2158,16 +2159,16 @@ a:focus-visible {
   }
 
   .metric-value {
-    font-size: clamp(18px, 2.2vw, 24px);
+    font-size: clamp(16px, 2vw, 22px);
   }
 
   .metric-label {
-    font-size: clamp(11px, 1.4vw, 13px);
+    font-size: clamp(10px, 1.25vw, 12px);
   }
 
   .week-label,
   .week-range {
-    font-size: 12px;
+    font-size: 11px;
   }
 }
 
@@ -2213,6 +2214,7 @@ a:focus-visible {
 
   .topbar-metrics{ 
     width: 100%;
+    flex: 1 1 auto;
     min-height: 7vh; 
   }
 
