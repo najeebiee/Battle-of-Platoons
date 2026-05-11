@@ -465,7 +465,7 @@ a:focus-visible {
   flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  gap: 3vw;
+  gap: clamp(12px, 1.2vw, 22px);
   height: clamp(38px, 4.2vw, 52px);
   width: 100%;
   overflow: visible;
@@ -2199,7 +2199,7 @@ a:focus-visible {
   .week-tabs {
     max-width: 100%;
     flex-wrap: wrap;
-    gap: 1.5vw;
+    gap: clamp(6px, 1.1vw, 10px);
   }
 }
 
@@ -2226,7 +2226,7 @@ a:focus-visible {
   }
 
   .week-tabs {
-    gap: 4vw;
+    gap: clamp(6px, 1.5vw, 12px);
   }
 
   .week-tab--active {
