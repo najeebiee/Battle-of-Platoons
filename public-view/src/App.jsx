@@ -861,18 +861,6 @@ function App() {
                 onChange={(e) => setDateTo(e.target.value)}
               />
             </div>
-            <div className="dashboard-topbar-chips">
-              {presets.map((preset) => (
-                <button
-                  key={preset.key}
-                  type="button"
-                  className="dashboard-chip"
-                  onClick={() => applyPreset(preset)}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
           </div>
           <div className="dashboard-filter-meta">
             <select
@@ -900,6 +888,18 @@ function App() {
               <RefreshIcon size={12} />
               {loading ? "Refreshing..." : "Refresh"}
             </button>
+          </div>
+          <div className="dashboard-topbar-chips">
+            {presets.map((preset) => (
+              <button
+                key={preset.key}
+                type="button"
+                className="dashboard-chip"
+                onClick={() => applyPreset(preset)}
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
         </div>
 

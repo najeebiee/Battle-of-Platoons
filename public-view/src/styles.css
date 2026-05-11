@@ -180,7 +180,7 @@ a:focus-visible {
 
 .topbar-metrics{
   display: flex;
-  flex: 0 1 67%;
+  flex: 0 1 62%;
   align-items: stretch;
   min-width: 0;
 }
@@ -195,8 +195,8 @@ a:focus-visible {
 }
 
 .topbar-segment--weeks {
-  flex: 1 1 clamp(420px, 31vw, 560px);
-  min-width: 0;
+  flex: 1 1 clamp(460px, 35vw, 620px);
+  min-width: 420px;
   align-items: flex-start;
   text-align: left;
   justify-content: space-between;
@@ -246,10 +246,14 @@ a:focus-visible {
 
 /* Dashboard filter bar */
 .dashboard-filter-bar{
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "range refresh"
+    "chips chips";
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px 16px;
   padding: 12px 14px;
   margin-bottom: 18px;
   border-radius: 14px;
@@ -259,6 +263,7 @@ a:focus-visible {
 }
 
 .dashboard-filter-group{
+  grid-area: range;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -302,9 +307,11 @@ a:focus-visible {
 }
 
 .dashboard-topbar-chips{
+  grid-area: chips;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .dashboard-topbar-select{
@@ -340,9 +347,11 @@ a:focus-visible {
 }
 
 .dashboard-filter-meta{
+  grid-area: refresh;
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: flex-end;
 }
 
 .dashboard-topbar-updated{
@@ -364,10 +373,15 @@ a:focus-visible {
 
 .button.secondary.dashboard-refresh{
   border-radius: 999px;
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--white);
 }
 
 .button.secondary.dashboard-refresh:hover{
-  background: #eef1ff;
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
 }
 
 @media (max-width: 640px){
@@ -376,14 +390,13 @@ a:focus-visible {
   }
   .dashboard-filter-bar{
     gap: 10px;
-    flex-direction: row;
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "range refresh";
     align-items: center;
   }
 
   .dashboard-filter-group{
     width: auto;
-    flex: 1 1 auto;
     flex-wrap: nowrap;
     align-items: center;
   }
@@ -444,17 +457,19 @@ a:focus-visible {
 
 @media (max-width: 420px){
   .dashboard-filter-bar{
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "range"
+      "refresh";
     align-items: stretch;
   }
 
   .dashboard-filter-group{
-    flex: 1 1 auto;
     width: 100%;
   }
 
   .dashboard-filter-meta{
-    width: 100%;
+    width: auto;
     justify-content: space-between;
     gap: 8px;
   }
@@ -2138,8 +2153,8 @@ a:focus-visible {
   }
 
   .topbar-segment--weeks {
-    flex: 1 1 320px;
-    min-width: 0;
+    flex: 1 1 340px;
+    min-width: 320px;
   }
 
   .topbar-segment--metric {
@@ -2218,6 +2233,7 @@ a:focus-visible {
   .topbar-segment--weeks {
     flex: 0 0 auto;
     width: 100%;
+    min-width: 0;
     padding: 14px 14px 8px;
     gap: 8px;
   }
