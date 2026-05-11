@@ -247,8 +247,8 @@ a:focus-visible {
 /* Dashboard filter bar */
 .dashboard-filter-bar{
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: "range chips";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "range refresh";
   align-items: center;
   justify-content: space-between;
   gap: 10px 16px;
@@ -305,7 +305,6 @@ a:focus-visible {
 }
 
 .dashboard-topbar-chips{
-  grid-area: chips;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -346,7 +345,7 @@ a:focus-visible {
 
 .dashboard-filter-meta{
   grid-area: refresh;
-  display: none;
+  display: flex;
   align-items: center;
   gap: 12px;
   justify-content: flex-end;
@@ -384,18 +383,18 @@ a:focus-visible {
 
 @media (max-width: 940px){
   .dashboard-filter-bar{
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "range"
-      "chips";
+      "range refresh";
   }
 
   .dashboard-filter-group{
     min-width: 0;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .dashboard-topbar-chips{
+    flex: 0 0 100%;
     justify-content: center;
   }
 
@@ -417,16 +416,15 @@ a:focus-visible {
   }
   .dashboard-filter-bar{
     gap: 10px;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "range"
-      "chips";
+      "range refresh";
     align-items: center;
   }
 
   .dashboard-filter-group{
     width: auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
   }
 
