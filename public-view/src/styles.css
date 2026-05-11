@@ -384,14 +384,17 @@ a:focus-visible {
 @media (max-width: 940px){
   .dashboard-filter-bar{
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "range refresh"
-      "chips chips";
+    grid-template-areas: "range refresh";
   }
 
   .dashboard-filter-group{
     min-width: 0;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-topbar-chips{
+    flex: 0 0 100%;
+    justify-content: center;
   }
 
   .dashboard-topbar-range{
@@ -413,9 +416,7 @@ a:focus-visible {
   .dashboard-filter-bar{
     gap: 10px;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "range refresh"
-      "chips chips";
+    grid-template-areas: "range refresh";
     align-items: center;
   }
 
