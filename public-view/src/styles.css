@@ -384,6 +384,31 @@ a:focus-visible {
   color: var(--white);
 }
 
+@media (max-width: 940px){
+  .dashboard-filter-bar{
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "range refresh"
+      "chips chips";
+  }
+
+  .dashboard-filter-group{
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .dashboard-topbar-range{
+    min-width: 0;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .dashboard-topbar-range input{
+    min-width: 0;
+    width: clamp(100px, 15vw, 120px);
+  }
+}
+
 @media (max-width: 640px){
   .dashboard-filter-label{
     font-size: clamp(9px, 2.2vw, 11px);
@@ -391,7 +416,9 @@ a:focus-visible {
   .dashboard-filter-bar{
     gap: 10px;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "range refresh";
+    grid-template-areas:
+      "range refresh"
+      "chips chips";
     align-items: center;
   }
 
@@ -420,7 +447,6 @@ a:focus-visible {
   }
 
   .dashboard-topbar-select{
-    display: inline-flex;
     font-size: clamp(10px, 2.4vw, 11px);
     padding: 3px 8px;
     background-position: right 6px center;
@@ -436,10 +462,6 @@ a:focus-visible {
   .dashboard-filter-meta{
     width: auto;
     justify-content: flex-end;
-  }
-
-  .dashboard-topbar-chips{
-    display: none;
   }
 }
 
@@ -472,6 +494,14 @@ a:focus-visible {
     width: auto;
     justify-content: space-between;
     gap: 8px;
+  }
+
+  .dashboard-topbar-select{
+    display: inline-flex;
+  }
+
+  .dashboard-topbar-chips{
+    display: none;
   }
 }
 
