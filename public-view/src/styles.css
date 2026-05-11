@@ -247,8 +247,8 @@ a:focus-visible {
 /* Dashboard filter bar */
 .dashboard-filter-bar{
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "range chips refresh";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "range refresh";
   align-items: center;
   justify-content: space-between;
   gap: 10px 16px;
@@ -305,11 +305,10 @@ a:focus-visible {
 }
 
 .dashboard-topbar-chips{
-  grid-area: chips;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .dashboard-topbar-select{
