@@ -1224,12 +1224,9 @@ function Podium({ top3, view }) {
         const rank = item.rank ?? index + 1;
         const payins = item.payins ?? item.totalPayins ?? 0;
         const activation = item.activation ?? item.totalActivation ?? 0;
-        // Move compact sales threshold to 1100px.
         const salesValue =
           width <= 600
             ? formatCurrencyPHPCompact(item.sales, "600")
-            : width <= 1100
-            ? formatCurrencyPHPCompact(item.sales, "700")
             : formatCurrencyPHP(item.sales);
 
         // CSS didn’t apply because podium-card class wasn’t rendered.

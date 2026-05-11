@@ -2034,6 +2034,15 @@ a:focus-visible {
 }
 
 @media (max-width: 600px) {
+  .rank-header {
+    font-size: 9px;
+    letter-spacing: 0.025em;
+  }
+
+  .rank-header__metrics {
+    gap: 3px;
+  }
+
   .podium-card {
     overflow: hidden;
     border-radius: 25px 25px 0px 0px;
@@ -2044,8 +2053,8 @@ a:focus-visible {
   .podium-item--rank-3 .podium-card { height: clamp(200px, 34vh, 260px); }
 
   .podium-stats-row {
-    grid-template-columns: 1fr 1fr;
-    row-gap: 8px;
+    grid-template-columns: 1fr;
+    row-gap: 6px;
   }
 
   .podium-stats-row .podium-stat {
@@ -2053,7 +2062,7 @@ a:focus-visible {
   }
 
   .podium-stats-row .podium-stat:nth-child(1) {
-    border-right: 1px solid rgba(255,255,255,0.22) !important;
+    border-right: none !important;
   }
 
   .podium-stat {
@@ -2061,8 +2070,8 @@ a:focus-visible {
   }
 
   .podium-stats-row .podium-stat--sales {
-    grid-column: 1 / -1;
-    padding-top: 8px;
+    grid-column: auto;
+    padding-top: 0;
   }
 
   .podium-stat__value {
