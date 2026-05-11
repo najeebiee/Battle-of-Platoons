@@ -1881,6 +1881,10 @@ a:focus-visible {
   border-right: 1px solid rgba(255,255,255,0.22);
 }
 
+.podium-stats-row .podium-stat:nth-child(3) {
+  border-right: none;
+}
+
 .podium-stat--sales {
   grid-column: 1 / -1;
   margin-top: 8px;
