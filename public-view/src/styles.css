@@ -417,7 +417,10 @@ a:focus-visible {
 
 @media (max-width: 640px){
   .dashboard-filter-label{
+    max-width: 54px;
     font-size: clamp(9px, 2.2vw, 11px);
+    line-height: 1.05;
+    white-space: normal;
   }
   .dashboard-filter-bar{
     gap: 10px;
@@ -470,6 +473,7 @@ a:focus-visible {
   }
 
   .dashboard-refresh{
+    align-self: stretch;
     font-size: clamp(10px, 2.4vw, 11px);
     padding: 3px 8px;
     border-radius: 999px;
