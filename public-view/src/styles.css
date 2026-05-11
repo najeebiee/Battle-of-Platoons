@@ -417,13 +417,13 @@ a:focus-visible {
 
 @media (max-width: 640px){
   .dashboard-filter-label{
-    max-width: 54px;
+    max-width: 42px;
     font-size: clamp(9px, 2.2vw, 11px);
     line-height: 1.05;
     white-space: normal;
   }
   .dashboard-filter-bar{
-    gap: 10px;
+    gap: 8px;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "range refresh"
@@ -445,6 +445,7 @@ a:focus-visible {
     width: auto;
     flex-wrap: wrap;
     align-items: center;
+    gap: 6px;
   }
 
   .dashboard-topbar-range{
@@ -475,7 +476,7 @@ a:focus-visible {
   .dashboard-refresh{
     align-self: stretch;
     font-size: clamp(10px, 2.4vw, 11px);
-    padding: 3px 8px;
+    padding: 3px 7px;
     border-radius: 999px;
   }
 
@@ -1296,7 +1297,7 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  --rank-cols: 44px minmax(160px, 320px) minmax(220px, 1fr) minmax(60px, auto);
+  --rank-cols: 44px minmax(160px, 320px) minmax(360px, 1fr) minmax(60px, auto);
   --rank-gap: 14px;
   --rank-header-pad: 8px 0;
 }
@@ -1341,7 +1342,7 @@ a:focus-visible {
 
 .rank-header__metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   justify-items: center;
 }
@@ -1390,7 +1391,7 @@ a:focus-visible {
 
 .rank-card__metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   justify-items: center;
   align-items: center;
@@ -1543,7 +1544,7 @@ a:focus-visible {
 /* ✅ Keep rank-card as ONE ROW at <= 980px (no stacking) */
 @media (max-width: 980px) {
   .rank-list {
-    --rank-cols: 44px minmax(100px, 1fr) minmax(180px, 1fr) minmax(56px, auto);
+    --rank-cols: 44px minmax(100px, 1fr) minmax(250px, 1.2fr) minmax(56px, auto);
     --rank-gap: 10px;
     --rank-header-pad: 8px 0;
   }
@@ -1577,7 +1578,7 @@ a:focus-visible {
     padding-right: 0;
   }
 
-  /* keep leads/payins/sales centered + compact */
+  /* keep leads/payins/activation/sales centered + compact */
   .rank-card__metrics {
     min-width: 0;
     gap: 6px;
@@ -1604,7 +1605,7 @@ a:focus-visible {
 
 @media (max-width: 640px) {
   .rank-list {
-    --rank-cols: 40px minmax(110px, 1fr) minmax(160px, 1fr) minmax(50px, auto);
+    --rank-cols: 40px minmax(90px, 1fr) minmax(190px, 1.3fr) minmax(50px, auto);
     --rank-gap: 8px;
     --rank-header-pad: 6px 0;
   }
@@ -1645,7 +1646,7 @@ a:focus-visible {
 
 @media (max-width: 520px) {
   .rank-list {
-    --rank-cols: 36px minmax(120px, 1fr) minmax(140px, 1fr) minmax(44px, auto);
+    --rank-cols: 36px minmax(84px, 1fr) minmax(170px, 1.4fr) minmax(44px, auto);
     --rank-gap: 8px;
     --rank-header-pad: 6px 0;
   }
@@ -1698,7 +1699,7 @@ a:focus-visible {
   }
 
   .leader-row-stat__value {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .rank-card__points {
@@ -1722,7 +1723,7 @@ a:focus-visible {
    ================================ */
 @media (max-width: 400px) {
   .rank-list {
-    --rank-cols: 32px minmax(90px, 1fr) minmax(110px, 1fr) minmax(40px, auto);
+    --rank-cols: 32px minmax(72px, 1fr) minmax(142px, 1.5fr) minmax(38px, auto);
     --rank-gap: 6px;
     --rank-header-pad: 4px 0;
   }
@@ -1760,7 +1761,7 @@ a:focus-visible {
   }
 
   .leader-row-stat__value {
-    font-size: clamp(10px, 3.2vw, 12px);
+    font-size: clamp(8px, 2.8vw, 10px);
     white-space: nowrap;
   }
 
@@ -1878,6 +1879,13 @@ a:focus-visible {
 
 .podium-stat:not(:last-child) {
   border-right: 1px solid rgba(255,255,255,0.22);
+}
+
+.podium-stat--sales {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-right: none !important;
 }
 
 @media (max-width: 1100px) {
@@ -2048,7 +2056,7 @@ a:focus-visible {
     border-right: none;
   }
 
-  .podium-stats-row .podium-stat:nth-child(3) {
+  .podium-stats-row .podium-stat--sales {
     grid-column: 1 / -1;
     padding-top: 8px;
   }

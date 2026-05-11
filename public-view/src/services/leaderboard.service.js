@@ -44,6 +44,7 @@ export async function getLeaderboard({
   roleFilter = null, // null | "platoon" | "squad" | "team_leader" | "member"
   battleType = null, // override battle type passed to scoring formula RPC
   weekKey = null,
+  productCenterUnitType = null, // null | "city" | "depot"
 }) {
   if (!supabaseConfigured || !supabase) {
     throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
@@ -142,6 +143,7 @@ export async function getLeaderboard({
     commandersMap,
     teamsMap,
     agentsMap,
+    productCenterUnitType,
   });
 
   // 5) Metrics for header cards
@@ -176,6 +178,7 @@ function aggregateLeaderboard({
   commandersMap,
   teamsMap,
   agentsMap,
+  productCenterUnitType,
 }) {
   if (mode === "platoon") {
     return aggregateUplines({ rows, scoringFn, agentsMap });
@@ -234,6 +237,54 @@ function aggregateLeaderboard({
     }
 
     if (mode === "depots") {
+      const selectedUnitType = normalizeProductCenterUnitType(productCenterUnitType);
+
+      if (selectedUnitType) {
+        const unitMatchesType = (unitId) => {
+          if (!unitId) return false;
+          const unit = productCentersMap.get(String(unitId));
+          return normalizeProductCenterUnitType(unit?.unit_type) === selectedUnitType;
+        };
+
+        const scopedLeads = unitMatchesType(leadsProductCenterUnitId) ? leads : 0;
+        const scopedSales = unitMatchesType(salesProductCenterUnitId) ? sales : 0;
+        const scopedActivation = unitMatchesType(activationProductCenterUnitId) ? activation : 0;
+
+        if (!scopedLeads && !scopedSales && !scopedActivation) continue;
+
+        key = agentId;
+        name = agentData.name ?? "(Unnamed)";
+        avatarUrl = agentData.photoURL ?? agentData.photo_url ?? "";
+        platoonName = platoon?.name ?? "";
+
+        if (!key) continue;
+
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            name,
+            avatarUrl,
+            platoon: platoonName,
+            leads: 0,
+            payins: 0,
+            sales: 0,
+            activation: 0,
+            points: 0,
+            rank: 0,
+            uplineName: uplineName,
+          });
+        }
+
+        const item = map.get(key);
+        item.leads += scopedLeads;
+        item.sales += scopedSales;
+        item.activation += scopedActivation;
+        if (platoonName && !item.platoon) item.platoon = platoonName;
+        if (uplineName && !item.uplineName) item.uplineName = uplineName;
+
+        continue;
+      }
+
       const ensureProductCenterBucket = (unitKey) => {
         if (!unitKey) return null;
         if (map.has(unitKey)) return map.get(unitKey);
@@ -470,6 +521,13 @@ function normalizeBattleType(input) {
 function normalizeGroupBy(input) {
   if (input === "companies") return "teams";
   return input;
+}
+
+function normalizeProductCenterUnitType(input) {
+  const key = String(input || "").toLowerCase();
+  if (key === "city") return "city";
+  if (key === "depot") return "depot";
+  return "";
 }
 
 function toIsoWeekKey(dateStr) {

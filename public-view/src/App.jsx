@@ -45,6 +45,11 @@ const LEADER_ROLE_TABS = [
   { key: "member", label: "Member" },
 ];
 
+const PRODUCT_CENTER_CATEGORY_TABS = [
+  { key: "city", label: "City" },
+  { key: "depot", label: "Depot" },
+];
+
 function mergeClassNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
@@ -354,6 +359,9 @@ function App() {
   const faqWeekKey = activeWeekTab?.range?.end ? toIsoWeekKey(activeWeekTab.range.end) : null;
   const [activeView, setActiveView] = useState("depots");
   const [leaderRoleFilter, setLeaderRoleFilter] = useState(LEADER_ROLE_TABS[0].key);
+  const [productCenterCategory, setProductCenterCategory] = useState(
+    PRODUCT_CENTER_CATEGORY_TABS[0].key
+  );
   const [dateFrom, setDateFrom] = useState(() => toYMD(getDefaultStartDate()));
   const [dateTo, setDateTo] = useState(() => toYMD(new Date()));
   // Pagination plan:
@@ -440,6 +448,7 @@ function App() {
           roleFilter: activeView === "leaders" && !leadersPlatoonView ? leaderRoleFilter : null,
           battleType: battleTypeKey,
           weekKey,
+          productCenterUnitType: activeView === "depots" ? productCenterCategory : null,
         });
 
         if (isCancelled?.current) return;
@@ -456,7 +465,16 @@ function App() {
         if (!isCancelled?.current) setLoading(false);
       }
     },
-    [activeView, activeWeek, dateFrom, dateTo, leaderRoleFilter, supabaseConfigured, weekTabs]
+    [
+      activeView,
+      activeWeek,
+      dateFrom,
+      dateTo,
+      leaderRoleFilter,
+      productCenterCategory,
+      supabaseConfigured,
+      weekTabs,
+    ]
   );
 
   useEffect(() => {
@@ -493,6 +511,9 @@ function App() {
   const pageStart = (page - 1) * PAGE_SIZE;
   const pageEnd = pageStart + PAGE_SIZE;
   const pageRows = listRows.slice(pageStart, pageEnd);
+  const productCenterCategoryLabel =
+    PRODUCT_CENTER_CATEGORY_TABS.find((tab) => tab.key === productCenterCategory)?.label ||
+    "City";
   const entitiesLabel =
     displayView === "commanders"
       ? "Commanders"
@@ -503,26 +524,26 @@ function App() {
       : activeView === "leaders" && leaderRoleFilter === "member"
       ? "Members"
       : activeView === "leaders" && leaderRoleFilter === "squad"
-      ? "Squad Leaders"
-      : displayView === "depots"
-      ? "Product Centers"
-      : displayView === "platoon"
-      ? "Platoon Leaders"
-      : "Leaders";
+    ? "Squad Leaders"
+    : displayView === "depots"
+    ? `${productCenterCategoryLabel} Leaders`
+    : displayView === "platoon"
+    ? "Platoon Leaders"
+    : "Leaders";
 
   const title =
     displayView === "platoon"
       ? "Platoon Leader Rankings"
       : activeView === "leaders" && leaderRoleFilter === "team_leader"
       ? "Team Leader Rankings"
-      : activeView === "leaders" && leaderRoleFilter === "member"
-      ? "Member Rankings"
-      : displayView === "leaders"
-      ? "Squad Leader Rankings"
-      : displayView === "depots"
-      ? "Product Center Rankings"
-      : displayView === "companies"
-      ? "Company Rankings"
+    : activeView === "leaders" && leaderRoleFilter === "member"
+    ? "Member Rankings"
+    : displayView === "leaders"
+    ? "Squad Leader Rankings"
+    : displayView === "depots"
+    ? `${productCenterCategoryLabel} Product Center Rankings`
+    : displayView === "companies"
+    ? "Company Rankings"
       : "Commander Rankings";
 
   useEffect(() => {
@@ -536,7 +557,7 @@ function App() {
 
   useEffect(() => {
     setPage(1);
-  }, [activeWeek, activeView, dateFrom, dateTo, leaderRoleFilter]);
+  }, [activeWeek, activeView, dateFrom, dateTo, leaderRoleFilter, productCenterCategory]);
 
   useEffect(() => {
     if (page > pageCount) {
@@ -918,6 +939,22 @@ function App() {
               </button>
             ))}
           </div>
+          {activeView === "depots" && (
+            <div className="view-toggle leader-role-toggle">
+              {PRODUCT_CENTER_CATEGORY_TABS.map((category) => (
+                <button
+                  key={category.key}
+                  className={
+                    "view-pill" +
+                    (category.key === productCenterCategory ? " view-pill--active" : "")
+                  }
+                  onClick={() => setProductCenterCategory(category.key)}
+                >
+                  {category.label}
+                </button>
+              ))}
+            </div>
+          )}
           {activeView === "leaders" && (
             <div className="view-toggle leader-role-toggle">
               {LEADER_ROLE_TABS.map((role) => (
@@ -1245,12 +1282,12 @@ function Podium({ top3, view }) {
                   <div className="podium-stat__label">payins</div>
                 </div>
                 <div className="podium-stat">
-                  <div className="podium-stat__value">{salesValue}</div>
-                  <div className="podium-stat__label">sales</div>
-                </div>
-                <div className="podium-stat">
                   <div className="podium-stat__value">{activation}</div>
                   <div className="podium-stat__label">activation</div>
+                </div>
+                <div className="podium-stat podium-stat--sales">
+                  <div className="podium-stat__value">{salesValue}</div>
+                  <div className="podium-stat__label">sales</div>
                 </div>
               </div>
             </motion.div>
@@ -1268,15 +1305,15 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
   const labelHeader =
     view === "leaders"
       ? "Leader Name"
-      : view === "depots"
-      ? "Product Center"
-      : view === "platoon"
-      ? "Leader Name"
+    : view === "depots"
+    ? "Leader Name"
+    : view === "platoon"
+    ? "Leader Name"
       : view === "companies"
       ? "Company"
       : "Commander";
 
-  const showPlatoon = view === "leaders";
+  const showPlatoon = view === "leaders" || view === "depots";
   const PAGE_SIZE = 10;
   const hasRows = rows.length > 0;
   const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -1335,12 +1372,12 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
               <span className="rank-label__short">PI</span>
             </span>
             <span className="rank-label">
-              <span className="rank-label__full">Sales</span>
-              <span className="rank-label__short">SALES</span>
-            </span>
-            <span className="rank-label">
               <span className="rank-label__full">Activation</span>
               <span className="rank-label__short">ACT</span>
+            </span>
+            <span className="rank-label">
+              <span className="rank-label__full">Sales</span>
+              <span className="rank-label__short">SALES</span>
             </span>
           </div>
           <div className="rank-header__points">
@@ -1378,14 +1415,14 @@ function LeaderboardRows({ rows, view, page, pageCount, onPageChange, total }) {
                     <span className="leader-row-stat__value">{r.payins}</span>
                   </div>
                   <div className="leader-row-stat">
+                    <span className="leader-row-stat__value">{r.activation ?? 0}</span>
+                  </div>
+                  <div className="leader-row-stat">
                     <span className="leader-row-stat__value">
                       {useCompactSales
                         ? formatCurrencyPHPCompact(r.sales, "600")
                         : formatCurrencyPHP(r.sales)}
                     </span>
-                  </div>
-                  <div className="leader-row-stat">
-                    <span className="leader-row-stat__value">{r.activation ?? 0}</span>
                   </div>
                 </div>
               </div>
