@@ -182,6 +182,7 @@ a:focus-visible {
   display: flex;
   flex: 1;
   align-items: stretch;
+  min-width: 0;
 }
 
 .topbar-segment {
@@ -194,8 +195,8 @@ a:focus-visible {
 }
 
 .topbar-segment--weeks {
-  flex: 2.2;
-  min-width: 420px;
+  flex: 0 1 clamp(340px, 25vw, 400px);
+  min-width: 0;
   align-items: flex-start;
   text-align: left;
   justify-content: space-between;
@@ -203,18 +204,19 @@ a:focus-visible {
 }
 
 .topbar-segment--metric {
-  flex: 0.9;
-  min-width: 15vw;
+  flex: 1 1 0;
+  min-width: 0;
   align-items: center;
   text-align: center;
   gap: 8px;
+  padding: 16px clamp(8px, 1vw, 18px);
 }
 
 .week-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
   height: 100%;
 }
@@ -225,7 +227,7 @@ a:focus-visible {
 }
 
 .week-label {
-  font-size: 1.5vw;
+  font-size: clamp(18px, 1.25vw, 24px);
   font-weight: 400;
   letter-spacing: 0.2px;
   opacity: 0.9;
@@ -234,7 +236,7 @@ a:focus-visible {
 }
 
 .week-range {
-  font-size: 1.3vw;
+  font-size: clamp(16px, 1.1vw, 22px);
   font-weight: 200;
   line-height: 1.2;
   opacity: 0.95;
@@ -519,14 +521,15 @@ a:focus-visible {
 }
 
 .metric-label {
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 200;
 }
 
 .metric-value {
-  font-size: clamp(28px, 3.2vw, 30px);
+  font-size: clamp(20px, 1.55vw, 28px);
   font-weight: 700;
   line-height: 1;
+  white-space: nowrap;
 }
 
 /* View toggle */
@@ -2135,13 +2138,13 @@ a:focus-visible {
   }
 
   .topbar-segment--weeks {
-    flex: 2.2;         /* keep your desktop proportions */
-    min-width: 320px;  /* allow shrink but not too small */
+    flex: 0 1 300px;
+    min-width: 0;
   }
 
   .topbar-segment--metric {
-    flex: 0.9;
-    min-width: 120px;  /* shrink metrics a bit */
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .topbar-divider {
@@ -2155,7 +2158,11 @@ a:focus-visible {
   }
 
   .metric-value {
-    font-size: clamp(22px, 2.6vw, 30px);
+    font-size: clamp(18px, 2.2vw, 24px);
+  }
+
+  .metric-label {
+    font-size: clamp(11px, 1.4vw, 13px);
   }
 
   .week-label,
@@ -2205,10 +2212,13 @@ a:focus-visible {
   }
 
   .topbar-metrics{ 
+    width: 100%;
     min-height: 7vh; 
   }
 
   .topbar-segment--metric {
+    flex: 1 1 0;
+    min-width: 0;
     padding: 0 12px 12px 12px;
     min-height: 4vh;
   }
