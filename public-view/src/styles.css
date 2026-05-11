@@ -247,8 +247,8 @@ a:focus-visible {
 /* Dashboard filter bar */
 .dashboard-filter-bar{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "range refresh";
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "range chips refresh";
   align-items: center;
   justify-content: space-between;
   gap: 10px 16px;
@@ -305,6 +305,7 @@ a:focus-visible {
 }
 
 .dashboard-topbar-chips{
+  grid-area: chips;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -385,7 +386,8 @@ a:focus-visible {
   .dashboard-filter-bar{
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "range refresh";
+      "range refresh"
+      "chips chips";
   }
 
   .dashboard-filter-group{
@@ -394,7 +396,6 @@ a:focus-visible {
   }
 
   .dashboard-topbar-chips{
-    flex: 0 0 100%;
     justify-content: center;
   }
 
@@ -422,8 +423,19 @@ a:focus-visible {
     gap: 10px;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "range refresh";
+      "range refresh"
+      "chips chips";
     align-items: center;
+  }
+
+  .dashboard-topbar-chips{
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .dashboard-chip{
+    font-size: clamp(9px, 2.1vw, 11px);
+    padding: 3px 8px;
   }
 
   .dashboard-filter-group{
