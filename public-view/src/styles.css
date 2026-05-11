@@ -398,6 +398,10 @@ a:focus-visible {
     justify-content: center;
   }
 
+  .dashboard-filter-meta{
+    align-self: flex-start;
+  }
+
   .dashboard-topbar-range{
     min-width: 0;
     flex-wrap: nowrap;
@@ -488,6 +492,8 @@ a:focus-visible {
 
   .dashboard-filter-group{
     width: 100%;
+    flex-wrap: nowrap;
+    gap: 8px;
   }
 
   .dashboard-filter-meta{
@@ -495,6 +501,22 @@ a:focus-visible {
     width: auto;
     justify-content: space-between;
     gap: 8px;
+    align-self: auto;
+  }
+
+  .dashboard-topbar-range{
+    gap: 3px;
+    padding: 4px 6px;
+  }
+
+  .dashboard-topbar-range input{
+    width: clamp(74px, 24vw, 96px);
+  }
+
+  .dashboard-refresh{
+    border-color: #d8dcf7;
+    background: #ffffff;
+    color: var(--blue);
   }
 
   .dashboard-topbar-select{
