@@ -247,8 +247,8 @@ a:focus-visible {
 /* Dashboard filter bar */
 .dashboard-filter-bar{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "range refresh";
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "range chips";
   align-items: center;
   justify-content: space-between;
   gap: 10px 16px;
@@ -305,6 +305,7 @@ a:focus-visible {
 }
 
 .dashboard-topbar-chips{
+  grid-area: chips;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -345,7 +346,7 @@ a:focus-visible {
 
 .dashboard-filter-meta{
   grid-area: refresh;
-  display: flex;
+  display: none;
   align-items: center;
   gap: 12px;
   justify-content: flex-end;
@@ -383,17 +384,18 @@ a:focus-visible {
 
 @media (max-width: 940px){
   .dashboard-filter-bar{
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "range refresh";
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "range"
+      "chips";
   }
 
   .dashboard-filter-group{
     min-width: 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .dashboard-topbar-chips{
-    flex: 0 0 100%;
     justify-content: center;
   }
 
@@ -415,8 +417,10 @@ a:focus-visible {
   }
   .dashboard-filter-bar{
     gap: 10px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "range refresh";
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "range"
+      "chips";
     align-items: center;
   }
 
@@ -489,6 +493,7 @@ a:focus-visible {
   }
 
   .dashboard-filter-meta{
+    display: flex;
     width: auto;
     justify-content: space-between;
     gap: 8px;
