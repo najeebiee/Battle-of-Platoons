@@ -841,12 +841,6 @@ function App() {
                 <div className="metric-value">{metrics.totalActivation}</div>
               </div>
 
-              <div className="topbar-divider" aria-hidden="true"></div>
-
-              <div className="topbar-segment topbar-segment--metric">
-                <div className="metric-label">Sales</div>
-                <div className="metric-value">{formatCurrencyPHP(metrics.totalSales)}</div>
-              </div>
             </div>
           </div>
         </section>
